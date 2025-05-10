@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "308176661731",
+    "project_id": "jalaram-33f56",
+    "storage_bucket": "jalaram-33f56.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:308176661731:android:9c5c8896c01ce01b07a9d6",
+        "android_client_info": {
+          "package_name": "com.jalaram"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDozQkjA5zPWjZFaFqZ3OLMGq1U3SnPOc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
