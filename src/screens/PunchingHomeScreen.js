@@ -154,6 +154,7 @@ const styles = StyleSheet.create({
     marginVertical: 20,
     justifyContent: 'center',
   },
+  
 
   tableHeadingTypesText: {
     fontSize: 18,

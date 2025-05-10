@@ -208,6 +208,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
               style={styles.sizeInput}
               value={size}
               onChangeText={setSize}
+              editable={false}
             />
           </View>
 
