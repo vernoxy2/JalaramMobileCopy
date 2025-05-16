@@ -126,8 +126,7 @@ const styles = StyleSheet.create({
   },
   headingText: {
     fontSize: 20,
-    fontWeight: 'bold',
-    fontFamily:'Times-New-Roman'
+    fontFamily:'Lato-Black'
   },
   backBtnImg: {
     height: 20,
