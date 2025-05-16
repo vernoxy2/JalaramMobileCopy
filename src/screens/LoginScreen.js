@@ -1,19 +1,14 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Image,
-  Text,
-  StyleSheet,
-  Alert,
-} from 'react-native';
+import React, {useState} from 'react';
+import {View, Image, Text, StyleSheet, Alert} from 'react-native';
 import CustomHeader from '../components/CustomHeader';
 import CustomTextInput from '../components/CustomTextInput';
 import CustomButton from '../components/CustomButton';
 
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import { CommonActions } from '@react-navigation/native';
 
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -35,33 +30,46 @@ const LoginScreen = ({ navigation }) => {
   //     });
   // };
 
-
   const handleLogin = () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please enter both email and password.');
       return;
     }
-  
+
     auth()
       .signInWithEmailAndPassword(email, password)
       .then(async userCredential => {
         const uid = userCredential.user.uid;
-  
+
         try {
           const userDoc = await firestore().collection('users').doc(uid).get();
-  
+
           if (!userDoc.exists) {
             Alert.alert('Login Failed', 'User role not found.');
             return;
           }
-  
+
           const userData = userDoc.data();
           const role = userData.role;
-  
-          if (role === 'Admin' || role === 'Printing' || role === 'Punching' || role === 'Slitting' ) {
-            navigation.navigate('BottomNavigation', { role });
-          }
-           else {
+
+          if (
+            role === 'Admin' ||
+            role === 'Printing' ||
+            role === 'Punching' ||
+            role === 'Slitting'
+          ) {
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [
+                  {
+                    name: 'BottomNavigation',
+                    params: {role},
+                  },
+                ],
+              }),
+            );
+          } else {
             Alert.alert('Access Denied', 'Unknown user role.');
           }
         } catch (err) {
@@ -71,10 +79,9 @@ const LoginScreen = ({ navigation }) => {
       })
       .catch(error => {
         console.log(error);
-        Alert.alert('Login Failed', "Please Enter Valid Credentials");
+        Alert.alert('Login Failed', 'Please Enter Valid Credentials');
       });
   };
-
 
   return (
     <View style={styles.loginMainContainer}>
@@ -108,7 +115,6 @@ const LoginScreen = ({ navigation }) => {
 
 export default LoginScreen;
 
-
 const styles = StyleSheet.create({
   loginMainContainer: {
     height: '100%',
@@ -134,7 +140,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     // fontWeight: 'bold',
     color: '#000',
-    fontFamily:'Lato-Black'
+    fontFamily: 'Lato-Black',
   },
   loginTextInput: {
     height: 50,

@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Pressable,
 } from 'react-native';
 import CustomHeader from '../components/CustomHeader';
 import CustomDropdown from '../components/CustomDropdown';
@@ -25,9 +26,12 @@ import {
 import CustomColorDropdown from '../components/CustomColorDropdown';
 import CustomButton from '../components/CustomButton';
 import firestore from '@react-native-firebase/firestore';
+import CustomLabelTextInput from '../components/CustomLabelTextInput';
+import CustomTextInput from '../components/CustomTextInput';
 
 const OperatorCreateOrder = ({navigation, route}) => {
   const order = route?.params?.order || {};
+  const [jobStarted, setJobStarted] = useState(order.jobStarted || false);
 
   const [selectedColor, setSelectedColor] = useState(null);
 
@@ -51,6 +55,8 @@ const OperatorCreateOrder = ({navigation, route}) => {
     box4: order.varnish === 'Uv',
     box5: order.checkedApproved || false,
   });
+
+  const [runningMtrValue, setRunningMtrValue] = useState('');
 
   // useEffect(() => {
   //   const fetchPreviousJobData = async () => {
@@ -105,6 +111,10 @@ const OperatorCreateOrder = ({navigation, route}) => {
       box4: order.varnish === 'Uv',
       box5: order.checkedApproved || false,
     });
+
+    setRunningMtrValue(order.runningMtr || '')
+
+    setJobStarted(order.jobStarted || false);
   }, [order]); // Only trigger this when `order` changes
 
   const [colorAniloxValues, setColorAniloxValues] = useState({
@@ -115,14 +125,12 @@ const OperatorCreateOrder = ({navigation, route}) => {
     Others: '',
   });
 
-  
   const handleColorSelect = (colorKey, selectedValue) => {
     setColorAniloxValues(prev => ({
       ...prev,
       [colorKey]: selectedValue,
     }));
   };
-  
 
   const handleCheckboxChange = box => {
     setCheckboxState(prevState => ({
@@ -135,18 +143,17 @@ const OperatorCreateOrder = ({navigation, route}) => {
     console.log('Selected:', item);
   };
 
- 
-
-  const handleSubmit = async () => {
+  const startJobHandler = async () => {
     try {
+
       const printingColors = [];
       if (checkboxState.box1) printingColors.push('Uv');
       if (checkboxState.box2) printingColors.push('Water');
       if (checkboxState.box3) printingColors.push('Special');
-
       const orderRef = firestore().collection('orders').doc(order.id);
-
       await orderRef.update({
+        jobStarted: true,
+        updatedAt: firestore.FieldValue.serverTimestamp(),
         jobSize: size,
         jobPaper,
         paperProductCode: paperProduct,
@@ -162,10 +169,29 @@ const OperatorCreateOrder = ({navigation, route}) => {
         checkedApproved: checkboxState.box5,
         jobStatus: 'punching',
         assignedTo: 'WmUWJ2o8f6T3uy5w5HVaHM4au3A2',
-        updatedAt: firestore.FieldValue.serverTimestamp(),
         colorAniloxValues,
-      });
       
+      });
+
+      setJobStarted(true);
+      alert('Job started successfully');
+      navigation.goBack();
+    } catch (error) {
+      console.error('Error starting job:', error);
+      alert('Failed to start job');
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+
+      const orderRef = firestore().collection('orders').doc(order.id);
+
+      await orderRef.update({
+        
+        runningMtr: runningMtrValue
+
+      });
 
       alert('Job successfully updated and reassigned!');
       navigation.goBack();
@@ -188,7 +214,11 @@ const OperatorCreateOrder = ({navigation, route}) => {
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled">
+        
         <View style={styles.subContainer}>
+
+          {!jobStarted ? (
+            <>
           <CustomDropdown
             placeholder={'Job Paper / Fill Material'}
             data={options}
@@ -228,52 +258,52 @@ const OperatorCreateOrder = ({navigation, route}) => {
             onSelect={item => setPlateSize(item)}
           />
 
-<CustomDropdown
-  placeholder={'Ups : Across'}
-  data={upsAcross}
-  style={styles.dropdownContainer}
-  selectedText={styles.dropdownText}
-  onSelect={item => setUpsAcrossValue(item)}
-/>
+          <CustomDropdown
+            placeholder={'Ups : Across'}
+            data={upsAcross}
+            style={styles.dropdownContainer}
+            selectedText={styles.dropdownText}
+            onSelect={item => setUpsAcrossValue(item)}
+          />
 
-<CustomDropdown
-  placeholder={'Around'}
-  data={around}
-  style={styles.dropdownContainer}
-  selectedText={styles.dropdownText}
-  onSelect={item => setAroundValue(item)}
-/>
+          <CustomDropdown
+            placeholder={'Around'}
+            data={around}
+            style={styles.dropdownContainer}
+            selectedText={styles.dropdownText}
+            onSelect={item => setAroundValue(item)}
+          />
 
-<CustomDropdown
-  placeholder={'Teeth Size'}
-  data={teethSize}
-  style={styles.dropdownContainer}
-  selectedText={styles.dropdownText}
-  onSelect={item => setTeethSizeValue(item)}
-/>
+          <CustomDropdown
+            placeholder={'Teeth Size'}
+            data={teethSize}
+            style={styles.dropdownContainer}
+            selectedText={styles.dropdownText}
+            onSelect={item => setTeethSizeValue(item)}
+          />
 
-<CustomDropdown
-  placeholder={'Blocks'}
-  data={blocks}
-  style={styles.dropdownContainer}
-  selectedText={styles.dropdownText}
-  onSelect={item => setBlocksValue(item)}
-/>
-<CustomDropdown
-  placeholder={'Winding Direction'}
-  data={windingDirection}
-  style={styles.dropdownContainer}
-  selectedText={styles.dropdownText}
-  onSelect={item => setWindingDirectionValue(item)}
-/>
+          <CustomDropdown
+            placeholder={'Blocks'}
+            data={blocks}
+            style={styles.dropdownContainer}
+            selectedText={styles.dropdownText}
+            onSelect={item => setBlocksValue(item)}
+          />
+          <CustomDropdown
+            placeholder={'Winding Direction'}
+            data={windingDirection}
+            style={styles.dropdownContainer}
+            selectedText={styles.dropdownText}
+            onSelect={item => setWindingDirectionValue(item)}
+          />
 
-<CustomDropdown
-  placeholder={'Slitting'}
-  data={slitting}
-  style={styles.dropdownContainer}
-  selectedText={styles.dropdownText}
-  onSelect={item => setSlittingValue(item)}
-/>
+          <CustomDropdown
+            placeholder={'Slitting'}
+            data={slitting}
+            style={styles.dropdownContainer}
+            selectedText={styles.dropdownText}
+            onSelect={item => setSlittingValue(item)}
+          />
 
           <View style={styles.container}>
             <View style={styles.printingContainer}>
@@ -426,6 +456,21 @@ const OperatorCreateOrder = ({navigation, route}) => {
             </View>
           </View>
 
+          
+            <View style={styles.btnContainer}>
+              <CustomButton
+                title={'Start Job'}
+                style={styles.submitBtn}
+                onPress={startJobHandler}
+              />
+            </View>
+            </>
+        
+          ) : (
+            <>
+
+          <CustomTextInput placeholder={'Running Mtrs'} style={styles.input} value={runningMtrValue} onChangeText={setRunningMtrValue}/>
+
           <View style={styles.btnContainer}>
             <CustomButton
               title={'Submit'}
@@ -433,7 +478,11 @@ const OperatorCreateOrder = ({navigation, route}) => {
               onPress={handleSubmit}
             />
           </View>
+          </>
+          )}
         </View>
+
+
       </ScrollView>
     </View>
   );
@@ -475,12 +524,11 @@ const styles = StyleSheet.create({
     fontWeight: 'medium',
     color: '#000',
   },
-  
+
   sizeText: {
     fontSize: 14,
-    fontFamily:'Lato-Black',
+    fontFamily: 'Lato-Black',
     color: '#000',
-
   },
 
   container: {
@@ -518,7 +566,7 @@ const styles = StyleSheet.create({
   },
   dropdownText: {
     fontSize: 14,
-    fontFamily:'Lato-Black',
+    fontFamily: 'Lato-Black',
     color: '#000',
   },
   checkmarkImage: {
@@ -527,7 +575,7 @@ const styles = StyleSheet.create({
   },
   checkboxText: {
     fontSize: 14,
-    fontFamily:'Lato-Regular',
+    fontFamily: 'Lato-Regular',
     color: '#000',
   },
   checkboxLabel: {
@@ -535,7 +583,7 @@ const styles = StyleSheet.create({
   },
   checkedApprovedTxt: {
     fontSize: 20,
-    fontFamily:'Lato-Black',
+    fontFamily: 'Lato-Black',
     color: '#000',
     width: '100%',
   },
@@ -562,7 +610,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     textAlign: 'center',
     fontSize: 16,
-    fontFamily:'Lato-Regular'
+    fontFamily: 'Lato-Regular',
   },
   submitBtn: {
     marginVertical: 40,
@@ -572,4 +620,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
   },
+  input : {
+    width:'100%'
+  }
 });

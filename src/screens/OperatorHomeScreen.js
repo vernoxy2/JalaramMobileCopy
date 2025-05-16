@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
 
   tableContainer: {
     // flex: 1,
-    maxHeight: 400,
+    maxHeight: 340,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 10,

@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {View, Text, StyleSheet, ScrollView, Alert} from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import CustomHeader from '../components/CustomHeader';
 
-const AdminJobDetailsScreen = ({ route, navigation }) => {
-  const { order } = route.params;
+const AdminJobDetailsScreen = ({route, navigation}) => {
+  const {order} = route.params;
   const [totalTime, setTotalTime] = useState(null);
   const [totalB, setTotalB] = useState(0);
   const [totalC, setTotalC] = useState(0);
@@ -32,8 +32,6 @@ const AdminJobDetailsScreen = ({ route, navigation }) => {
       setTotalC(sumC);
     }
   }, [order]);
-
-  
 
   return (
     <View style={styles.container}>
@@ -76,37 +74,41 @@ const AdminJobDetailsScreen = ({ route, navigation }) => {
             : 'Calculating...'}
         </Text>
 
+        <Text style={styles.label}>Running Mtrs:</Text>
+        <Text style={styles.value}>
+          {order.runningMtr ? order.runningMtr : 'N/A'}
+        </Text>
+
         <Text style={styles.label}>Slitting Data:</Text>
 
-{order.slittingData && order.slittingData.length > 0 ? (
-  <>
-    <View style={styles.tableHeader}>
-      <Text style={styles.tableHeaderCell}>Labels</Text>
-      <Text style={styles.tableHeaderCell}>No of Rolls</Text>
-      <Text style={styles.tableHeaderCell}>Total</Text>
-    </View>
+        {order.slittingData && order.slittingData.length > 0 ? (
+          <>
+            <View style={styles.tableHeader}>
+              <Text style={styles.tableHeaderCell}>Labels</Text>
+              <Text style={styles.tableHeaderCell}>No of Rolls</Text>
+              <Text style={styles.tableHeaderCell}>Total</Text>
+            </View>
 
-    {order.slittingData.map((item, index) => (
-      <View key={index} style={styles.tableRow}>
-        <Text style={styles.tableCell}>{item.A}</Text>
-        <Text style={styles.tableCell}>{item.B}</Text>
-        <Text style={styles.tableCell}>{item.C}</Text>
-      </View>
-    ))}
+            {order.slittingData.map((item, index) => (
+              <View key={index} style={styles.tableRow}>
+                <Text style={styles.tableCell}>{item.A}</Text>
+                <Text style={styles.tableCell}>{item.B}</Text>
+                <Text style={styles.tableCell}>{item.C}</Text>
+              </View>
+            ))}
 
-    <View style={styles.summaryRow}>
-      <Text style={styles.summaryLabel}>Total Rolls:</Text>
-      <Text style={styles.summaryValue}>{totalB}</Text>
-    </View>
-    <View style={styles.summaryRow}>
-      <Text style={styles.summaryLabel}>Final Total:</Text>
-      <Text style={styles.summaryValue}>{totalC}</Text>
-    </View>
-  </>
-) : (
-  <Text style={styles.value}>No slitting data available.</Text>
-)}
-
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Total Rolls:</Text>
+              <Text style={styles.summaryValue}>{totalB}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Final Total:</Text>
+              <Text style={styles.summaryValue}>{totalC}</Text>
+            </View>
+          </>
+        ) : (
+          <Text style={styles.value}>No slitting data available.</Text>
+        )}
       </ScrollView>
     </View>
   );
@@ -125,13 +127,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 15,
     color: '#000',
-    fontFamily:'Lato-Black'
+    fontFamily: 'Lato-Black',
   },
   value: {
     fontSize: 16,
     marginBottom: 10,
     color: '#555',
-    fontFamily:"Lato-Regular"
+    fontFamily: 'Lato-Regular',
   },
   buttonContainer: {
     padding: 20,
@@ -148,7 +150,7 @@ const styles = StyleSheet.create({
   },
   tableHeaderCell: {
     flex: 1,
-    fontFamily:'Lato-Black',
+    fontFamily: 'Lato-Black',
     textAlign: 'center',
     fontSize: 16,
   },
@@ -163,27 +165,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 15,
     color: '#444',
-    fontFamily:'Lato-Regular'
+    fontFamily: 'Lato-Regular',
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 10,
-    backgroundColor:'#3668B1',
-    marginVertical:5,
-    borderRadius:5
+    backgroundColor: '#3668B1',
+    marginVertical: 5,
+    borderRadius: 5,
   },
   summaryLabel: {
-    fontFamily:'Lato-Black',
+    fontFamily: 'Lato-Black',
     fontSize: 16,
-    color:'#fff'
+    color: '#fff',
   },
   summaryValue: {
     fontSize: 16,
     color: '#fff',
-    fontFamily:'Lato-Black',
+    fontFamily: 'Lato-Black',
   },
-  
 });
 
 export default AdminJobDetailsScreen;
