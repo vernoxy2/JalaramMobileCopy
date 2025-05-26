@@ -167,8 +167,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
         printingColors,
         varnish: checkboxState.box4 ? 'Uv' : '',
         checkedApproved: checkboxState.box5,
-        jobStatus: 'punching',
-        assignedTo: 'WmUWJ2o8f6T3uy5w5HVaHM4au3A2',
         colorAniloxValues,
       
       });
@@ -189,7 +187,9 @@ const OperatorCreateOrder = ({navigation, route}) => {
 
       await orderRef.update({
         
-        runningMtr: runningMtrValue
+        runningMtr: runningMtrValue,
+         jobStatus: 'Punching',
+        assignedTo: 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2',
 
       });
 

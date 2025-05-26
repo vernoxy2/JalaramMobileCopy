@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {View, Text, FlatList, StyleSheet, Pressable} from 'react-native';
+import {View, Text, FlatList, StyleSheet, Pressable, ActivityIndicator, Image} from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import CustomHeader from '../components/CustomHeader';
 import SearchBar from '../components/SearchBar';
@@ -109,20 +109,35 @@ const OperatorHomeScreen = ({route, navigation}) => {
           <Text style={styles.tableHeadingTypesText}>Printing Jobs</Text>
         </View>
 
-        <View style={styles.tableContainer}>
-          {renderHeader()}
-          {loading ? (
-            <Text style={{textAlign: 'center', marginTop: 20}}>Loading...</Text>
-          ) : (
-            <FlatList
-              data={getFilteredJobs()}
-              renderItem={renderItem}
-              keyExtractor={item => item.id}
-              contentContainerStyle={{paddingBottom: 20,}}
-              
-            />
-          )}
-        </View>
+
+        <View>
+                  {loading ? (
+                    <ActivityIndicator size="large" color="#0000ff" />
+                  ) : getFilteredJobs().length > 0 ? (
+                    <View style={styles.tableContainer}>
+                      {renderHeader()}
+                      <FlatList
+                        data={getFilteredJobs()}
+                        renderItem={renderItem}
+                        keyExtractor={item => item.id}
+                        contentContainerStyle={{paddingBottom: 20}}
+                      />
+                    </View>
+                  ) : (
+                    <View style={styles.noJobsContainer}>
+                      <Image
+                        source={require('../assets/images/listing.png')}
+                        style={styles.noJobsImage}
+                        resizeMode="contain"
+                      />
+                      <Text style={styles.noJobsTitle}>No Jobs Available</Text>
+                      <Text style={styles.noJobsSubtitle}>
+                        You're all caught up! No printing jobs are assigned to you right
+                        now.
+                      </Text>
+                    </View>
+                  )}
+                </View>
       </View>
     </View>
   );
@@ -210,5 +225,33 @@ const styles = StyleSheet.create({
     color: '#ff0000',
     fontSize: 12,
     fontFamily:'Lato-Regular'
+  },
+  noJobsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 40,
+    paddingHorizontal: 20,
+  },
+
+  noJobsImage: {
+    width: 150,
+    height: 150,
+    marginBottom: 20,
+    opacity: 0.8,
+  },
+
+  noJobsTitle: {
+    fontSize: 20,
+    fontFamily: 'Lato-Bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+
+  noJobsSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Lato-Regular',
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

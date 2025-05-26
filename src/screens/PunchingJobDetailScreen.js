@@ -11,8 +11,8 @@ const PunchingJobDetailsScreen = ({ route, navigation }) => {
       const jobRef = firestore().collection('orders').doc(order.id);
   
       await jobRef.update({
-        jobStatus: 'slitting',           // marks it completed for punching
-        assignedTo: 'qKHPaELfiPZWXpGQLSegniKk7if1' // assign to slitting operator
+        jobStatus: 'Slitting',           // marks it completed for punching
+        assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33' // assign to slitting operator
       });
   
       Alert.alert('Success', 'Job marked as completed');

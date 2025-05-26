@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
+  Image
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
@@ -25,7 +26,7 @@ const SlittingHomeScreen = ({navigation}) => {
     const unsubscribe = firestore()
       .collection('orders')
       .where('assignedTo', '==', currentUser.uid)
-      .where('jobStatus', '==', 'slitting')
+      .where('jobStatus', '==', 'Slitting')
       .onSnapshot(
         snapshot => {
           const fetchedOrders = snapshot.docs.map(doc => ({
@@ -115,17 +116,32 @@ const SlittingHomeScreen = ({navigation}) => {
           <Text style={styles.tableHeadingTypesText}>Slitting Jobs</Text>
         </View>
 
-        <View style={styles.tableContainer}>
-          {renderHeader()}
+        <View>
           {loading ? (
             <ActivityIndicator size="large" color="#0000ff" />
+          ) : getFilteredJobs().length > 0 ? (
+            <View style={styles.tableContainer}>
+              {renderHeader()}
+              <FlatList
+                data={getFilteredJobs()}
+                renderItem={renderItem}
+                keyExtractor={item => item.id}
+                contentContainerStyle={{paddingBottom: 20}}
+              />
+            </View>
           ) : (
-            <FlatList
-              data={getFilteredJobs()}
-              renderItem={renderItem}
-              keyExtractor={item => item.id}
-              contentContainerStyle={{paddingBottom: 20}}
-            />
+            <View style={styles.noJobsContainer}>
+              <Image
+                source={require('../assets/images/listing.png')} 
+                style={styles.noJobsImage}
+                resizeMode="contain"
+              />
+              <Text style={styles.noJobsTitle}>No Jobs Available</Text>
+              <Text style={styles.noJobsSubtitle}>
+                You're all caught up! No slitting jobs are assigned to you right
+                now.
+              </Text>
+            </View>
           )}
         </View>
       </View>
@@ -156,16 +172,15 @@ const styles = StyleSheet.create({
     marginVertical: 20,
     justifyContent: 'center',
   },
-  
 
   tableHeadingTypesText: {
     fontSize: 18,
     color: '#000',
-    fontFamily:'Lato-Regular'
+    fontFamily: 'Lato-Regular',
   },
 
   tableContainer: {
-     maxHeight: 400,
+    maxHeight: 340,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 10,
@@ -174,7 +189,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
-    backgroundColor:'#fff'
+    backgroundColor: '#fff',
   },
   row: {
     flexDirection: 'row',
@@ -196,7 +211,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     color: '#fff',
-    fontFamily:'Lato-Black'
+    fontFamily: 'Lato-Black',
   },
   cell: {
     width: 80,
@@ -204,7 +219,7 @@ const styles = StyleSheet.create({
     height: 40,
     fontSize: 12,
     color: '#000',
-    fontFamily:'Lato-Regular'
+    fontFamily: 'Lato-Regular',
   },
   statusCell: {
     width: 80,
@@ -212,7 +227,35 @@ const styles = StyleSheet.create({
     height: 40,
     color: '#ff0000',
     fontSize: 12,
-    fontFamily:'Lato-Regular'
+    fontFamily: 'Lato-Regular',
+  },
+  noJobsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 40,
+    paddingHorizontal: 20,
+  },
+
+  noJobsImage: {
+    width: 150,
+    height: 150,
+    marginBottom: 20,
+    opacity: 0.8,
+  },
+
+  noJobsTitle: {
+    fontSize: 20,
+    fontFamily: 'Lato-Bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+
+  noJobsSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Lato-Regular',
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 

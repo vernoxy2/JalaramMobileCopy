@@ -58,7 +58,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
   const handleComplete = async () => {
     try {
       await firestore().collection('orders').doc(order.id).update({
-        jobStatus: 'completed',
+        jobStatus: 'Completed',
         assignedTo: 'adminUID', // Replace with actual admin's UID
         endTime: firestore.FieldValue.serverTimestamp(),
         slittingData: inputs,

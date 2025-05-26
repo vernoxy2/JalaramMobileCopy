@@ -32,7 +32,7 @@ const AdminCreateOrder = ({ navigation }) => {
     //     return;
     //   }
 
-    const assignedUserUID = 'HdHcivbfnKYGJhA1kuchPQY31bm2';
+    const assignedUserUID = 'uqTgURHeSvONdbFs154NfPYND1f2';
 
     const orderData = {
       poNo,
