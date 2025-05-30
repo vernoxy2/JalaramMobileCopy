@@ -1,31 +1,29 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Button, Alert } from 'react-native';
+import {View, Text, StyleSheet, ScrollView, Button, Alert} from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import CustomHeader from '../components/CustomHeader';
 
-const PunchingJobDetailsScreen = ({ route, navigation }) => {
-  const { order } = route.params;
+const PunchingJobDetailsScreen = ({route, navigation}) => {
+  const {order} = route.params;
 
   const handleComplete = async () => {
     try {
       const jobRef = firestore().collection('orders').doc(order.id);
-  
+
       await jobRef.update({
-        jobStatus: 'Slitting',           // marks it completed for punching
-        assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33' // assign to slitting operator
+        jobStatus: 'Slitting', // marks it completed for punching
+        assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33', // assign to slitting operator
       });
-  
+
       Alert.alert('Success', 'Job marked as completed');
-  
+
       // ✅ Navigate back to Punching screen
       navigation.goBack();
-  
     } catch (error) {
-      console.error("Error completing job:", error);
+      console.error('Error completing job:', error);
       Alert.alert('Error', 'Failed to complete job');
     }
   };
-  
 
   return (
     <View style={styles.container}>
@@ -34,7 +32,6 @@ const PunchingJobDetailsScreen = ({ route, navigation }) => {
         showBackBtn
         showHeadingTextContainer
         headingTitle="Job Details"
-        
       />
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -50,7 +47,32 @@ const PunchingJobDetailsScreen = ({ route, navigation }) => {
         <Text style={styles.label}>Job Status:</Text>
         <Text style={styles.value}>{order.jobStatus}</Text>
 
-        {/* Add more job fields below as needed */}
+        <Text style={styles.label}>Job Paper:</Text>
+        <Text style={styles.value}>{order.jobPaper.label}</Text>
+
+        <Text style={styles.label}>Job Size</Text>
+        <Text style={styles.value}>{order.jobSize}</Text>
+
+        <Text style={styles.label}>Printing Plate Size</Text>
+        <Text style={styles.value}>{order.printingPlateSize.label}</Text>
+
+        <Text style={styles.label}>Ups : Across</Text>
+        <Text style={styles.value}>{order.upsAcross.label}</Text>
+
+        <Text style={styles.label}>Around</Text>
+        <Text style={styles.value}>{order.around.label}</Text>
+
+        <Text style={styles.label}>Teeth Size</Text>
+        <Text style={styles.value}>{order.teethSize.label}</Text>
+
+        <Text style={styles.label}>Blocks</Text>
+        <Text style={styles.value}>{order.blocks.label}</Text>
+
+        <Text style={styles.label}>Ups : Across</Text>
+        <Text style={styles.value}>{order.windingDirection.label}</Text>
+
+        <Text style={styles.label}>Running Mtrs</Text>
+        <Text style={styles.value}>{order.runningMtr}</Text>
       </ScrollView>
 
       <View style={styles.buttonContainer}>
@@ -71,7 +93,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   label: {
-    fontFamily:'Lato-Black',
+    fontFamily: 'Lato-Black',
     fontSize: 16,
     marginTop: 15,
     color: '#333',
@@ -80,8 +102,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 10,
     color: '#555',
-    fontFamily:'Lato-Regular',
-    marginVertical:5
+    fontFamily: 'Lato-Regular',
+    marginVertical: 5,
   },
   buttonContainer: {
     padding: 20,

@@ -81,16 +81,43 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
       />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>Job Card No:</Text>
-        <Text style={styles.value}>{order.jobCardNo}</Text>
-
-        <Text style={styles.label}>Customer Name:</Text>
-        <Text style={styles.value}>{order.customerName}</Text>
-
-        <Text style={styles.label}>Job Date:</Text>
-        <Text style={styles.value}>{order.jobDate}</Text>
-
-        <Text style={styles.label}>Job Status:</Text>
-        <Text style={styles.value}>{order.jobStatus}</Text>
+                <Text style={styles.value}>{order.jobCardNo}</Text>
+        
+                <Text style={styles.label}>Customer Name:</Text>
+                <Text style={styles.value}>{order.customerName}</Text>
+        
+                <Text style={styles.label}>Job Date:</Text>
+                <Text style={styles.value}>{order.jobDate}</Text>
+        
+                <Text style={styles.label}>Job Status:</Text>
+                <Text style={styles.value}>{order.jobStatus}</Text>
+        
+                <Text style={styles.label}>Job Paper:</Text>
+                <Text style={styles.value}>{order.jobPaper.label}</Text>
+        
+                <Text style={styles.label}>Job Size</Text>
+                <Text style={styles.value}>{order.jobSize}</Text>
+        
+                <Text style={styles.label}>Printing Plate Size</Text>
+                <Text style={styles.value}>{order.printingPlateSize.label}</Text>
+        
+                <Text style={styles.label}>Ups : Across</Text>
+                <Text style={styles.value}>{order.upsAcross.label}</Text>
+        
+                <Text style={styles.label}>Around</Text>
+                <Text style={styles.value}>{order.around.label}</Text>
+        
+                <Text style={styles.label}>Teeth Size</Text>
+                <Text style={styles.value}>{order.teethSize.label}</Text>
+        
+                <Text style={styles.label}>Blocks</Text>
+                <Text style={styles.value}>{order.blocks.label}</Text>
+        
+                <Text style={styles.label}>Ups : Across</Text>
+                <Text style={styles.value}>{order.windingDirection.label}</Text>
+        
+                <Text style={styles.label}>Running Mtrs</Text>
+                <Text style={styles.value}>{order.runningMtr}</Text>
 
         <Pressable style={styles.addButton} onPress={addInputField}>
           <Text style={styles.buttonText}>Add Row</Text>

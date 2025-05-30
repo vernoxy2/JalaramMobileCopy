@@ -41,11 +41,14 @@ const OperatorCreateOrder = ({navigation, route}) => {
     order.paperProductCode || '',
   );
   const [plateSize, setPlateSize] = useState(order.printingPlateSize || '');
-  const [upsAcrossValue, setUpsAcrossValue] = useState('');
-  const [aroundValue, setAroundValue] = useState('');
-  const [teethSizeValue, setTeethSizeValue] = useState('');
-  const [blocksValue, setBlocksValue] = useState('');
-  const [windingDirectionValue, setWindingDirectionValue] = useState('');
+  const [upsAcrossValue, setUpsAcrossValue] = useState(order.upsAcross || '');
+
+  const [aroundValue, setAroundValue] = useState(order.around || '');
+  const [teethSizeValue, setTeethSizeValue] = useState(order.teethSize || '');
+  const [blocksValue, setBlocksValue] = useState(order.blocks || '');
+  const [windingDirectionValue, setWindingDirectionValue] = useState(
+    order.windingDirection || '',
+  );
   const [slittingValue, setSlittingValue] = useState('');
 
   const [checkboxState, setCheckboxState] = useState({
@@ -58,43 +61,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
 
   const [runningMtrValue, setRunningMtrValue] = useState('');
 
-  // useEffect(() => {
-  //   const fetchPreviousJobData = async () => {
-  //     if (!order?.jobName) return;
-
-  //     try {
-  //       const snapshot = await firestore()
-  //         .collection('orders')
-  //         .where('jobName', '==', order.jobName)
-  //         .orderBy('createdAt')
-  //         .limit(1)
-  //         .get();
-
-  //       if (!snapshot.empty) {
-  //         const prevJob = snapshot.docs[0].data();
-
-  //         setSize(prevJob.jobSize || '');
-  //         setJobPaper(prevJob.jobPaper || '');
-  //         setPaperProduct(prevJob.paperProductCode || '');
-  //         setPlateSize(prevJob.printingPlateSize || '');
-  //         setCheckboxState({
-  //           box1: prevJob.printingColors?.includes('Uv') || false,
-  //           box2: prevJob.printingColors?.includes('Water') || false,
-  //           box3: prevJob.printingColors?.includes('Special') || false,
-  //           box4: prevJob.varnish === 'Uv',
-  //           box5: prevJob.checkedApproved || false,
-  //         });
-
-  //         // Optionally: Preselect dropdown values (if CustomDropdown supports initial values)
-  //       }
-  //     } catch (error) {
-  //       console.error('Error fetching previous job data:', error);
-  //     }
-  //   };
-
-  //   fetchPreviousJobData();
-  // }, [order?.jobName]);
-
   useEffect(() => {
     // Check if `order` is available, if not return
     if (!order) return;
@@ -104,6 +70,11 @@ const OperatorCreateOrder = ({navigation, route}) => {
     setJobPaper(order.jobPaper || '');
     setPaperProduct(order.paperProductCode || '');
     setPlateSize(order.printingPlateSize || '');
+    setUpsAcrossValue(order.upsAcross || '');
+    setAroundValue(order.around || '');
+    setTeethSizeValue(order.teethSize || '');
+    setBlocksValue(order.blocks || '');
+    setWindingDirectionValue(order.windingDirection || '');
     setCheckboxState({
       box1: order.printingColors?.includes('Uv') || false,
       box2: order.printingColors?.includes('Water') || false,
@@ -112,7 +83,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
       box5: order.checkedApproved || false,
     });
 
-    setRunningMtrValue(order.runningMtr || '')
+    setRunningMtrValue(order.runningMtr || '');
 
     setJobStarted(order.jobStarted || false);
   }, [order]); // Only trigger this when `order` changes
@@ -145,7 +116,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
 
   const startJobHandler = async () => {
     try {
-
       const printingColors = [];
       if (checkboxState.box1) printingColors.push('Uv');
       if (checkboxState.box2) printingColors.push('Water');
@@ -168,7 +138,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
         varnish: checkboxState.box4 ? 'Uv' : '',
         checkedApproved: checkboxState.box5,
         colorAniloxValues,
-      
       });
 
       setJobStarted(true);
@@ -182,15 +151,13 @@ const OperatorCreateOrder = ({navigation, route}) => {
 
   const handleSubmit = async () => {
     try {
-
       const orderRef = firestore().collection('orders').doc(order.id);
 
       await orderRef.update({
-        
+        jobPaper,
         runningMtr: runningMtrValue,
-         jobStatus: 'Punching',
+        jobStatus: 'Punching',
         assignedTo: 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2',
-
       });
 
       alert('Job successfully updated and reassigned!');
@@ -214,275 +181,189 @@ const OperatorCreateOrder = ({navigation, route}) => {
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled">
-        
         <View style={styles.subContainer}>
-
           {!jobStarted ? (
             <>
-          <CustomDropdown
-            placeholder={'Job Paper / Fill Material'}
-            data={options}
-            style={styles.dropdownContainer}
-            selectedText={styles.dropdownText}
-            onSelect={item => setJobPaper(item)}
-          />
-
-          {/* <View style={styles.sizeMainContainer}>
-            <Text style={styles.sizeText}>Size</Text>
-            <TextInput style={styles.sizeInput} />
-          </View> */}
-
-          <View style={styles.sizeMainContainer}>
-            <Text style={styles.sizeText}>Size</Text>
-            <TextInput
-              style={styles.sizeInput}
-              value={size}
-              onChangeText={setSize}
-              editable={false}
-            />
-          </View>
-
-          <CustomDropdown
-            placeholder={'Paper Product Code'}
-            data={paperProductCode}
-            style={styles.dropdownContainer}
-            selectedText={styles.dropdownText}
-            onSelect={item => setPaperProduct(item)}
-          />
-
-          <CustomDropdown
-            placeholder={'Printing Plate Size'}
-            data={printingPlateSize}
-            style={styles.dropdownContainer}
-            selectedText={styles.dropdownText}
-            onSelect={item => setPlateSize(item)}
-          />
-
-          <CustomDropdown
-            placeholder={'Ups : Across'}
-            data={upsAcross}
-            style={styles.dropdownContainer}
-            selectedText={styles.dropdownText}
-            onSelect={item => setUpsAcrossValue(item)}
-          />
-
-          <CustomDropdown
-            placeholder={'Around'}
-            data={around}
-            style={styles.dropdownContainer}
-            selectedText={styles.dropdownText}
-            onSelect={item => setAroundValue(item)}
-          />
-
-          <CustomDropdown
-            placeholder={'Teeth Size'}
-            data={teethSize}
-            style={styles.dropdownContainer}
-            selectedText={styles.dropdownText}
-            onSelect={item => setTeethSizeValue(item)}
-          />
-
-          <CustomDropdown
-            placeholder={'Blocks'}
-            data={blocks}
-            style={styles.dropdownContainer}
-            selectedText={styles.dropdownText}
-            onSelect={item => setBlocksValue(item)}
-          />
-          <CustomDropdown
-            placeholder={'Winding Direction'}
-            data={windingDirection}
-            style={styles.dropdownContainer}
-            selectedText={styles.dropdownText}
-            onSelect={item => setWindingDirectionValue(item)}
-          />
-
-          <CustomDropdown
-            placeholder={'Slitting'}
-            data={slitting}
-            style={styles.dropdownContainer}
-            selectedText={styles.dropdownText}
-            onSelect={item => setSlittingValue(item)}
-          />
-
-          <View style={styles.container}>
-            <View style={styles.printingContainer}>
-              <Text style={styles.dropdownText}>Printing Colours :</Text>
-
-              <TouchableOpacity
-                style={styles.checkboxContainer}
-                onPress={() => handleCheckboxChange('box1')}>
-                <View
-                  style={[
-                    styles.checkbox,
-                    checkboxState.box1 && styles.checked,
-                  ]}>
-                  {checkboxState.box1 && (
-                    <Image
-                      style={styles.checkmarkImage}
-                      source={require('../assets/images/check.png')}
-                    />
-                  )}
-                </View>
-                <Text style={styles.checkboxText}>{'Uv'}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.checkboxContainer}
-                onPress={() => handleCheckboxChange('box2')}>
-                <View
-                  style={[
-                    styles.checkbox,
-                    checkboxState.box2 && styles.checked,
-                  ]}>
-                  {checkboxState.box2 && (
-                    <Image
-                      style={styles.checkmarkImage}
-                      source={require('../assets/images/check.png')}
-                    />
-                  )}
-                </View>
-                <Text style={styles.checkboxText}>{'Water'}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.checkboxContainer}
-                onPress={() => handleCheckboxChange('box3')}>
-                <View
-                  style={[
-                    styles.checkbox,
-                    checkboxState.box3 && styles.checked,
-                  ]}>
-                  {checkboxState.box3 && (
-                    <Image
-                      style={styles.checkmarkImage}
-                      source={require('../assets/images/check.png')}
-                    />
-                  )}
-                </View>
-                <Text style={styles.checkboxText}>{'Special'}</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.varnishContainer}>
-              <Text style={styles.dropdownText}>Varnish :</Text>
-
-              <TouchableOpacity
-                style={styles.checkboxContainer}
-                onPress={() => handleCheckboxChange('box4')}>
-                <View
-                  style={[
-                    styles.checkbox,
-                    checkboxState.box4 && styles.checked,
-                  ]}>
-                  {checkboxState.box4 && (
-                    <Image
-                      style={styles.checkmarkImage}
-                      source={require('../assets/images/check.png')}
-                    />
-                  )}
-                </View>
-                <Text style={styles.checkboxText}>{'Uv'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.checkedApprovedContainer}>
-            <Text style={styles.checkedApprovedTxt}>
-              Checked with approved Sample / Artwork :{' '}
-              <TouchableOpacity
-                style={styles.checkboxContainer}
-                onPress={() => handleCheckboxChange('box5')}>
-                <View
-                  style={[
-                    styles.checkbox,
-                    checkboxState.box5 && styles.checked,
-                  ]}>
-                  {checkboxState.box5 && (
-                    <Image
-                      style={styles.checkmarkImage}
-                      source={require('../assets/images/check.png')}
-                    />
-                  )}
-                </View>
-              </TouchableOpacity>
-            </Text>
-          </View>
-
-          <View style={styles.colorAniloxMainContainer}>
-            <View style={styles.colorAniloxRowContainer}>
-              <Text style={styles.colorAniloxText}>Color Seq</Text>
-              <Text style={styles.colorAniloxText}>Anilox</Text>
-            </View>
-
-            <View style={styles.colorAniloxRowContainer}>
-              <Text style={styles.colorAniloxText}>C</Text>
-              <CustomColorDropdown
-                data={colorAnilox}
-                onSelect={item => handleColorSelect('C', item)}
+              <CustomDropdown
+                placeholder={'Paper Product Code'}
+                data={paperProductCode}
+                style={styles.dropdownContainer}
+                selectedText={styles.dropdownText}
+                onSelect={item => setPaperProduct(item)}
+                showIcon={true}
               />
-            </View>
 
-            <View style={styles.colorAniloxRowContainer}>
-              <Text style={styles.colorAniloxText}>M</Text>
-              <CustomColorDropdown
-                data={colorAnilox}
-                onSelect={item => handleColorSelect('M', item)}
-              />
-            </View>
+              <View>
+                {order.printingColors && order.printingColors.length > 0 && (
+                  <View style={styles.selectedColorsContainer}>
+                    <Text style={styles.selectedColorsTitle}>
+                      Selected Printing Colors:
+                    </Text>
+                    {order.printingColors.map(color => (
+                      <Text key={color} style={styles.selectedColor}>
+                        • {color}
+                      </Text>
+                    ))}
+                  </View>
+                )}
+              </View>
 
-            <View style={styles.colorAniloxRowContainer}>
-              <Text style={styles.colorAniloxText}>Y</Text>
-              <CustomColorDropdown
-                data={colorAnilox}
-                onSelect={item => handleColorSelect('Y', item)}
-              />
-            </View>
-
-            <View style={styles.colorAniloxRowContainer}>
-              <Text style={styles.colorAniloxText}>K</Text>
-              <CustomColorDropdown
-                data={colorAnilox}
-                onSelect={item => handleColorSelect('K', item)}
-              />
-            </View>
-
-            <View style={styles.colorAniloxRowContainer}>
-              <Text style={styles.colorAniloxText}>Others</Text>
-              <CustomColorDropdown
-                data={colorAnilox}
-                onSelect={item => handleColorSelect('Others', item)}
-              />
-            </View>
-          </View>
-
-          
-            <View style={styles.btnContainer}>
-              <CustomButton
-                title={'Start Job'}
-                style={styles.submitBtn}
-                onPress={startJobHandler}
-              />
-            </View>
+              <View style={styles.btnContainer}>
+                <CustomButton
+                  title={'Start Job'}
+                  style={styles.submitBtn}
+                  onPress={startJobHandler}
+                />
+              </View>
             </>
-        
           ) : (
             <>
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Job Paper:</Text>
+                <View style={styles.disabledDropdown}>
+                  <Text style={styles.value}>{jobPaper.label}</Text>
+                </View>
+              </View>
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Job Size</Text>
+                <TextInput
+                  style={styles.sizeInput}
+                  value={size}
+                  onChangeText={setSize}
+                  editable={false}
+                />
+              </View>
 
-          <CustomTextInput placeholder={'Running Mtrs'} style={styles.input} value={runningMtrValue} onChangeText={setRunningMtrValue}/>
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Printing Plate Size:</Text>
+                <View style={styles.disabledDropdown}>
+                  <Text style={styles.value}>{plateSize.label}</Text>
+                </View>
+              </View>
 
-          <View style={styles.btnContainer}>
-            <CustomButton
-              title={'Submit'}
-              style={styles.submitBtn}
-              onPress={handleSubmit}
-            />
-          </View>
-          </>
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Ups : Across</Text>
+                <View style={styles.disabledDropdown}>
+                  <Text style={styles.value}>{upsAcrossValue.label}</Text>
+                </View>
+              </View>
+
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Around:</Text>
+                <View style={styles.disabledDropdown}>
+                  <Text style={styles.value}>{aroundValue.label}</Text>
+                </View>
+              </View>
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Teeth Size</Text>
+                <View style={styles.disabledDropdown}>
+                  <Text style={styles.value}>{teethSizeValue.label}</Text>
+                </View>
+              </View>
+
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Blocks</Text>
+                <View style={styles.disabledDropdown}>
+                  <Text style={styles.value}>{blocksValue.label}</Text>
+                </View>
+              </View>
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Winding Direction</Text>
+                <View style={styles.disabledDropdown}>
+                  <Text style={styles.value}>
+                    {windingDirectionValue.label}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.colorAniloxMainContainer}>
+                <View style={styles.colorAniloxRowContainer}>
+                  <Text style={styles.colorAniloxText}>Color Seq</Text>
+                  <Text style={styles.colorAniloxText}>Anilox</Text>
+                </View>
+
+                <View style={styles.colorAniloxRowContainer}>
+                  <Text style={styles.colorAniloxText}>C</Text>
+                  <CustomColorDropdown
+                    data={colorAnilox}
+                    onSelect={item => handleColorSelect('C', item)}
+                  />
+                </View>
+
+                <View style={styles.colorAniloxRowContainer}>
+                  <Text style={styles.colorAniloxText}>M</Text>
+                  <CustomColorDropdown
+                    data={colorAnilox}
+                    onSelect={item => handleColorSelect('M', item)}
+                  />
+                </View>
+
+                <View style={styles.colorAniloxRowContainer}>
+                  <Text style={styles.colorAniloxText}>Y</Text>
+                  <CustomColorDropdown
+                    data={colorAnilox}
+                    onSelect={item => handleColorSelect('Y', item)}
+                  />
+                </View>
+
+                <View style={styles.colorAniloxRowContainer}>
+                  <Text style={styles.colorAniloxText}>K</Text>
+                  <CustomColorDropdown
+                    data={colorAnilox}
+                    onSelect={item => handleColorSelect('K', item)}
+                  />
+                </View>
+
+                <View style={styles.colorAniloxRowContainer}>
+                  <Text style={styles.colorAniloxText}>Sq1</Text>
+                  <CustomColorDropdown
+                    data={colorAnilox}
+                    onSelect={item => handleColorSelect('Sq1', item)}
+                  />
+                </View>
+
+                <View style={styles.colorAniloxRowContainer}>
+                  <Text style={styles.colorAniloxText}>Sq2</Text>
+                  <CustomColorDropdown
+                    data={colorAnilox}
+                    onSelect={item => handleColorSelect('Sq2', item)}
+                  />
+                </View>
+
+                <View style={styles.colorAniloxRowContainer}>
+                  <Text style={styles.colorAniloxText}>Sq3</Text>
+                  <CustomColorDropdown
+                    data={colorAnilox}
+                    onSelect={item => handleColorSelect('Sq3', item)}
+                  />
+                </View>
+
+                <View style={styles.colorAniloxRowContainer}>
+                  <Text style={styles.colorAniloxText}>Sq4</Text>
+                  <CustomColorDropdown
+                    data={colorAnilox}
+                    onSelect={item => handleColorSelect('Sq4', item)}
+                  />
+                </View>
+              </View>
+
+              <CustomTextInput
+                placeholder={'Running Mtrs'}
+                style={styles.input}
+                value={runningMtrValue}
+                onChangeText={setRunningMtrValue}
+              />
+
+              <View style={styles.btnContainer}>
+                <CustomButton
+                  title={'Submit'}
+                  style={styles.submitBtn}
+                  onPress={handleSubmit}
+                />
+              </View>
+            </>
           )}
         </View>
-
-
       </ScrollView>
     </View>
   );
@@ -507,28 +388,46 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 10,
     marginTop: 20,
+
+    height: 40,
+    justifyContent: 'space-between',
+
+    paddingHorizontal: 20,
   },
-  sizeMainContainer: {
+  disabledDropdown: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    padding: 10,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    height: 40,
+    width: '80%',
+  },
+
+  detailsRowContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 20,
+    width: '100%',
   },
   sizeInput: {
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 10,
     padding: 10,
-    width: '70%',
+    width: '80%',
     fontSize: 14,
     fontWeight: 'medium',
     color: '#000',
   },
 
-  sizeText: {
+  boldText: {
     fontSize: 14,
     fontFamily: 'Lato-Black',
     color: '#000',
+    width: '20%',
   },
 
   container: {
@@ -597,6 +496,9 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     marginTop: 20,
+    backgroundColor: '#f0f0f0',
+    padding: 20,
+    borderRadius: 10,
   },
   colorAniloxRowContainer: {
     display: 'flex',
@@ -620,7 +522,26 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
   },
-  input : {
-    width:'100%'
-  }
+  input: {
+    width: '100%',
+  },
+
+
+  selectedColorsContainer: {
+  marginTop: 20,
+  backgroundColor: '#f9f9f9',
+  padding: 15,
+  borderRadius: 10,
+},
+selectedColorsTitle: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  marginBottom: 10,
+  color: '#000',
+},
+selectedColor: {
+  fontSize: 14,
+  color: '#333',
+  marginBottom: 4,
+},
 });
