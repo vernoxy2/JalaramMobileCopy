@@ -46,6 +46,7 @@ const AdminCreateOrder = ({navigation}) => {
     box2: false,
     box3: false,
   });
+  const [selectedLabelType, setSelectedLabelType] = useState('');
 
   const printingColors = [];
   if (checkboxState.box1) printingColors.push('Uv');
@@ -60,7 +61,21 @@ const AdminCreateOrder = ({navigation}) => {
   };
 
   const handleSubmit = async () => {
-    const assignedUserUID = 'uqTgURHeSvONdbFs154NfPYND1f2';
+    console.log('Selected Label Type:', selectedLabelType);
+    const normalizedLabelType = selectedLabelType.trim().toLowerCase();
+    let assignedUserUID;
+    let jobStatus;
+
+    if (normalizedLabelType === 'printing') {
+      assignedUserUID = 'uqTgURHeSvONdbFs154NfPYND1f2';
+      jobStatus = 'Printing';
+    } else if (normalizedLabelType === 'plain') {
+      assignedUserUID = 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2';
+      jobStatus = 'Punching'; // ✅ Change this to match PunchingHomeScreen
+    } else {
+      Alert.alert('Error', 'Please select a valid Label Type');
+      return;
+    }
 
     const orderData = {
       poNo,
@@ -71,7 +86,7 @@ const AdminCreateOrder = ({navigation}) => {
       jobDate,
       jobSize,
       jobQty,
-      jobStatus: 'Printing',
+      jobStatus,
       assignedTo: assignedUserUID,
       createdBy: 'Admin',
       createdAt: firestore.FieldValue.serverTimestamp(),
@@ -251,6 +266,7 @@ const AdminCreateOrder = ({navigation}) => {
             style={styles.dropdownContainer}
             selectedText={styles.dropdownText}
             showIcon={true}
+            onSelect={item => setSelectedLabelType(item.value)}
           />
 
           <View style={styles.btnContainer}>
