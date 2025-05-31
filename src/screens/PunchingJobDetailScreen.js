@@ -1,10 +1,21 @@
-import React from 'react';
-import {View, Text, StyleSheet, ScrollView, Button, Alert} from 'react-native';
+import React, {useState} from 'react';
+import {View, Text, StyleSheet, ScrollView, Button, Alert, TextInput} from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import CustomHeader from '../components/CustomHeader';
+import CustomDropdown from '../components/CustomDropdown';
+import {paperProductCode} from '../constant/constant';
 
 const PunchingJobDetailsScreen = ({route, navigation}) => {
   const {order} = route.params;
+
+  const [paperProduct, setPaperProduct] = useState(
+    order.paperProductCode || '',
+  );
+  const [runningMtrValue, setRunningMtrValue] = useState(
+  typeof order.runningMtr === 'string' || typeof order.runningMtr === 'number'
+    ? String(order.runningMtr)
+    : ''
+);
 
   const handleComplete = async () => {
     try {
@@ -12,6 +23,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
 
       await jobRef.update({
         jobStatus: 'Slitting', // marks it completed for punching
+        paperProductCode: paperProduct || order.paperProductCode || '',
         assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33', // assign to slitting operator
       });
 
@@ -35,6 +47,26 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
       />
 
       <ScrollView contentContainerStyle={styles.content}>
+        {order.paperProductCode ? (
+          <View style={styles.readOnlyField}>
+            <Text style={styles.label}>Paper Product Code:</Text>
+            <Text style={styles.value}>
+              {typeof order.paperProductCode === 'object'
+                ? order.paperProductCode.label
+                : order.paperProductCode}
+            </Text>
+          </View>
+        ) : (
+          <CustomDropdown
+            placeholder={'Select Paper Product Code'}
+            data={paperProductCode}
+            style={styles.dropdownContainer}
+            selectedText={styles.dropdownText}
+            onSelect={item => setPaperProduct(item)}
+            showIcon={true}
+          />
+        )}
+
         <Text style={styles.label}>Job Card No:</Text>
         <Text style={styles.value}>{order.jobCardNo}</Text>
 
@@ -68,11 +100,25 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         <Text style={styles.label}>Blocks</Text>
         <Text style={styles.value}>{order.blocks.label}</Text>
 
-        <Text style={styles.label}>Ups : Across</Text>
+        <Text style={styles.label}>Winding Direction</Text>
         <Text style={styles.value}>{order.windingDirection.label}</Text>
 
         <Text style={styles.label}>Running Mtrs</Text>
-        <Text style={styles.value}>{order.runningMtr}</Text>
+        {order.runningMtr ? (
+          <Text style={styles.value}>
+            {typeof order.runningMtr === 'object'
+              ? JSON.stringify(order.runningMtr)
+              : order.runningMtr}
+          </Text>
+        ) : (
+          <TextInput
+            style={styles.input}
+            value={runningMtrValue}
+            onChangeText={setRunningMtrValue}
+            placeholder="Enter Running Mtrs"
+            keyboardType="numeric"
+          />
+        )}
       </ScrollView>
 
       <View style={styles.buttonContainer}>
@@ -105,10 +151,33 @@ const styles = StyleSheet.create({
     fontFamily: 'Lato-Regular',
     marginVertical: 5,
   },
+  dropdownContainer: {
+    width: '100%',
+    borderRadius: 10,
+    marginTop: 20,
+
+    height: 40,
+    justifyContent: 'space-between',
+
+    paddingHorizontal: 20,
+  },
   buttonContainer: {
     padding: 20,
     borderTopWidth: 1,
     borderColor: '#ddd',
     backgroundColor: '#fff',
   },
+  readOnlyField: {
+    marginTop: 20,
+  },
+  input: {
+  width: '100%',
+  borderWidth: 1,
+  borderColor: '#ccc',
+  borderRadius: 10,
+  padding: 10,
+  marginTop: 10,
+  fontSize: 14,
+},
+
 });

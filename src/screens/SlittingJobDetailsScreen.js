@@ -81,48 +81,61 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
       />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>Job Card No:</Text>
-                <Text style={styles.value}>{order.jobCardNo}</Text>
-        
-                <Text style={styles.label}>Customer Name:</Text>
-                <Text style={styles.value}>{order.customerName}</Text>
-        
-                <Text style={styles.label}>Job Date:</Text>
-                <Text style={styles.value}>{order.jobDate}</Text>
-        
-                <Text style={styles.label}>Job Status:</Text>
-                <Text style={styles.value}>{order.jobStatus}</Text>
-        
-                <Text style={styles.label}>Job Paper:</Text>
-                <Text style={styles.value}>{order.jobPaper.label}</Text>
-        
-                <Text style={styles.label}>Job Size</Text>
-                <Text style={styles.value}>{order.jobSize}</Text>
-        
-                <Text style={styles.label}>Printing Plate Size</Text>
-                <Text style={styles.value}>{order.printingPlateSize.label}</Text>
-        
-                <Text style={styles.label}>Ups : Across</Text>
-                <Text style={styles.value}>{order.upsAcross.label}</Text>
-        
-                <Text style={styles.label}>Around</Text>
-                <Text style={styles.value}>{order.around.label}</Text>
-        
-                <Text style={styles.label}>Teeth Size</Text>
-                <Text style={styles.value}>{order.teethSize.label}</Text>
-        
-                <Text style={styles.label}>Blocks</Text>
-                <Text style={styles.value}>{order.blocks.label}</Text>
-        
-                <Text style={styles.label}>Ups : Across</Text>
-                <Text style={styles.value}>{order.windingDirection.label}</Text>
-        
-                <Text style={styles.label}>Running Mtrs</Text>
-                <Text style={styles.value}>{order.runningMtr}</Text>
+        <Text style={styles.value}>{order.jobCardNo}</Text>
+
+        <Text style={styles.label}>Customer Name:</Text>
+        <Text style={styles.value}>{order.customerName}</Text>
+
+        <Text style={styles.label}>Job Date:</Text>
+        <Text style={styles.value}>{order.jobDate}</Text>
+
+        <Text style={styles.label}>Job Status:</Text>
+        <Text style={styles.value}>{order.jobStatus}</Text>
+
+        <Text style={styles.label}>Job Paper:</Text>
+        <Text style={styles.value}>{order.jobPaper.label}</Text>
+
+        <View style={styles.readOnlyField}>
+                    <Text style={styles.label}>Paper Product Code:</Text>
+                    <Text style={styles.value}>
+                      {typeof order.paperProductCode === 'object'
+                        ? order.paperProductCode.label
+                        : order.paperProductCode}
+                    </Text>
+                  </View>
+
+        <Text style={styles.label}>Job Size</Text>
+        <Text style={styles.value}>{order.jobSize}</Text>
+
+        <Text style={styles.label}>Printing Plate Size</Text>
+        <Text style={styles.value}>{order.printingPlateSize.label}</Text>
+
+        <Text style={styles.label}>Ups : Across</Text>
+        <Text style={styles.value}>{order.upsAcross.label}</Text>
+
+        <Text style={styles.label}>Around</Text>
+        <Text style={styles.value}>{order.around.label}</Text>
+
+        <Text style={styles.label}>Teeth Size</Text>
+        <Text style={styles.value}>{order.teethSize.label}</Text>
+
+        <Text style={styles.label}>Blocks</Text>
+        <Text style={styles.value}>{order.blocks.label}</Text>
+
+        <Text style={styles.label}>Winding Direction</Text>
+        <Text style={styles.value}>{order.windingDirection.label}</Text>
+
+        <Text style={styles.label}>Running Mtrs</Text>
+        <Text style={styles.value}>{order.runningMtr}</Text>
 
         <Pressable style={styles.addButton} onPress={addInputField}>
           <Text style={styles.buttonText}>Add Row</Text>
         </Pressable>
-
+        <View style={styles.headingRow}>
+          <Text style={styles.headingText}>No of Labels</Text>
+          <Text style={styles.headingText}>No of Rolls</Text>
+          <Text style={styles.headingText}>Total</Text>
+        </View>
         {inputs.map((input, index) => (
           <View key={index} style={styles.row}>
             <TextInput
@@ -132,7 +145,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
               keyboardType="numeric"
               onChangeText={text => handleInputChange(text, index, 'A')}
             />
-            <Text>*</Text>
+
             <TextInput
               style={styles.textInput}
               value={input.B}
@@ -140,7 +153,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
               keyboardType="numeric"
               onChangeText={text => handleInputChange(text, index, 'B')}
             />
-            <Text>=</Text>
+
             <TextInput
               style={styles.textInput}
               value={input.C}
@@ -149,23 +162,32 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
             />
           </View>
         ))}
-
+        <View style={styles.horizontalLine}/>
         <View style={styles.row}>
-          <TextInput
-            style={styles.textInput}
-            value={totalA.toString()}
-            editable={false}
-          />
-          <TextInput
-            style={styles.textInput}
-            value={totalB.toString()}
-            editable={false}
-          />
-          <TextInput
-            style={styles.textInput}
-            value={totalC.toString()}
-            editable={false}
-          />
+          <View>
+            <Text style={styles.totalText}>Total Labels</Text>
+            <TextInput
+              style={styles.textInput}
+              value={totalA.toString()}
+              editable={false}
+            />
+          </View>
+          <View>
+            <Text style={styles.totalText}>Total Rolls</Text>
+            <TextInput
+              style={styles.textInput}
+              value={totalB.toString()}
+              editable={false}
+            />
+          </View>
+          <View>
+            <Text style={styles.totalText}>Grand Total</Text>
+            <TextInput
+              style={styles.textInput}
+              value={totalC.toString()}
+              editable={false}
+            />
+          </View>
         </View>
 
         {/* Add more job fields as needed */}
@@ -177,7 +199,6 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
           title={'COMPLETE'}
           style={styles.completeBtn}
         />
-        
       </View>
     </View>
   );
@@ -211,15 +232,21 @@ const styles = StyleSheet.create({
   },
   addButton: {
     height: 50,
-    width: 120,
-    backgroundColor: 'gray',
+    width: '100%',
+    backgroundColor: '#3668B1',
     marginVertical: 30,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 10,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Lato-Black',
   },
   textInput: {
     height: 40,
-    width: 70,
+    width: 80,
     borderColor: 'gray',
     borderWidth: 1,
     marginVertical: 10,
@@ -231,10 +258,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  headingRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  headingText: {
+    color: '#000',
+    fontSize: 15,
+    fontWeight: '700',
+
+    width: '27%',
+  },
+  totalText : {
+    color: '#000',
+    fontSize: 15,
+    fontWeight: '700',
+
+  },
+  horizontalLine : {
+    height:1,
+    width:'100%',
+    backgroundColor:'gray',
+    marginVertical:10
+  },
   completeBtn: {
     backgroundColor: '#3668B1',
     height: 50,
-    width:'100%'
+    width: '100%',
   },
 });
 

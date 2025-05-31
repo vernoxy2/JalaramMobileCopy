@@ -7,9 +7,10 @@ export const options = [
 ];
 
 export const paperProductCode = [
-  {label: 'Capri 29', value: 'Capri 29'},
-  {label: 'Krutika 42', value: 'Krutika 42'},
-  {label: 'Stica 40', value: 'Stica 40'},
+  {label: 'Capri', value: 'Capri'},
+  {label: 'Krutika', value: 'Krutika'},
+  {label: 'Stiqa', value: 'Stiqa'},
+  {label: 'Sun Paper', value: 'Sun Paper'},
 ];
 
 export const printingPlateSize = [

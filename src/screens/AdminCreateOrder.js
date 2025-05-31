@@ -174,7 +174,7 @@ const AdminCreateOrder = ({navigation}) => {
             onChangeText={setJobQty}
           />
           <CustomDropdown
-            placeholder={'Job Paper / Fill Material'}
+            placeholder={'Job Paper / Film Material'}
             data={options}
             style={styles.dropdownContainer}
             selectedText={styles.dropdownText}
