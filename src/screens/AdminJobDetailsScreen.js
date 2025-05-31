@@ -2,6 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {View, Text, StyleSheet, ScrollView, Alert} from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import CustomHeader from '../components/CustomHeader';
+import {format} from 'date-fns';
 
 const AdminJobDetailsScreen = ({route, navigation}) => {
   const {order} = route.params;
@@ -10,11 +11,17 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
   const [totalC, setTotalC] = useState(0);
 
   useEffect(() => {
-    if (order.updatedAt && order.endTime) {
-      const start = order.updatedAt.toDate();
-      const end = order.endTime.toDate();
-      const duration = end - start;
-      setTotalTime(duration);
+    if (order.endTime) {
+      // Decide start time: printingStartedAt or punchingStartedAt
+      const startTimestamp = order.updatedAt || order.updatedByPunchingAt;
+
+      if (startTimestamp) {
+        const start = startTimestamp.toDate();
+        const end = order.endTime.toDate();
+        const durationMs = end - start; // duration in milliseconds
+
+        setTotalTime(durationMs);
+      }
     }
   }, [order]);
 
@@ -32,6 +39,19 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
       setTotalC(sumC);
     }
   }, [order]);
+
+  const formatTimestamp = timestamp => {
+    if (!timestamp) return 'Not started yet';
+    return format(timestamp.toDate(), 'dd MMM yyyy, hh:mm a'); // Convert Firestore Timestamp to JS Date and format
+  };
+
+  const formatDuration = durationMs => {
+    const seconds = Math.floor((durationMs / 1000) % 60);
+    const minutes = Math.floor((durationMs / (1000 * 60)) % 60);
+    const hours = Math.floor(durationMs / (1000 * 60 * 60));
+
+    return `${hours}h ${minutes}m ${seconds}s`;
+  };
 
   return (
     <View style={styles.container}>
@@ -57,27 +77,60 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
 
         <Text style={styles.label}>Start Time:</Text>
         <Text style={styles.value}>
-          {order.updatedAt?.toDate
-            ? order.updatedAt.toDate().toLocaleString()
-            : 'N/A'}
+          {order.updatedAt
+            ? formatTimestamp(order.updatedAt)
+            : order.updatedByPunchingAt
+            ? formatTimestamp(order.updatedByPunchingAt)
+            : 'Not started yet'}
         </Text>
 
         <Text style={styles.label}>End Time:</Text>
         <Text style={styles.value}>
-          {order.endTime ? order.endTime.toDate().toLocaleString() : 'N/A'}
+          {order.endTime ? formatTimestamp(order.endTime) : 'Not finished yet'}
         </Text>
 
         <Text style={styles.label}>Total Time:</Text>
         <Text style={styles.value}>
-          {totalTime !== null
-            ? `${(totalTime / 1000 / 60).toFixed(2)} minutes`
-            : 'Calculating...'}
+          {totalTime !== null ? formatDuration(totalTime) : 'Calculating...'}
         </Text>
 
         <Text style={styles.label}>Running Mtrs:</Text>
         <Text style={styles.value}>
           {order.runningMtr ? order.runningMtr : 'N/A'}
         </Text>
+
+        <Text style={styles.label}>Job Paper:</Text>
+        <Text style={styles.value}>{order.jobPaper.label}</Text>
+
+        <View style={styles.readOnlyField}>
+          <Text style={styles.label}>Paper Product Code:</Text>
+          <Text style={styles.value}>
+            {typeof order.paperProductCode === 'object'
+              ? order.paperProductCode.label
+              : order.paperProductCode}
+          </Text>
+        </View>
+
+        <Text style={styles.label}>Job Size</Text>
+        <Text style={styles.value}>{order.jobSize}</Text>
+
+        <Text style={styles.label}>Printing Plate Size</Text>
+        <Text style={styles.value}>{order.printingPlateSize.label}</Text>
+
+        <Text style={styles.label}>Ups : Across</Text>
+        <Text style={styles.value}>{order.upsAcross.label}</Text>
+
+        <Text style={styles.label}>Around</Text>
+        <Text style={styles.value}>{order.around.label}</Text>
+
+        <Text style={styles.label}>Teeth Size</Text>
+        <Text style={styles.value}>{order.teethSize.label}</Text>
+
+        <Text style={styles.label}>Blocks</Text>
+        <Text style={styles.value}>{order.blocks.label}</Text>
+
+        <Text style={styles.label}>Winding Direction</Text>
+        <Text style={styles.value}>{order.windingDirection.label}</Text>
 
         <Text style={styles.label}>Slitting Data:</Text>
 

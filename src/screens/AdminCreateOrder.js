@@ -104,7 +104,7 @@ const AdminCreateOrder = ({navigation}) => {
       await firestore().collection('orders').add(orderData);
       console.log('orderData', orderData);
 
-      Alert.alert('Success', 'Order created and assigned to Printing Operator');
+      Alert.alert('Success', 'Job Created');
       navigation.goBack(); // or navigate to dashboard
     } catch (error) {
       console.error(error);
