@@ -80,6 +80,7 @@ const CustomHeader = ({
               data={options}
               onSelect={handleSelect}
               placeholder={'All Jobs'}
+              showIcon={true}
             />
           )}
           {showHeaderSearchBar && <SearchBar placeholder={'Search Job'} />}

@@ -24,6 +24,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
       await jobRef.update({
         jobStatus: 'Slitting', // marks it completed for punching
         paperProductCode: paperProduct || order.paperProductCode || '',
+        runningMtr: runningMtrValue ? parseFloat(runningMtrValue) : null,
         updatedByPunchingAt: firestore.FieldValue.serverTimestamp(),
         assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33', // assign to slitting operator
       });
