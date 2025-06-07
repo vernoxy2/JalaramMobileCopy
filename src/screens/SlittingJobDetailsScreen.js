@@ -12,6 +12,7 @@ import {
 import firestore from '@react-native-firebase/firestore';
 import CustomHeader from '../components/CustomHeader';
 import CustomButton from '../components/CustomButton';
+import {format} from 'date-fns';
 
 const SlittingJobDetailsScreen = ({route, navigation}) => {
   const {order} = route.params;
@@ -20,6 +21,11 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
   const [totalA, setTotalA] = useState(0);
   const [totalB, setTotalB] = useState(0);
   const [totalC, setTotalC] = useState(0);
+
+  const formatTimestamp = timestamp => {
+    if (!timestamp) return 'Not started yet';
+    return format(timestamp.toDate(), 'dd MMM yyyy, hh:mm a'); // Convert Firestore Timestamp to JS Date and format
+  };
 
   useEffect(() => {
     let sumA = 0,
@@ -87,7 +93,9 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
         <Text style={styles.value}>{order.customerName}</Text>
 
         <Text style={styles.label}>Job Date:</Text>
-        <Text style={styles.value}>{order.jobDate}</Text>
+        <Text style={styles.value}>
+          {order.jobDate ? order.jobDate.toDate().toDateString() : 'N/A'}
+        </Text>
 
         <Text style={styles.label}>Job Status:</Text>
         <Text style={styles.value}>{order.jobStatus}</Text>
@@ -96,13 +104,13 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
         <Text style={styles.value}>{order.jobPaper.label}</Text>
 
         <View style={styles.readOnlyField}>
-                    <Text style={styles.label}>Paper Product Code:</Text>
-                    <Text style={styles.value}>
-                      {typeof order.paperProductCode === 'object'
-                        ? order.paperProductCode.label
-                        : order.paperProductCode}
-                    </Text>
-                  </View>
+          <Text style={styles.label}>Paper Product Code:</Text>
+          <Text style={styles.value}>
+            {typeof order.paperProductCode === 'object'
+              ? order.paperProductCode.label
+              : order.paperProductCode}
+          </Text>
+        </View>
 
         <Text style={styles.label}>Job Size</Text>
         <Text style={styles.value}>{order.jobSize}</Text>
@@ -162,7 +170,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
             />
           </View>
         ))}
-        <View style={styles.horizontalLine}/>
+        <View style={styles.horizontalLine} />
         <View style={styles.row}>
           <View>
             <Text style={styles.totalText}>Total Labels</Text>
@@ -272,17 +280,16 @@ const styles = StyleSheet.create({
 
     width: '27%',
   },
-  totalText : {
+  totalText: {
     color: '#000',
     fontSize: 15,
     fontWeight: '700',
-
   },
-  horizontalLine : {
-    height:1,
-    width:'100%',
-    backgroundColor:'gray',
-    marginVertical:10
+  horizontalLine: {
+    height: 1,
+    width: '100%',
+    backgroundColor: 'gray',
+    marginVertical: 10,
   },
   completeBtn: {
     backgroundColor: '#3668B1',

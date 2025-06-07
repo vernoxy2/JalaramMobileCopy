@@ -10,7 +10,7 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
-  Image
+  Image,
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import CustomHeader from '../components/CustomHeader';
@@ -25,6 +25,7 @@ const HomeScreen = ({navigation}) => {
   useEffect(() => {
     const unsubscribe = firestore()
       .collection('orders')
+      .orderBy('createdAt', 'desc') // ✅ Sort newest first
       .onSnapshot(
         snapshot => {
           const fetchedJobs = snapshot.docs.map(doc => ({
@@ -58,7 +59,25 @@ const HomeScreen = ({navigation}) => {
           (job.jobCardNo && job.jobCardNo.toLowerCase().includes(query)) ||
           (job.customerName &&
             job.customerName.toLowerCase().includes(query)) ||
-          (job.jobDate && job.jobDate.toLowerCase().includes(query)),
+          (() => {
+            if (!job.jobDate) return false;
+
+            let jobDateStr = '';
+
+            if (job.jobDate.toDate) {
+              // Firebase Timestamp
+              jobDateStr = job.jobDate.toDate().toDateString();
+            } else if (job.jobDate._seconds) {
+              // Alternative Firebase Timestamp shape
+              jobDateStr = new Date(job.jobDate._seconds * 1000).toDateString();
+            } else if (typeof job.jobDate === 'string') {
+              jobDateStr = job.jobDate;
+            } else if (job.jobDate instanceof Date) {
+              jobDateStr = job.jobDate.toDateString();
+            }
+
+            return jobDateStr.toLowerCase().includes(query);
+          })(),
       );
     }
     return filtered;
@@ -81,7 +100,13 @@ const HomeScreen = ({navigation}) => {
       style={styles.row}>
       <Text style={styles.cell}>{item.jobCardNo}</Text>
       <Text style={styles.cell}>{item.customerName}</Text>
-      <Text style={styles.cell}>{item.jobDate}</Text>
+      <Text style={styles.cell}>
+        {item.jobDate
+          ? item.jobDate.toDate
+            ? item.jobDate.toDate().toDateString()
+            : new Date(item.jobDate._seconds * 1000).toDateString()
+          : ''}
+      </Text>
       <Text style={styles.statusCell}>{item.jobStatus}</Text>
     </Pressable>
   );
@@ -101,7 +126,6 @@ const HomeScreen = ({navigation}) => {
             showHeaderBtn={true}
             btnHeading={'Create New'}
             showHeaderDropDown={true}
-            
             onDropdownSelect={value => setFilter(value)}
           />
           <View style={styles.homeSubContainer}>
@@ -115,41 +139,36 @@ const HomeScreen = ({navigation}) => {
               <Text style={styles.tableHeadingTypesText}>All Jobs</Text>
             </View>
             <View>
-              
               {loading ? (
                 <ActivityIndicator
                   size="large"
                   color="#0000ff"
                   style={{marginTop: 20}}
                 />
-              ) :  getFilteredJobs().length > 0 ?  (
+              ) : getFilteredJobs().length > 0 ? (
                 <View style={styles.tableContainer}>
                   {renderHeader()}
-                <FlatList
-                  data={getFilteredJobs()}
-                  renderItem={renderItem}
-                  keyExtractor={item => item.id}
-                  contentContainerStyle={{paddingBottom: 20}}
-                  
-                />
+                  <FlatList
+                    data={getFilteredJobs()}
+                    renderItem={renderItem}
+                    keyExtractor={item => item.id}
+                    contentContainerStyle={{paddingBottom: 20}}
+                  />
                 </View>
               ) : (
                 <View style={styles.noJobsContainer}>
-                              <Image
-                                source={require('../assets/images/listing.png')} 
-                                style={styles.noJobsImage}
-                                resizeMode="contain"
-                              />
-                              <Text style={styles.noJobsTitle}>No Jobs Available</Text>
-                              <Text style={styles.noJobsSubtitle}>
-                                You're all caught up! {'\n'}No such jobs are available.
-                              </Text>
-                            </View>
+                  <Image
+                    source={require('../assets/images/listing.png')}
+                    style={styles.noJobsImage}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.noJobsTitle}>No Jobs Available</Text>
+                  <Text style={styles.noJobsSubtitle}>
+                    You're all caught up! {'\n'}No such jobs are available.
+                  </Text>
+                </View>
               )}
             </View>
-
-
-            
           </View>
         </View>
       </TouchableWithoutFeedback>
@@ -189,7 +208,7 @@ const styles = StyleSheet.create({
   },
   tableContainer: {
     // flex: 1,
-    maxHeight:340,
+    maxHeight: 340,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 10,

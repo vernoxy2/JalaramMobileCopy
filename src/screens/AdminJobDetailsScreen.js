@@ -125,7 +125,9 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
       <h1>Job Details</h1>
       <p><strong>Job Card No:</strong> ${order.jobCardNo}</p>
       <p><strong>Customer Name:</strong> ${order.customerName}</p>
-      <p><strong>Job Date:</strong> ${order.jobDate}</p>
+      <p><strong>Job Date:</strong> ${
+        order.jobDate ? order.jobDate.toDate().toDateString() : 'N/A'
+      }</p>
       <p><strong>Job Status:</strong> ${order.jobStatus}</p>
       <p><strong>Start Time:</strong> ${formatTimestamp(
         order.updatedAt || order.updatedByPunchingAt,
@@ -199,21 +201,21 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
     }
   };
 
-
   const savePDF = async () => {
-  try {
-    const hasPermission = await requestStoragePermission();
-    if (!hasPermission) {
-      Alert.alert('Permission Denied', 'Storage permission not granted');
-      return;
-    }
+    try {
+      const hasPermission = await requestStoragePermission();
+      if (!hasPermission) {
+        Alert.alert('Permission Denied', 'Storage permission not granted');
+        return;
+      }
 
-   
-   const htmlContent = `
+      const htmlContent = `
       <h1>FLEXO JOB CARD</h1>
       <p><strong>Job Card No:</strong> ${order.jobCardNo}</p>
       <p><strong>Customer Name:</strong> ${order.customerName}</p>
-      <p><strong>Job Date:</strong> ${order.jobDate}</p>
+      <p><strong>Job Date:</strong> ${
+        order.jobDate ? order.jobDate.toDate().toDateString() : 'N/A'
+      }</p>
       <p><strong>Job Status:</strong> ${order.jobStatus}</p>
       <p><strong>Start Time:</strong> ${formatTimestamp(
         order.updatedAt || order.updatedByPunchingAt,
@@ -257,36 +259,36 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
       }
     `;
 
+      const privatePath = `${RNFS.DocumentDirectoryPath}/Job_Details_${order.jobCardNo}.pdf`;
 
-    const privatePath = `${RNFS.DocumentDirectoryPath}/Job_Details_${order.jobCardNo}.pdf`;
+      const options = {
+        html: htmlContent,
+        fileName: `Job_Details_${order.jobCardNo}`,
+        filePath: privatePath,
+        base64: false,
+      };
 
-    const options = {
-      html: htmlContent,
-      fileName: `Job_Details_${order.jobCardNo}`,
-      filePath: privatePath,
-      base64: false,
-    };
+      // Generate PDF in app private directory
+      const file = await RNHTMLtoPDF.convert(options);
 
-    // Generate PDF in app private directory
-    const file = await RNHTMLtoPDF.convert(options);
+      // Define path in public Downloads directory
+      const downloadsPath = `${RNFS.DownloadDirectoryPath}/Job_Details_${order.jobCardNo}.pdf`;
 
-    // Define path in public Downloads directory
-    const downloadsPath = `${RNFS.DownloadDirectoryPath}/Job_Details_${order.jobCardNo}.pdf`;
+      // Copy file from private to public Downloads folder
+      await RNFS.copyFile(file.filePath, downloadsPath);
 
-    // Copy file from private to public Downloads folder
-    await RNFS.copyFile(file.filePath, downloadsPath);
+      Alert.alert(
+        'Success',
+        `PDF saved to Downloads folder:\n${downloadsPath}`,
+      );
 
-    Alert.alert('Success', `PDF saved to Downloads folder:\n${downloadsPath}`);
-
-    // Optional: open the PDF directly after saving
-    // await FileViewer.open(downloadsPath, { showOpenWithDialog: true });
-  } catch (error) {
-    console.error('PDF Generation Error:', error);
-    Alert.alert('Error', 'Failed to generate or save PDF');
-  }
-};
-
-
+      // Optional: open the PDF directly after saving
+      // await FileViewer.open(downloadsPath, { showOpenWithDialog: true });
+    } catch (error) {
+      console.error('PDF Generation Error:', error);
+      Alert.alert('Error', 'Failed to generate or save PDF');
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -305,7 +307,9 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         <Text style={styles.value}>{order.customerName}</Text>
 
         <Text style={styles.label}>Job Date:</Text>
-        <Text style={styles.value}>{order.jobDate}</Text>
+        <Text style={styles.value}>
+          {order.jobDate ? order.jobDate.toDate().toDateString() : 'N/A'}
+        </Text>
 
         <Text style={styles.label}>Job Status:</Text>
         <Text style={styles.value}>{order.jobStatus}</Text>
@@ -405,8 +409,6 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         <View style={{marginVertical: 20}}>
           <Button title="Download PDF" onPress={savePDF} />
         </View>
-
-        
       </ScrollView>
     </View>
   );

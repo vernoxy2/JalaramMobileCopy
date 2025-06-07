@@ -1,9 +1,18 @@
 import React, {useState} from 'react';
-import {View, Text, StyleSheet, ScrollView, Button, Alert, TextInput} from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Button,
+  Alert,
+  TextInput,
+} from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import CustomHeader from '../components/CustomHeader';
 import CustomDropdown from '../components/CustomDropdown';
 import {paperProductCode} from '../constant/constant';
+import {format} from 'date-fns';
 
 const PunchingJobDetailsScreen = ({route, navigation}) => {
   const {order} = route.params;
@@ -12,10 +21,10 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
     order.paperProductCode || '',
   );
   const [runningMtrValue, setRunningMtrValue] = useState(
-  typeof order.runningMtr === 'string' || typeof order.runningMtr === 'number'
-    ? String(order.runningMtr)
-    : ''
-);
+    typeof order.runningMtr === 'string' || typeof order.runningMtr === 'number'
+      ? String(order.runningMtr)
+      : '',
+  );
 
   const handleComplete = async () => {
     try {
@@ -76,7 +85,13 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         <Text style={styles.value}>{order.customerName}</Text>
 
         <Text style={styles.label}>Job Date:</Text>
-        <Text style={styles.value}>{order.jobDate}</Text>
+        <Text style={styles.value}>
+          <Text style={styles.value}>
+            {order.jobDate
+              ? order.jobDate.toDate().toDateString()
+              : 'N/A'}
+          </Text>
+        </Text>
 
         <Text style={styles.label}>Job Status:</Text>
         <Text style={styles.value}>{order.jobStatus}</Text>
@@ -173,13 +188,12 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   input: {
-  width: '100%',
-  borderWidth: 1,
-  borderColor: '#ccc',
-  borderRadius: 10,
-  padding: 10,
-  marginTop: 10,
-  fontSize: 14,
-},
-
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 10,
+    fontSize: 14,
+  },
 });

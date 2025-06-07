@@ -65,7 +65,25 @@ const PunchingHomeScreen = ({route, navigation}) => {
           (job.jobCardNo && job.jobCardNo.toLowerCase().includes(query)) ||
           (job.customerName &&
             job.customerName.toLowerCase().includes(query)) ||
-          (job.jobDate && job.jobDate.toLowerCase().includes(query)),
+          (() => {
+            if (!job.jobDate) return false;
+
+            let jobDateStr = '';
+
+            if (job.jobDate.toDate) {
+              // Firebase Timestamp
+              jobDateStr = job.jobDate.toDate().toDateString();
+            } else if (job.jobDate._seconds) {
+              // Alternative Firebase Timestamp shape
+              jobDateStr = new Date(job.jobDate._seconds * 1000).toDateString();
+            } else if (typeof job.jobDate === 'string') {
+              jobDateStr = job.jobDate;
+            } else if (job.jobDate instanceof Date) {
+              jobDateStr = job.jobDate.toDateString();
+            }
+
+            return jobDateStr.toLowerCase().includes(query);
+          })(),
       );
     }
 
@@ -89,7 +107,11 @@ const PunchingHomeScreen = ({route, navigation}) => {
       style={styles.row}>
       <Text style={styles.cell}>{item.jobCardNo}</Text>
       <Text style={styles.cell}>{item.customerName}</Text>
-      <Text style={styles.cell}>{item.jobDate}</Text>
+      <Text style={styles.cell}>{item.jobDate
+          ? item.jobDate.toDate
+            ? item.jobDate.toDate().toDateString()
+            : new Date(item.jobDate._seconds * 1000).toDateString()
+          : ''}</Text>
       <Text style={styles.statusCell}>{item.jobStatus}</Text>
     </Pressable>
   );

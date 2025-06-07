@@ -8,12 +8,16 @@ import {
   Alert,
   TouchableOpacity,
   Image,
+  Platform,
+  Modal,
+  Pressable,
 } from 'react-native';
 import CustomHeader from '../components/CustomHeader';
 import CustomLabelTextInput from '../components/CustomLabelTextInput';
 import CustomButton from '../components/CustomButton';
 import firestore from '@react-native-firebase/firestore';
 import CustomDropdown from '../components/CustomDropdown';
+import DatePicker from 'react-native-date-picker';
 import {
   around,
   blocks,
@@ -27,11 +31,13 @@ import {
 
 const AdminCreateOrder = ({navigation}) => {
   const [poNo, setPoNo] = useState('');
-  const [receivedDate, setReceivedDate] = useState('');
+  const [receivedDate, setReceivedDate] = useState(new Date());
+  const [openReceivedDate, setOpenReceivedDate] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [jobCardNo, setJobCardNo] = useState('');
   const [jobName, setJobName] = useState('');
-  const [jobDate, setJobDate] = useState('');
+  const [jobDate, setJobDate] = useState(new Date());
+  const [openJobDate, setOpenJobDate] = useState(false);
   const [jobSize, setJobSize] = useState('');
   const [jobQty, setJobQty] = useState('');
   const [jobPaper, setJobPaper] = useState('');
@@ -63,6 +69,7 @@ const AdminCreateOrder = ({navigation}) => {
   const handleSubmit = async () => {
     console.log('Selected Label Type:', selectedLabelType);
     const normalizedLabelType = selectedLabelType.trim().toLowerCase();
+
     let assignedUserUID;
     let jobStatus;
 
@@ -71,43 +78,57 @@ const AdminCreateOrder = ({navigation}) => {
       jobStatus = 'Printing';
     } else if (normalizedLabelType === 'plain') {
       assignedUserUID = 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2';
-      jobStatus = 'Punching'; // ✅ Change this to match PunchingHomeScreen
+      jobStatus = 'Punching';
     } else {
       Alert.alert('Error', 'Please select a valid Label Type');
       return;
     }
 
-    const orderData = {
-      poNo,
-      receivedDate,
-      customerName,
-      jobCardNo,
-      jobName,
-      jobDate,
-      jobSize,
-      jobQty,
-      jobStatus,
-      assignedTo: assignedUserUID,
-      createdBy: 'Admin',
-      createdAt: firestore.FieldValue.serverTimestamp(),
-      jobPaper,
-      printingPlateSize: plateSize,
-      upsAcross: upsAcrossValue,
-      around: aroundValue,
-      teethSize: teethSizeValue,
-      blocks: blocksValue,
-      windingDirection: windingDirectionValue,
-      printingColors,
-    };
-
     try {
+      // 🔍 Check if jobCardNo already exists
+      const snapshot = await firestore()
+        .collection('orders')
+        .where('jobCardNo', '==', jobCardNo)
+        .get();
+
+      if (!snapshot.empty) {
+        Alert.alert(
+          'Job Card No already exists!',
+          'Enter another job card no.',
+        );
+        return;
+      }
+
+      const orderData = {
+        poNo,
+        receivedDate: firestore.Timestamp.fromDate(receivedDate),
+        jobDate: firestore.Timestamp.fromDate(jobDate),
+        customerName,
+        jobCardNo,
+        jobName,
+        jobSize,
+        jobQty,
+        jobStatus,
+        assignedTo: assignedUserUID,
+        createdBy: 'Admin',
+        createdAt: firestore.FieldValue.serverTimestamp(),
+        jobPaper,
+        printingPlateSize: plateSize,
+        upsAcross: upsAcrossValue,
+        around: aroundValue,
+        teethSize: teethSizeValue,
+        blocks: blocksValue,
+        windingDirection: windingDirectionValue,
+        printingColors,
+      };
+
       await firestore().collection('orders').add(orderData);
       console.log('orderData', orderData);
 
       Alert.alert('Success', 'Job Created');
-      navigation.goBack(); // or navigate to dashboard
+      navigation.goBack();
     } catch (error) {
-      console.error(error);
+      console.error('Submit Error:', error);
       Alert.alert('Error', 'Something went wrong. Try again.');
     }
   };
@@ -133,15 +154,37 @@ const AdminCreateOrder = ({navigation}) => {
             />
           </View>
 
+          <View style={styles.inputBackContainer}>
+            <Text style={styles.inputLabel}>Job Date:</Text>
+            <TouchableOpacity
+              onPress={() => setOpenJobDate(true)}
+              style={styles.inputContainer}>
+              <Text>{jobDate.toDateString()}</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Job Received Date */}
           <View style={styles.inputBackContainer}>
-            <Text style={styles.inputLabel}>Job Recieved Date :</Text>
-            <TextInput
-              style={styles.inputContainer}
-              value={receivedDate}
-              onChangeText={setReceivedDate}
-            />
+            <Text style={styles.inputLabel}>Job Received Date:</Text>
+            <TouchableOpacity
+              onPress={() => setOpenReceivedDate(true)}
+              style={styles.inputContainer}>
+              <Text>{receivedDate.toDateString()}</Text>
+            </TouchableOpacity>
           </View>
+
+          <DatePicker
+            modal
+            mode="date"
+            open={openReceivedDate}
+            date={receivedDate}
+            minimumDate={new Date()} // No past dates
+            onConfirm={date => {
+              setOpenReceivedDate(false);
+              setReceivedDate(date);
+            }}
+            onCancel={() => setOpenReceivedDate(false)}
+          />
 
           <CustomLabelTextInput
             label="Customer Name :"
@@ -158,11 +201,20 @@ const AdminCreateOrder = ({navigation}) => {
             value={jobName}
             onChangeText={setJobName}
           />
-          <CustomLabelTextInput
-            label="Job Date :"
-            value={jobDate}
-            onChangeText={setJobDate}
+
+          <DatePicker
+            modal
+            mode="date"
+            open={openJobDate}
+            date={jobDate}
+            minimumDate={new Date()} // No past dates
+            onConfirm={date => {
+              setOpenJobDate(false);
+              setJobDate(date);
+            }}
+            onCancel={() => setOpenJobDate(false)}
           />
+
           <CustomLabelTextInput
             label="Job Original Size :"
             value={jobSize}
@@ -296,7 +348,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   inputBackContainer: {
-    width: '80%',
+    width: '100%',
     backgroundColor: '#f6f6f6',
     flexDirection: 'row',
     alignItems: 'center',
