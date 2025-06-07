@@ -49,6 +49,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
   const [windingDirectionValue, setWindingDirectionValue] = useState(
     order.windingDirection || '',
   );
+  const [tooling, setTooling] = useState(order.tooling || '');
   const [slittingValue, setSlittingValue] = useState('');
 
   const [checkboxState, setCheckboxState] = useState({
@@ -59,6 +60,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
     box5: order.checkedApproved || false,
   });
 
+  const [paperProductNo, setPaperProductNo] = useState('');
   const [runningMtrValue, setRunningMtrValue] = useState('');
 
   useEffect(() => {
@@ -82,7 +84,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
       box4: order.varnish === 'Uv',
       box5: order.checkedApproved || false,
     });
-
+    setTooling(order.tooling || '');
     setRunningMtrValue(order.runningMtr || '');
 
     setJobStarted(order.jobStarted || false);
@@ -127,6 +129,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
         jobSize: size,
         jobPaper,
         paperProductCode: paperProduct,
+        paperProductNo,
         printingPlateSize: plateSize,
         upsAcross: upsAcrossValue,
         around: aroundValue,
@@ -158,6 +161,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
         runningMtr: runningMtrValue,
         jobStatus: 'Punching',
         assignedTo: 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2',
+        printingStatus: 'Completed', 
       });
 
       alert('Job successfully updated and reassigned!');
@@ -191,6 +195,12 @@ const OperatorCreateOrder = ({navigation, route}) => {
                 selectedText={styles.dropdownText}
                 onSelect={item => setPaperProduct(item)}
                 showIcon={true}
+              />
+
+              <CustomTextInput
+                placeholder="Paper Product No"
+                value={paperProductNo}
+                onChangeText={setPaperProductNo}
               />
 
               <View>
@@ -273,6 +283,12 @@ const OperatorCreateOrder = ({navigation, route}) => {
                   <Text style={styles.value}>
                     {windingDirectionValue.label}
                   </Text>
+                </View>
+              </View>
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Tooling</Text>
+                <View style={styles.disabledDropdown}>
+                  <Text style={styles.value}>{tooling}</Text>
                 </View>
               </View>
 
@@ -514,6 +530,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Lato-Regular',
   },
+  value: {
+  fontSize: 14,
+  color: '#000',
+  fontFamily: 'Lato-Regular',
+},
   submitBtn: {
     marginVertical: 40,
     width: '100%',
@@ -526,22 +547,21 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-
   selectedColorsContainer: {
-  marginTop: 20,
-  backgroundColor: '#f9f9f9',
-  padding: 15,
-  borderRadius: 10,
-},
-selectedColorsTitle: {
-  fontSize: 16,
-  fontWeight: 'bold',
-  marginBottom: 10,
-  color: '#000',
-},
-selectedColor: {
-  fontSize: 14,
-  color: '#333',
-  marginBottom: 4,
-},
+    marginTop: 20,
+    backgroundColor: '#f9f9f9',
+    padding: 15,
+    borderRadius: 10,
+  },
+  selectedColorsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#000',
+  },
+  selectedColor: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 4,
+  },
 });

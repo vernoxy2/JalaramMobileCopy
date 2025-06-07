@@ -303,6 +303,8 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         <Text style={styles.label}>Job Card No:</Text>
         <Text style={styles.value}>{order.jobCardNo}</Text>
 
+        
+
         <Text style={styles.label}>Customer Name:</Text>
         <Text style={styles.value}>{order.customerName}</Text>
 
@@ -341,6 +343,8 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         <Text style={styles.label}>Job Paper:</Text>
         <Text style={styles.value}>{order.jobPaper.label}</Text>
 
+        
+
         <View style={styles.readOnlyField}>
           <Text style={styles.label}>Paper Product Code:</Text>
           <Text style={styles.value}>
@@ -349,7 +353,10 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
               : order.paperProductCode}
           </Text>
         </View>
-
+        
+        <Text style={styles.label}>Paper Product No</Text>
+        <Text style={styles.value}>{order.paperProductNo}</Text>
+            
         <Text style={styles.label}>Job Size</Text>
         <Text style={styles.value}>{order.jobSize}</Text>
 
@@ -370,6 +377,9 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
 
         <Text style={styles.label}>Winding Direction</Text>
         <Text style={styles.value}>{order.windingDirection.label}</Text>
+
+        <Text style={styles.label}>Tooling</Text>
+        <Text style={styles.value}>{order.tooling}</Text>
 
         <Text style={styles.label}>Slitting Data:</Text>
 

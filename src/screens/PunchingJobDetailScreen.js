@@ -20,6 +20,14 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
   const [paperProduct, setPaperProduct] = useState(
     order.paperProductCode || '',
   );
+
+  const [paperProductNo, setPaperProductNo] = useState(
+    typeof order.paperProductNo === 'string' ||
+      typeof order.paperProductNo === 'number'
+      ? String(order.paperProductNo)
+      : '',
+  );
+
   const [runningMtrValue, setRunningMtrValue] = useState(
     typeof order.runningMtr === 'string' || typeof order.runningMtr === 'number'
       ? String(order.runningMtr)
@@ -33,6 +41,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
       await jobRef.update({
         jobStatus: 'Slitting', // marks it completed for punching
         paperProductCode: paperProduct || order.paperProductCode || '',
+        paperProductNo: paperProductNo || order.paperProductNo || '',
         runningMtr: runningMtrValue ? parseFloat(runningMtrValue) : null,
         updatedByPunchingAt: firestore.FieldValue.serverTimestamp(),
         assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33', // assign to slitting operator
@@ -78,6 +87,18 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
           />
         )}
 
+        <Text style={styles.label}>Paper Product No</Text>
+        {order.paperProductNo ? (
+          <Text style={styles.value}>{order.paperProductNo}</Text>
+        ) : (
+          <TextInput
+            style={styles.input}
+            value={paperProductNo}
+            onChangeText={setPaperProductNo}
+            placeholder="Enter Paper Product No"
+          />
+        )}
+
         <Text style={styles.label}>Job Card No:</Text>
         <Text style={styles.value}>{order.jobCardNo}</Text>
 
@@ -87,9 +108,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         <Text style={styles.label}>Job Date:</Text>
         <Text style={styles.value}>
           <Text style={styles.value}>
-            {order.jobDate
-              ? order.jobDate.toDate().toDateString()
-              : 'N/A'}
+            {order.jobDate ? order.jobDate.toDate().toDateString() : 'N/A'}
           </Text>
         </Text>
 

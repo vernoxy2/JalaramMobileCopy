@@ -40,6 +40,7 @@ const AdminCreateOrder = ({navigation}) => {
   const [openJobDate, setOpenJobDate] = useState(false);
   const [jobSize, setJobSize] = useState('');
   const [jobQty, setJobQty] = useState('');
+  const [tooling, setTooling] = useState('');
   const [jobPaper, setJobPaper] = useState('');
   const [plateSize, setPlateSize] = useState('');
   const [upsAcrossValue, setUpsAcrossValue] = useState('');
@@ -108,6 +109,7 @@ const AdminCreateOrder = ({navigation}) => {
         jobName,
         jobSize,
         jobQty,
+        tooling,
         jobStatus,
         assignedTo: assignedUserUID,
         createdBy: 'Admin',
@@ -162,6 +164,18 @@ const AdminCreateOrder = ({navigation}) => {
               <Text>{jobDate.toDateString()}</Text>
             </TouchableOpacity>
           </View>
+          <DatePicker
+            modal
+            mode="date"
+            open={openJobDate}
+            date={jobDate}
+            minimumDate={new Date()} // No past dates
+            onConfirm={date => {
+              setOpenJobDate(false);
+              setJobDate(date);
+            }}
+            onCancel={() => setOpenJobDate(false)}
+          />
 
           {/* Job Received Date */}
           <View style={styles.inputBackContainer}>
@@ -202,19 +216,6 @@ const AdminCreateOrder = ({navigation}) => {
             onChangeText={setJobName}
           />
 
-          <DatePicker
-            modal
-            mode="date"
-            open={openJobDate}
-            date={jobDate}
-            minimumDate={new Date()} // No past dates
-            onConfirm={date => {
-              setOpenJobDate(false);
-              setJobDate(date);
-            }}
-            onCancel={() => setOpenJobDate(false)}
-          />
-
           <CustomLabelTextInput
             label="Job Original Size :"
             value={jobSize}
@@ -224,6 +225,11 @@ const AdminCreateOrder = ({navigation}) => {
             label="Job Qty :"
             value={jobQty}
             onChangeText={setJobQty}
+          />
+          <CustomLabelTextInput
+            label="Tooling"
+            value={tooling}
+            onChangeText={setTooling}
           />
           <CustomDropdown
             placeholder={'Job Paper / Film Material'}
