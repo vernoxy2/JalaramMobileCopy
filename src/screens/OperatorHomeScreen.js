@@ -21,7 +21,7 @@ const OperatorHomeScreen = ({route, navigation}) => {
     const unsubscribe = firestore()
       .collection('orders')
       .where('assignedTo', '==', currentUser.uid)
-      .where('jobStatus', '==', 'Printing')
+      .where('jobStatus', 'in', ['Printing', 'PrintingCompleted'])
       .onSnapshot(
         snapshot => {
           const fetchedOrders = snapshot.docs.map(doc => ({
