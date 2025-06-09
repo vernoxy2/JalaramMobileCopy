@@ -152,7 +152,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
     }
   };
 
-  const handleSubmit = async () => {
+   const handleSubmit = async () => {
     try {
       const orderRef = firestore().collection('orders').doc(order.id);
 
@@ -170,6 +170,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
       alert('Failed to update order');
     }
   };
+
 
   return (
     <View style={styles.mainContainer}>
