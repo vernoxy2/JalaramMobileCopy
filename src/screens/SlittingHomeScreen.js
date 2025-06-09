@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useRef} from 'react';
 import {
   View,
   Text,
@@ -19,32 +19,52 @@ const SlittingHomeScreen = ({navigation}) => {
   const [filter, setFilter] = useState('allJobs');
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
+   const pendingJobsRef = useRef([]);
+    const completedJobsRef = useRef([]);
+
+   useEffect(() => {
     const currentUser = auth().currentUser;
     if (!currentUser) return;
 
-    const unsubscribe = firestore()
+    const updateCombinedJobs = () => {
+      const combined = [...pendingJobsRef.current, ...completedJobsRef.current];
+      const unique = Array.from(
+        new Map(combined.map(job => [job.id, job])).values(),
+      );
+      setOrders(unique);
+      setLoading(false);
+    };
+
+    const unsubscribePending = firestore()
       .collection('orders')
       .where('assignedTo', '==', currentUser.uid)
-      .where('jobStatus', 'in', ['Slitting', 'Completed']) // Adjust to your statuses for slitting
-
+      .where('jobStatus', '==', 'Slitting')
       .orderBy('createdAt', 'desc')
-      .onSnapshot(
-        snapshot => {
-          const fetchedOrders = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setOrders(fetchedOrders);
-          setLoading(false);
-        },
-        error => {
-          console.error('Error fetching orders: ', error);
-          setLoading(false);
-        },
-      );
+      .onSnapshot(snapshot => {
+        pendingJobsRef.current = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        updateCombinedJobs();
+      });
 
-    return () => unsubscribe();
+    const unsubscribeCompleted = firestore()
+      .collection('orders')
+      .where('slittingStatus', '==', 'completed')
+      .where('completedBySlitting', '==', currentUser.uid)
+      .orderBy('updatedBySlittingAt', 'desc')
+      .onSnapshot(snapshot => {
+        completedJobsRef.current = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        updateCombinedJobs();
+      });
+
+    return () => {
+      unsubscribePending();
+      unsubscribeCompleted();
+    };
   }, []);
 
   const getFilteredJobs = () => {
@@ -114,7 +134,15 @@ const SlittingHomeScreen = ({navigation}) => {
             : new Date(item.jobDate._seconds * 1000).toDateString()
           : ''}
       </Text>
-      <Text style={styles.statusCell}>{item.jobStatus}</Text>
+      <Text
+              style={[
+                styles.statusCell,
+                item.SlittingStatus === 'completed' || item.isCompleted
+                  ? styles.completedStatus
+                  : styles.pendingStatus,
+              ]}>
+              {item.slittingStatus || (item.isCompleted ? 'completed' : 'pending')}
+            </Text>
     </Pressable>
   );
 
@@ -253,7 +281,13 @@ const styles = StyleSheet.create({
     height: 40,
     color: '#ff0000',
     fontSize: 12,
-    fontFamily: 'Lato-Regular',
+    fontFamily: 'Lato-Bold',
+  },
+  completedStatus: {
+    color: 'green',
+  },
+  pendingStatus: {
+    color: 'red',
   },
   noJobsContainer: {
     alignItems: 'center',

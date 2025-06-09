@@ -13,6 +13,7 @@ import firestore from '@react-native-firebase/firestore';
 import CustomHeader from '../components/CustomHeader';
 import CustomButton from '../components/CustomButton';
 import {format} from 'date-fns';
+import auth from '@react-native-firebase/auth';
 
 const SlittingJobDetailsScreen = ({route, navigation}) => {
   const {order} = route.params;
@@ -63,11 +64,22 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
 
   const handleComplete = async () => {
     try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        Alert.alert('Error', 'User not authenticated');
+        return;
+      }
+
+
+
       await firestore().collection('orders').doc(order.id).update({
         jobStatus: 'Completed',
+        slittingStatus: 'completed',
         assignedTo: 'adminUID', // Replace with actual admin's UID
         endTime: firestore.FieldValue.serverTimestamp(),
+        updatedBySlittingAt: firestore.FieldValue.serverTimestamp(),
         slittingData: inputs,
+        completedBySlitting: currentUser.uid,
       });
       Alert.alert('Success', 'Job completed ');
       navigation.goBack();
