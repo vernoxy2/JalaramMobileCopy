@@ -28,6 +28,7 @@ const PunchingHomeScreen = ({route, navigation}) => {
       .collection('orders')
       .where('assignedTo', '==', currentUser.uid)
       .where('jobStatus', '==', 'Punching')
+      .orderBy('createdAt', 'desc')
 
       .onSnapshot(
         snapshot => {

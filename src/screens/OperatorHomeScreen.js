@@ -1,5 +1,13 @@
 import React, {useEffect, useState} from 'react';
-import {View, Text, FlatList, StyleSheet, Pressable, ActivityIndicator, Image} from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+  Image,
+} from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import CustomHeader from '../components/CustomHeader';
 import SearchBar from '../components/SearchBar';
@@ -20,8 +28,9 @@ const OperatorHomeScreen = ({route, navigation}) => {
 
     const unsubscribe = firestore()
       .collection('orders')
+      .orderBy('createdAt', 'desc')
       .where('assignedTo', '==', currentUser.uid)
-      .where('jobStatus', 'in', ['Printing', 'PrintingCompleted'])
+      .where('jobStatus', '==', 'Printing')
       .onSnapshot(
         snapshot => {
           const fetchedOrders = snapshot.docs.map(doc => ({
@@ -105,7 +114,9 @@ const OperatorHomeScreen = ({route, navigation}) => {
             : new Date(item.jobDate._seconds * 1000).toDateString()
           : ''}
       </Text>
-      <Text style={styles.statusCell}>{item.jobStatus}</Text>
+      <Text style={styles.statusCell}>
+        {item.jobStatus === 'Printing' ? 'Pending' : 'Completed'}
+      </Text>
     </Pressable>
   );
 
@@ -133,35 +144,34 @@ const OperatorHomeScreen = ({route, navigation}) => {
           <Text style={styles.tableHeadingTypesText}>Printing Jobs</Text>
         </View>
 
-
         <View>
-                  {loading ? (
-                    <ActivityIndicator size="large" color="#0000ff" />
-                  ) : getFilteredJobs().length > 0 ? (
-                    <View style={styles.tableContainer}>
-                      {renderHeader()}
-                      <FlatList
-                        data={getFilteredJobs()}
-                        renderItem={renderItem}
-                        keyExtractor={item => item.id}
-                        contentContainerStyle={{paddingBottom: 20}}
-                      />
-                    </View>
-                  ) : (
-                    <View style={styles.noJobsContainer}>
-                      <Image
-                        source={require('../assets/images/listing.png')}
-                        style={styles.noJobsImage}
-                        resizeMode="contain"
-                      />
-                      <Text style={styles.noJobsTitle}>No Jobs Available</Text>
-                      <Text style={styles.noJobsSubtitle}>
-                        You're all caught up! No printing jobs are assigned to you right
-                        now.
-                      </Text>
-                    </View>
-                  )}
-                </View>
+          {loading ? (
+            <ActivityIndicator size="large" color="#0000ff" />
+          ) : getFilteredJobs().length > 0 ? (
+            <View style={styles.tableContainer}>
+              {renderHeader()}
+              <FlatList
+                data={getFilteredJobs()}
+                renderItem={renderItem}
+                keyExtractor={item => item.id}
+                contentContainerStyle={{paddingBottom: 20}}
+              />
+            </View>
+          ) : (
+            <View style={styles.noJobsContainer}>
+              <Image
+                source={require('../assets/images/listing.png')}
+                style={styles.noJobsImage}
+                resizeMode="contain"
+              />
+              <Text style={styles.noJobsTitle}>No Jobs Available</Text>
+              <Text style={styles.noJobsSubtitle}>
+                You're all caught up! No printing jobs are assigned to you right
+                now.
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -196,7 +206,7 @@ const styles = StyleSheet.create({
   tableHeadingTypesText: {
     fontSize: 18,
     color: '#000',
-    fontFamily:'Lato-Regular'
+    fontFamily: 'Lato-Regular',
   },
 
   tableContainer: {
@@ -210,7 +220,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
-    backgroundColor:'#fff'
+    backgroundColor: '#fff',
   },
   row: {
     flexDirection: 'row',
@@ -232,7 +242,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     color: '#fff',
-    fontFamily:'Lato-Black'
+    fontFamily: 'Lato-Black',
   },
   cell: {
     width: 80,
@@ -240,7 +250,7 @@ const styles = StyleSheet.create({
     height: 40,
     fontSize: 12,
     color: '#000',
-    fontFamily:'Lato-Regular'
+    fontFamily: 'Lato-Regular',
   },
   statusCell: {
     width: 80,
@@ -248,7 +258,7 @@ const styles = StyleSheet.create({
     height: 40,
     color: '#ff0000',
     fontSize: 12,
-    fontFamily:'Lato-Regular'
+    fontFamily: 'Lato-Regular',
   },
   noJobsContainer: {
     alignItems: 'center',

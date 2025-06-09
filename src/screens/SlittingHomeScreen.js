@@ -27,6 +27,7 @@ const SlittingHomeScreen = ({navigation}) => {
       .collection('orders')
       .where('assignedTo', '==', currentUser.uid)
       .where('jobStatus', '==', 'Slitting')
+      .orderBy('createdAt', 'desc')
       .onSnapshot(
         snapshot => {
           const fetchedOrders = snapshot.docs.map(doc => ({
