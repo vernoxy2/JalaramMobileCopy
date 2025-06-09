@@ -13,9 +13,12 @@ import CustomHeader from '../components/CustomHeader';
 import CustomDropdown from '../components/CustomDropdown';
 import {paperProductCode} from '../constant/constant';
 import {format} from 'date-fns';
+import auth from '@react-native-firebase/auth';
 
 const PunchingJobDetailsScreen = ({route, navigation}) => {
   const {order} = route.params;
+  const isCompleted = order.punchingStatus === 'completed';
+
 
   const [paperProduct, setPaperProduct] = useState(
     order.paperProductCode || '',
@@ -36,20 +39,27 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
 
   const handleComplete = async () => {
     try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        Alert.alert('Error', 'User not authenticated');
+        return;
+      }
+
       const jobRef = firestore().collection('orders').doc(order.id);
 
       await jobRef.update({
         jobStatus: 'Slitting', // marks it completed for punching
+        punchingStatus: 'completed',
         paperProductCode: paperProduct || order.paperProductCode || '',
         paperProductNo: paperProductNo || order.paperProductNo || '',
         runningMtr: runningMtrValue ? parseFloat(runningMtrValue) : null,
         updatedByPunchingAt: firestore.FieldValue.serverTimestamp(),
         assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33', // assign to slitting operator
+        completedByPunching: currentUser.uid, // <--- Add this to track who completed the punching
       });
 
       Alert.alert('Success', 'Job marked as completed');
 
-      // ✅ Navigate back to Punching screen
       navigation.goBack();
     } catch (error) {
       console.error('Error completing job:', error);
@@ -157,9 +167,11 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         )}
       </ScrollView>
 
-      <View style={styles.buttonContainer}>
-        <Button title="Complete" onPress={handleComplete} color="#4CAF50" />
-      </View>
+      {!isCompleted && (
+        <View style={styles.buttonContainer}>
+          <Button title="Complete" onPress={handleComplete} color="#4CAF50" />
+        </View>
+      )}
     </View>
   );
 };

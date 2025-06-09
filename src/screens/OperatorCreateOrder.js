@@ -28,6 +28,7 @@ import CustomButton from '../components/CustomButton';
 import firestore from '@react-native-firebase/firestore';
 import CustomLabelTextInput from '../components/CustomLabelTextInput';
 import CustomTextInput from '../components/CustomTextInput';
+import auth from '@react-native-firebase/auth';
 
 const OperatorCreateOrder = ({navigation, route}) => {
   const order = route?.params?.order || {};
@@ -62,6 +63,8 @@ const OperatorCreateOrder = ({navigation, route}) => {
 
   const [paperProductNo, setPaperProductNo] = useState('');
   const [runningMtrValue, setRunningMtrValue] = useState('');
+
+  const isCompleted = order.printingStatus === 'completed';
 
   useEffect(() => {
     // Check if `order` is available, if not return
@@ -154,6 +157,12 @@ const OperatorCreateOrder = ({navigation, route}) => {
 
   const handleSubmit = async () => {
     try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        Alert.alert('Error', 'User not authenticated');
+        return;
+      }
+
       const orderRef = firestore().collection('orders').doc(order.id);
 
       await orderRef.update({
@@ -161,6 +170,9 @@ const OperatorCreateOrder = ({navigation, route}) => {
         runningMtr: runningMtrValue,
         jobStatus: 'Punching',
         assignedTo: 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2',
+        printingStatus: 'completed',
+        updatedByPrintingAt: firestore.FieldValue.serverTimestamp(),
+        completedByPrinting: currentUser.uid,
       });
 
       alert('Job successfully updated and reassigned!');
@@ -168,8 +180,8 @@ const OperatorCreateOrder = ({navigation, route}) => {
     } catch (err) {
       console.error('Error updating order:', err);
       alert('Failed to update order');
-  }
-};
+    }
+  };
 
   return (
     <View style={styles.mainContainer}>
@@ -369,13 +381,15 @@ const OperatorCreateOrder = ({navigation, route}) => {
                 onChangeText={setRunningMtrValue}
               />
 
-              <View style={styles.btnContainer}>
-                <CustomButton
-                  title={'Submit'}
-                  style={styles.submitBtn}
-                  onPress={handleSubmit}
-                />
-              </View>
+              {!isCompleted && (
+                <View style={styles.btnContainer}>
+                  <CustomButton
+                    title={'Submit'}
+                    style={styles.submitBtn}
+                    onPress={handleSubmit}
+                  />
+                </View>
+              )}
             </>
           )}
         </View>
@@ -530,10 +544,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Lato-Regular',
   },
   value: {
-  fontSize: 14,
-  color: '#000',
-  fontFamily: 'Lato-Regular',
-},
+    fontSize: 14,
+    color: '#000',
+    fontFamily: 'Lato-Regular',
+  },
   submitBtn: {
     marginVertical: 40,
     width: '100%',

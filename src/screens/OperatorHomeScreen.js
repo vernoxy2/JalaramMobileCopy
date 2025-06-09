@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useRef} from 'react';
 import {
   View,
   Text,
@@ -20,73 +20,96 @@ const OperatorHomeScreen = ({route, navigation}) => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('allJobs');
   const [searchQuery, setSearchQuery] = useState('');
+  // Refs to persist job data across renders
+  const pendingJobsRef = useRef([]);
+  const completedJobsRef = useRef([]);
 
   // Fetch orders assigned to Printing Operator
   useEffect(() => {
     const currentUser = auth().currentUser;
     if (!currentUser) return;
 
-    const unsubscribe = firestore()
+    const updateCombinedJobs = () => {
+      const combined = [...pendingJobsRef.current, ...completedJobsRef.current];
+      const unique = Array.from(
+        new Map(combined.map(job => [job.id, job])).values(),
+      );
+      setOrders(unique);
+      setLoading(false);
+    };
+
+    const unsubscribePending = firestore()
       .collection('orders')
-      .orderBy('createdAt', 'desc')
       .where('assignedTo', '==', currentUser.uid)
       .where('jobStatus', '==', 'Printing')
+      .orderBy('createdAt', 'desc')
+      .onSnapshot(snapshot => {
+        pendingJobsRef.current = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        updateCombinedJobs();
+      });
+
+    const unsubscribeCompleted = firestore()
+      .collection('orders')
+      .where('printingStatus', '==', 'completed')
+      .where('completedByPrinting', '==', currentUser.uid)
+      .orderBy('updatedByPrintingAt', 'desc')
       .onSnapshot(
         snapshot => {
-          const fetchedOrders = snapshot.docs.map(doc => ({
+          if (!snapshot || !snapshot.docs) return;
+          completedJobsRef.current = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
           }));
-          setOrders(fetchedOrders);
-          setLoading(false);
+          updateCombinedJobs();
         },
         error => {
-          console.error('Error fetching orders: ', error);
-          setLoading(false);
+          console.error('Firestore snapshot error (Pending):', error);
         },
       );
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribePending();
+      unsubscribeCompleted();
+    };
   }, []);
 
   const getFilteredJobs = () => {
     let filtered = orders;
 
-    if (filter !== 'allJobs') {
-      filtered = filtered.filter(
-        job =>
-          job.jobStatus?.toLowerCase() ===
-          filter.replace('Jobs', '').toLowerCase(),
-      );
+    if (filter === 'pendingJobs') {
+      filtered = filtered.filter(job => job.jobStatus === 'Printing');
+    } else if (filter === 'completedJobs') {
+      filtered = filtered.filter(job => job.printingStatus === 'completed');
     }
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        job =>
-          (job.jobCardNo && job.jobCardNo.toLowerCase().includes(query)) ||
-          (job.customerName &&
-            job.customerName.toLowerCase().includes(query)) ||
-          (() => {
-            if (!job.jobDate) return false;
+      filtered = filtered.filter(job => {
+        const jobCardMatch =
+          job.jobCardNo && job.jobCardNo.toLowerCase().includes(query);
+        const customerNameMatch =
+          job.customerName && job.customerName.toLowerCase().includes(query);
 
-            let jobDateStr = '';
+        let jobDateStr = '';
+        if (job.jobDate?.toDate) {
+          jobDateStr = job.jobDate.toDate().toDateString();
+        } else if (job.jobDate?._seconds) {
+          jobDateStr = new Date(job.jobDate._seconds * 1000).toDateString();
+        } else if (typeof job.jobDate === 'string') {
+          jobDateStr = job.jobDate;
+        } else if (job.jobDate instanceof Date) {
+          jobDateStr = job.jobDate.toDateString();
+        }
 
-            if (job.jobDate.toDate) {
-              // Firebase Timestamp
-              jobDateStr = job.jobDate.toDate().toDateString();
-            } else if (job.jobDate._seconds) {
-              // Alternative Firebase Timestamp shape
-              jobDateStr = new Date(job.jobDate._seconds * 1000).toDateString();
-            } else if (typeof job.jobDate === 'string') {
-              jobDateStr = job.jobDate;
-            } else if (job.jobDate instanceof Date) {
-              jobDateStr = job.jobDate.toDateString();
-            }
+        const dateMatch = jobDateStr
+          ? jobDateStr.toLowerCase().includes(query)
+          : false;
 
-            return jobDateStr.toLowerCase().includes(query);
-          })(),
-      );
+        return jobCardMatch || customerNameMatch || dateMatch;
+      });
     }
 
     return filtered;
@@ -114,8 +137,14 @@ const OperatorHomeScreen = ({route, navigation}) => {
             : new Date(item.jobDate._seconds * 1000).toDateString()
           : ''}
       </Text>
-      <Text style={styles.statusCell}>
-        {item.jobStatus}
+      <Text
+        style={[
+          styles.statusCell,
+          item.printingStatus === 'completed'
+            ? styles.completedStatus
+            : styles.pendingStatus,
+        ]}>
+        {item.printingStatus === 'completed' ? 'completed' : 'pending'}
       </Text>
     </Pressable>
   );
@@ -258,7 +287,13 @@ const styles = StyleSheet.create({
     height: 40,
     color: '#ff0000',
     fontSize: 12,
-    fontFamily: 'Lato-Regular',
+    fontFamily: 'Lato-Bold',
+  },
+  completedStatus: {
+    color: 'green',
+  },
+  pendingStatus: {
+    color: 'red',
   },
   noJobsContainer: {
     alignItems: 'center',

@@ -6,7 +6,7 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
-  Image
+  Image,
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
@@ -26,7 +26,8 @@ const SlittingHomeScreen = ({navigation}) => {
     const unsubscribe = firestore()
       .collection('orders')
       .where('assignedTo', '==', currentUser.uid)
-      .where('jobStatus', '==', 'Slitting')
+      .where('jobStatus', 'in', ['Slitting', 'Completed']) // Adjust to your statuses for slitting
+
       .orderBy('createdAt', 'desc')
       .onSnapshot(
         snapshot => {
@@ -106,11 +107,13 @@ const SlittingHomeScreen = ({navigation}) => {
       style={styles.row}>
       <Text style={styles.cell}>{item.jobCardNo}</Text>
       <Text style={styles.cell}>{item.customerName}</Text>
-      <Text style={styles.cell}>{item.jobDate
+      <Text style={styles.cell}>
+        {item.jobDate
           ? item.jobDate.toDate
             ? item.jobDate.toDate().toDateString()
             : new Date(item.jobDate._seconds * 1000).toDateString()
-          : ''}</Text>
+          : ''}
+      </Text>
       <Text style={styles.statusCell}>{item.jobStatus}</Text>
     </Pressable>
   );
@@ -155,7 +158,7 @@ const SlittingHomeScreen = ({navigation}) => {
           ) : (
             <View style={styles.noJobsContainer}>
               <Image
-                source={require('../assets/images/listing.png')} 
+                source={require('../assets/images/listing.png')}
                 style={styles.noJobsImage}
                 resizeMode="contain"
               />

@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useRef} from 'react';
 import {
   View,
   Text,
@@ -13,41 +13,61 @@ import CustomHeader from '../components/CustomHeader';
 import SearchBar from '../components/SearchBar';
 import auth from '@react-native-firebase/auth';
 
-const PunchingHomeScreen = ({route, navigation}) => {
+const PunchingHomeScreen = ({navigation}) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('allJobs');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch orders assigned to Punching Operator
+  const pendingJobsRef = useRef([]);
+  const completedJobsRef = useRef([]);
+
   useEffect(() => {
     const currentUser = auth().currentUser;
     if (!currentUser) return;
 
-    const unsubscribe = firestore()
+    const updateCombinedJobs = () => {
+      const combined = [...pendingJobsRef.current, ...completedJobsRef.current];
+      const unique = Array.from(
+        new Map(combined.map(job => [job.id, job])).values(),
+      );
+      setOrders(unique);
+      setLoading(false);
+    };
+
+    const unsubscribePending = firestore()
       .collection('orders')
       .where('assignedTo', '==', currentUser.uid)
       .where('jobStatus', '==', 'Punching')
       .orderBy('createdAt', 'desc')
+      .onSnapshot(snapshot => {
+        pendingJobsRef.current = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        updateCombinedJobs();
+      });
 
-      .onSnapshot(
-        snapshot => {
-          const fetchedOrders = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setOrders(fetchedOrders);
-          setLoading(false);
-        },
-        error => {
-          console.error('Error fetching orders: ', error);
-          setLoading(false);
-        },
-      );
+    const unsubscribeCompleted = firestore()
+      .collection('orders')
+      .where('punchingStatus', '==', 'completed')
+      .where('completedByPunching', '==', currentUser.uid)
+      .orderBy('updatedByPunchingAt', 'desc')
+      .onSnapshot(snapshot => {
+        completedJobsRef.current = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        updateCombinedJobs();
+      });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribePending();
+      unsubscribeCompleted();
+    };
   }, []);
 
+  // Filter function remains mostly same, just maybe add handling for completed flag
   const getFilteredJobs = () => {
     let filtered = orders;
 
@@ -72,10 +92,8 @@ const PunchingHomeScreen = ({route, navigation}) => {
             let jobDateStr = '';
 
             if (job.jobDate.toDate) {
-              // Firebase Timestamp
               jobDateStr = job.jobDate.toDate().toDateString();
             } else if (job.jobDate._seconds) {
-              // Alternative Firebase Timestamp shape
               jobDateStr = new Date(job.jobDate._seconds * 1000).toDateString();
             } else if (typeof job.jobDate === 'string') {
               jobDateStr = job.jobDate;
@@ -108,12 +126,22 @@ const PunchingHomeScreen = ({route, navigation}) => {
       style={styles.row}>
       <Text style={styles.cell}>{item.jobCardNo}</Text>
       <Text style={styles.cell}>{item.customerName}</Text>
-      <Text style={styles.cell}>{item.jobDate
+      <Text style={styles.cell}>
+        {item.jobDate
           ? item.jobDate.toDate
             ? item.jobDate.toDate().toDateString()
             : new Date(item.jobDate._seconds * 1000).toDateString()
-          : ''}</Text>
-      <Text style={styles.statusCell}>{item.jobStatus}</Text>
+          : ''}
+      </Text>
+      <Text
+        style={[
+          styles.statusCell,
+          item.punchingStatus === 'completed' || item.isCompleted
+            ? styles.completedStatus
+            : styles.pendingStatus,
+        ]}>
+        {item.punchingStatus || (item.isCompleted ? 'completed' : 'pending')}
+      </Text>
     </Pressable>
   );
 
@@ -189,7 +217,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
-
   tableHeadingTypesContainer: {
     alignItems: 'center',
     backgroundColor: '#f6f6f6',
@@ -199,13 +226,11 @@ const styles = StyleSheet.create({
     marginVertical: 20,
     justifyContent: 'center',
   },
-
   tableHeadingTypesText: {
     fontSize: 18,
     color: '#000',
     fontFamily: 'Lato-Regular',
   },
-
   tableContainer: {
     maxHeight: 340,
     borderWidth: 1,
@@ -254,7 +279,13 @@ const styles = StyleSheet.create({
     height: 40,
     color: '#ff0000',
     fontSize: 12,
-    fontFamily: 'Lato-Regular',
+    fontFamily: 'Lato-Bold',
+  },
+  completedStatus: {
+    color: 'green',
+  },
+  pendingStatus: {
+    color: 'red',
   },
   noJobsContainer: {
     alignItems: 'center',
@@ -262,21 +293,18 @@ const styles = StyleSheet.create({
     marginTop: 40,
     paddingHorizontal: 20,
   },
-
   noJobsImage: {
     width: 150,
     height: 150,
     marginBottom: 20,
     opacity: 0.8,
   },
-
   noJobsTitle: {
     fontSize: 20,
     fontFamily: 'Lato-Bold',
     color: '#333',
     marginBottom: 8,
   },
-
   noJobsSubtitle: {
     fontSize: 14,
     fontFamily: 'Lato-Regular',

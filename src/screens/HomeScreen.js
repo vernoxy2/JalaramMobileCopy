@@ -107,7 +107,15 @@ const HomeScreen = ({navigation}) => {
             : new Date(item.jobDate._seconds * 1000).toDateString()
           : ''}
       </Text>
-      <Text style={styles.statusCell}>{item.jobStatus}</Text>
+      <Text
+        style={[
+          styles.statusCell,
+          item.jobStatus?.toLowerCase() === 'completed'
+            ? styles.completedStatus
+            : styles.pendingStatus,
+        ]}>
+        {item.jobStatus}
+      </Text>
     </Pressable>
   );
 
@@ -252,8 +260,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#ff0000',
     fontSize: 12,
-    fontFamily: 'Lato-Regular',
+    fontFamily: 'Lato-Bold',
   },
+  completedStatus: {
+  color: 'green',
+},
+pendingStatus: {
+  color: 'red',
+},
   noJobsContainer: {
     alignItems: 'center',
     justifyContent: 'center',

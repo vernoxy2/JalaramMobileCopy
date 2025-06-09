@@ -23,6 +23,7 @@ const CustomHeader = ({
     {label: 'Printing', value: 'printingJobs'},
     {label: 'Punching', value: 'punchingJobs'},
     {label: 'Slitting ', value: 'slittingJobs'},
+    {label: 'Pending ', value: 'Pending'},
     {label: 'Completed ', value: 'completed'},
   ];
 

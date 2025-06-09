@@ -122,6 +122,8 @@ const AdminCreateOrder = ({navigation}) => {
         blocks: blocksValue,
         windingDirection: windingDirectionValue,
         printingColors,
+        punchingStatus: normalizedLabelType === 'printing' ? 'pending' : null,
+        // punchingStatus: normalizedLabelType === 'plain' ? 'pending' : null,
       };
 
       await firestore().collection('orders').add(orderData);
