@@ -161,7 +161,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
         runningMtr: runningMtrValue,
         jobStatus: 'Punching',
         assignedTo: 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2',
-        printingStatus: 'Completed', 
       });
 
       alert('Job successfully updated and reassigned!');

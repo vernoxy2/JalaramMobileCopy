@@ -115,7 +115,7 @@ const OperatorHomeScreen = ({route, navigation}) => {
           : ''}
       </Text>
       <Text style={styles.statusCell}>
-        {item.jobStatus === 'Printing' ? 'Pending' : 'Completed'}
+        {item.jobStatus}
       </Text>
     </Pressable>
   );
