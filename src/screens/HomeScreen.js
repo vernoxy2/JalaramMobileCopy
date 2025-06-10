@@ -15,12 +15,17 @@ import {
 import firestore from '@react-native-firebase/firestore';
 import CustomHeader from '../components/CustomHeader';
 import SearchBar from '../components/SearchBar';
+import DatePicker from 'react-native-date-picker';
 
 const HomeScreen = ({navigation}) => {
   const [jobData, setJobData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('allJobs');
   const [searchQuery, setSearchQuery] = useState('');
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
+  const [openFrom, setOpenFrom] = useState(false);
+  const [openTo, setOpenTo] = useState(false);
 
   useEffect(() => {
     const unsubscribe = firestore()
@@ -43,45 +48,72 @@ const HomeScreen = ({navigation}) => {
     return () => unsubscribe();
   }, []);
 
-  const getFilteredJobs = () => {
-    let filtered = jobData;
-    if (filter !== 'allJobs') {
-      filtered = filtered.filter(
-        job =>
-          job.jobStatus?.toLowerCase() ===
-          filter.replace('Jobs', '').toLowerCase(),
-      );
+ const getFilteredJobs = () => {
+  let filtered = jobData;
+
+  if (filter !== 'allJobs') {
+    filtered = filtered.filter(
+      job =>
+        job.jobStatus?.toLowerCase() ===
+        filter.replace('Jobs', '').toLowerCase(),
+    );
+  }
+
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase();
+    filtered = filtered.filter(job =>
+      (job.jobCardNo && job.jobCardNo.toLowerCase().includes(query)) ||
+      (job.customerName && job.customerName.toLowerCase().includes(query)) ||
+      (() => {
+        if (!job.jobDate) return false;
+        let jobDateObj;
+
+        if (job.jobDate.toDate) {
+          jobDateObj = job.jobDate.toDate();
+        } else if (job.jobDate._seconds) {
+          jobDateObj = new Date(job.jobDate._seconds * 1000);
+        } else if (typeof job.jobDate === 'string') {
+          jobDateObj = new Date(job.jobDate);
+        } else {
+          jobDateObj = job.jobDate;
+        }
+
+        return jobDateObj.toDateString().toLowerCase().includes(query);
+      })(),
+    );
+  }
+
+  if (fromDate || toDate) {
+  filtered = filtered.filter(job => {
+    let jobDate;
+
+    if (job.jobDate?.toDate) {
+      jobDate = job.jobDate.toDate();
+    } else if (job.jobDate?._seconds) {
+      jobDate = new Date(job.jobDate._seconds * 1000);
+    } else if (typeof job.jobDate === 'string') {
+      jobDate = new Date(job.jobDate);
+    } else {
+      jobDate = job.jobDate;
     }
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        job =>
-          (job.jobCardNo && job.jobCardNo.toLowerCase().includes(query)) ||
-          (job.customerName &&
-            job.customerName.toLowerCase().includes(query)) ||
-          (() => {
-            if (!job.jobDate) return false;
 
-            let jobDateStr = '';
+    if (!(jobDate instanceof Date) || isNaN(jobDate)) return false;
 
-            if (job.jobDate.toDate) {
-              // Firebase Timestamp
-              jobDateStr = job.jobDate.toDate().toDateString();
-            } else if (job.jobDate._seconds) {
-              // Alternative Firebase Timestamp shape
-              jobDateStr = new Date(job.jobDate._seconds * 1000).toDateString();
-            } else if (typeof job.jobDate === 'string') {
-              jobDateStr = job.jobDate;
-            } else if (job.jobDate instanceof Date) {
-              jobDateStr = job.jobDate.toDateString();
-            }
+    // Adjusted To-Date (end of day)
+    const adjustedToDate = toDate
+      ? new Date(toDate.setHours(23, 59, 59, 999))
+      : null;
 
-            return jobDateStr.toLowerCase().includes(query);
-          })(),
-      );
-    }
-    return filtered;
-  };
+    if (fromDate && jobDate < fromDate) return false;
+    if (adjustedToDate && jobDate > adjustedToDate) return false;
+
+    return true;
+  });
+}
+
+  return filtered;
+};
+
 
   const renderHeader = () => (
     <View style={[styles.row, styles.header]}>
@@ -143,6 +175,49 @@ const HomeScreen = ({navigation}) => {
               value={searchQuery}
               onChangeText={text => setSearchQuery(text)}
             />
+
+            <View style={styles.dateFilterContainer}>
+              <Pressable
+                onPress={() => setOpenFrom(true)}
+                style={styles.dateFilterButton}>
+                <Text style={styles.dateFilterText}>
+                  {fromDate ? fromDate.toDateString() : 'From Date'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setOpenTo(true)}
+                style={styles.dateFilterButton}>
+                <Text style={styles.dateFilterText}>
+                  {toDate ? toDate.toDateString() : 'To Date'}
+                </Text>
+              </Pressable>
+            </View>
+
+            <DatePicker
+              modal
+              mode="date"
+              open={openFrom}
+              date={fromDate || new Date()}
+              onConfirm={date => {
+                setOpenFrom(false);
+                setFromDate(date);
+              }}
+              onCancel={() => setOpenFrom(false)}
+            />
+
+            <DatePicker
+              modal
+              mode="date"
+              open={openTo}
+              date={toDate || new Date()}
+              onConfirm={date => {
+                setOpenTo(false);
+                setToDate(date);
+              }}
+              onCancel={() => setOpenTo(false)}
+            />
+
             <View style={styles.tableHeadingTypesContainer}>
               <Text style={styles.tableHeadingTypesText}>All Jobs</Text>
             </View>
@@ -216,7 +291,7 @@ const styles = StyleSheet.create({
   },
   tableContainer: {
     // flex: 1,
-    maxHeight: 340,
+    maxHeight: 280,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 10,
@@ -263,11 +338,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Lato-Bold',
   },
   completedStatus: {
-  color: 'green',
-},
-pendingStatus: {
-  color: 'red',
-},
+    color: 'green',
+  },
+  pendingStatus: {
+    color: 'red',
+  },
   noJobsContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -296,4 +371,23 @@ pendingStatus: {
     textAlign: 'center',
     lineHeight: 20,
   },
+  dateFilterContainer: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginBottom: 15,
+  marginVertical:10,
+},
+dateFilterButton: {
+  width:'45%',
+  padding: 10,
+  backgroundColor: '#f6f6f6',
+  borderRadius: 6,
+  alignItems: 'center',
+},
+dateFilterText: {
+  color: '#000',
+  fontSize: 14,
+  fontFamily: 'Lato-Regular',
+},
+
 });
