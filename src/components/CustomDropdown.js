@@ -16,7 +16,7 @@ const CustomDropdown = ({
   style,
   selectedText,
   disabled = false,
-  showIcon = false
+  showIcon = false,
 }) => {
   const [visible, setVisible] = useState(false);
   const [selected, setSelected] = useState(null);

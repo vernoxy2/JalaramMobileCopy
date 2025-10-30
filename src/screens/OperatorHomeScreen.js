@@ -79,6 +79,9 @@ const OperatorHomeScreen = ({route, navigation}) => {
   const getFilteredJobs = () => {
     let filtered = orders;
 
+    // 🧹 Exclude completed jobs from all results
+    filtered = filtered.filter(job => job.printingStatus !== 'completed');
+
     if (filter === 'pendingJobs') {
       filtered = filtered.filter(job => job.jobStatus === 'Printing');
     } else if (filter === 'completedJobs') {
@@ -137,7 +140,7 @@ const OperatorHomeScreen = ({route, navigation}) => {
             : new Date(item.jobDate._seconds * 1000).toDateString()
           : ''}
       </Text>
-      <Text
+      {/* <Text
         style={[
           styles.statusCell,
           item.printingStatus === 'completed'
@@ -145,6 +148,21 @@ const OperatorHomeScreen = ({route, navigation}) => {
             : styles.pendingStatus,
         ]}>
         {item.printingStatus === 'completed' ? 'completed' : 'pending'}
+      </Text> */}
+      <Text
+        style={[
+          styles.statusCell,
+          item.printingStatus === 'completed'
+            ? styles.completedStatus
+            : item.printingStatus === 'started'
+            ? styles.jobStartedStatus
+            : styles.pendingStatus,
+        ]}>
+        {item.printingStatus === 'completed'
+          ? 'Completed'
+          : item.printingStatus === 'started'
+          ? 'Started'
+          : 'Pending'}
       </Text>
     </Pressable>
   );
@@ -294,6 +312,9 @@ const styles = StyleSheet.create({
   },
   pendingStatus: {
     color: 'red',
+  },
+  jobStartedStatus: {
+    color: '#3668B1',
   },
   noJobsContainer: {
     alignItems: 'center',

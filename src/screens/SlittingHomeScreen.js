@@ -19,10 +19,10 @@ const SlittingHomeScreen = ({navigation}) => {
   const [filter, setFilter] = useState('allJobs');
   const [searchQuery, setSearchQuery] = useState('');
 
-   const pendingJobsRef = useRef([]);
-    const completedJobsRef = useRef([]);
+  const pendingJobsRef = useRef([]);
+  const completedJobsRef = useRef([]);
 
-   useEffect(() => {
+  useEffect(() => {
     const currentUser = auth().currentUser;
     if (!currentUser) return;
 
@@ -69,6 +69,10 @@ const SlittingHomeScreen = ({navigation}) => {
 
   const getFilteredJobs = () => {
     let filtered = orders;
+
+     // 🧹 Exclude completed jobs from all results
+        filtered = filtered.filter(job => job.slittingStatus !== 'completed');
+
 
     if (filter !== 'allJobs') {
       filtered = filtered.filter(
@@ -135,14 +139,14 @@ const SlittingHomeScreen = ({navigation}) => {
           : ''}
       </Text>
       <Text
-              style={[
-                styles.statusCell,
-                item.SlittingStatus === 'completed' || item.isCompleted
-                  ? styles.completedStatus
-                  : styles.pendingStatus,
-              ]}>
-              {item.slittingStatus || (item.isCompleted ? 'completed' : 'pending')}
-            </Text>
+        style={[
+          styles.statusCell,
+          item.slittingStatus === 'completed' || item.isCompleted
+            ? styles.completedStatus
+            : styles.pendingStatus,
+        ]}>
+        {item.slittingStatus || (item.isCompleted ? 'completed' : 'pending')}
+      </Text>
     </Pressable>
   );
 

@@ -40,7 +40,7 @@ const AdminCreateOrder = ({navigation}) => {
   const [openJobDate, setOpenJobDate] = useState(false);
   const [jobSize, setJobSize] = useState('');
   const [jobQty, setJobQty] = useState('');
-  const [tooling, setTooling] = useState('');
+  // const [tooling, setTooling] = useState('');
   const [jobPaper, setJobPaper] = useState('');
   const [plateSize, setPlateSize] = useState('');
   const [upsAcrossValue, setUpsAcrossValue] = useState('');
@@ -54,6 +54,7 @@ const AdminCreateOrder = ({navigation}) => {
     box3: false,
   });
   const [selectedLabelType, setSelectedLabelType] = useState('');
+  const[accept,setAccept]=useState(false);
 
   const printingColors = [];
   if (checkboxState.box1) printingColors.push('Uv');
@@ -109,7 +110,7 @@ const AdminCreateOrder = ({navigation}) => {
         jobName,
         jobSize,
         jobQty,
-        tooling,
+        // tooling,
         jobStatus,
         assignedTo: assignedUserUID,
         createdBy: 'Admin',
@@ -123,6 +124,7 @@ const AdminCreateOrder = ({navigation}) => {
         windingDirection: windingDirectionValue,
         printingColors,
         punchingStatus: normalizedLabelType === 'printing' ? 'pending' : null,
+            accept: accept,
         // punchingStatus: normalizedLabelType === 'plain' ? 'pending' : null,
       };
 
@@ -228,11 +230,11 @@ const AdminCreateOrder = ({navigation}) => {
             value={jobQty}
             onChangeText={setJobQty}
           />
-          <CustomLabelTextInput
+          {/* <CustomLabelTextInput
             label="Tooling"
             value={tooling}
             onChangeText={setTooling}
-          />
+          /> */}
           <CustomDropdown
             placeholder={'Job Paper / Film Material'}
             data={options}
@@ -290,9 +292,9 @@ const AdminCreateOrder = ({navigation}) => {
             showIcon={true}
           />
 
-          <View style={styles.container}>
+          {/* <View style={styles.container}>
             <View style={styles.printingContainer}>
-              <Text style={styles.dropdownText}>Printing Colours:</Text>
+              <Text style={styles.dropdownText}>Printing Colors:</Text>
 
               {['Uv', 'Water', 'Special'].map((label, index) => {
                 const boxKey = `box${index + 1}`;
@@ -318,7 +320,7 @@ const AdminCreateOrder = ({navigation}) => {
                 );
               })}
             </View>
-          </View>
+          </View> */}
 
           <CustomDropdown
             placeholder={'Label Type'}

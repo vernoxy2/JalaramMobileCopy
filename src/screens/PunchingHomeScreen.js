@@ -70,6 +70,8 @@ const PunchingHomeScreen = ({navigation}) => {
   // Filter function remains mostly same, just maybe add handling for completed flag
   const getFilteredJobs = () => {
     let filtered = orders;
+     // 🧹 Exclude completed jobs from all results
+    filtered = filtered.filter(job => job.punchingStatus !== 'completed');
 
     if (filter !== 'allJobs') {
       filtered = filtered.filter(

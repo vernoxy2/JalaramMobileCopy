@@ -19,7 +19,6 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
   const {order} = route.params;
   const isCompleted = order.punchingStatus === 'completed';
 
-
   const [paperProduct, setPaperProduct] = useState(
     order.paperProductCode || '',
   );
@@ -34,6 +33,12 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
   const [runningMtrValue, setRunningMtrValue] = useState(
     typeof order.runningMtr === 'string' || typeof order.runningMtr === 'number'
       ? String(order.runningMtr)
+      : '',
+  );
+
+  const [paperCodeValue, setPaperCodeValue] = useState(
+    typeof order.paperCode === 'string' || typeof order.paperCode === 'number'
+      ? String(order.paperCode)
       : '',
   );
 
@@ -148,6 +153,23 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
 
         <Text style={styles.label}>Winding Direction</Text>
         <Text style={styles.value}>{order.windingDirection.label}</Text>
+
+        <Text style={styles.label}>Paper Code</Text>
+        {order.paperCode ? (
+          <Text style={styles.value}>
+            {typeof order.paperCode === 'object'
+              ? JSON.stringify(order.paperCode)
+              : order.paperCode}
+          </Text>
+        ) : (
+          <TextInput
+            style={styles.input}
+            value={paperCodeValue}
+            onChangeText={setPaperCodeValue}
+            placeholder="Enter Paper Code"
+            // keyboardType="numeric"
+          />
+        )}
 
         <Text style={styles.label}>Running Mtrs</Text>
         {order.runningMtr ? (

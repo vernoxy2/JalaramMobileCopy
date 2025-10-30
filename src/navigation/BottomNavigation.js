@@ -61,7 +61,7 @@ const BottomNavigation = ({ route }) => {
       })}
     >
       <Tab.Screen name="Home" component={HomeComponent} />
-      <Tab.Screen name="Notifications" component={NotificationScreen} />
+      {/* <Tab.Screen name="Notifications" component={NotificationScreen} /> */}
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

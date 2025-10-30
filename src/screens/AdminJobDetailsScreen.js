@@ -288,7 +288,9 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
       console.error('PDF Generation Error:', error);
       Alert.alert('Error', 'Failed to generate or save PDF');
     }
-  };
+  }; 
+
+
 
   return (
     <View style={styles.container}>
@@ -302,8 +304,6 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>Job Card No:</Text>
         <Text style={styles.value}>{order.jobCardNo}</Text>
-
-        
 
         <Text style={styles.label}>Customer Name:</Text>
         <Text style={styles.value}>{order.customerName}</Text>
@@ -343,8 +343,6 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         <Text style={styles.label}>Job Paper:</Text>
         <Text style={styles.value}>{order.jobPaper.label}</Text>
 
-        
-
         <View style={styles.readOnlyField}>
           <Text style={styles.label}>Paper Product Code:</Text>
           <Text style={styles.value}>
@@ -353,10 +351,10 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
               : order.paperProductCode}
           </Text>
         </View>
-        
+
         <Text style={styles.label}>Paper Product No</Text>
         <Text style={styles.value}>{order.paperProductNo}</Text>
-            
+
         <Text style={styles.label}>Job Size</Text>
         <Text style={styles.value}>{order.jobSize}</Text>
 
