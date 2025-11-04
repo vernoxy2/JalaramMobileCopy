@@ -6,11 +6,13 @@ import CustomButton from '../components/CustomButton';
 
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import { CommonActions } from '@react-navigation/native';
+import {CommonActions} from '@react-navigation/native';
+import Loader from './Loader';
 
 const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // const handleLogin = () => {
   //   if (!email || !password) {
@@ -20,71 +22,123 @@ const LoginScreen = ({navigation}) => {
 
   //   auth()
   //     .signInWithEmailAndPassword(email, password)
-  //     .then(userCredential => {
-  //       console.log('User logged in:', userCredential.user);
-  //       navigation.navigate('BottomNavigation');
+  //     .then(async userCredential => {
+  //       const uid = userCredential.user.uid;
+
+  //       try {
+  //         const userDoc = await firestore().collection('users').doc(uid).get();
+
+  //         if (!userDoc.exists) {
+  //           Alert.alert('Login Failed', 'User role not found.');
+  //           return;
+  //         }
+
+  //         const userData = userDoc.data();
+  //         const role = userData.role;
+
+  //         if (
+  //           role === 'Admin' ||
+  //           role === 'Printing' ||
+  //           role === 'Punching' ||
+  //           role === 'Slitting'
+  //         ) {
+  //           navigation.dispatch(
+  //             CommonActions.reset({
+  //               index: 0,
+  //               routes: [
+  //                 {
+  //                   name: 'BottomNavigation',
+  //                   params: {role},
+  //                 },
+  //               ],
+  //             }),
+  //           );
+  //         } else {
+  //           Alert.alert('Access Denied', 'Unknown user role.');
+  //         }
+  //       } catch (err) {
+  //         console.error(err);
+  //         Alert.alert('Error', 'Could not verify user role.');
+  //       }
   //     })
   //     .catch(error => {
   //       console.log(error);
-  //       Alert.alert('Login Failed');
+  //       Alert.alert('Login Failed', 'Please Enter Valid Credentials');
   //     });
   // };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please enter both email and password.');
       return;
     }
 
-    auth()
-      .signInWithEmailAndPassword(email, password)
-      .then(async userCredential => {
-        const uid = userCredential.user.uid;
+    if (loading) return; // prevent double tap
+    setLoading(true);
 
-        try {
-          const userDoc = await firestore().collection('users').doc(uid).get();
+    try {
+      // Ensure any existing user is fully signed out before new login
+      const currentUser = auth().currentUser;
+      if (currentUser) {
+        console.log(
+          '⚠️ Existing user found, signing out before new login:',
+          currentUser.uid,
+        );
+        await auth().signOut();
+      }
 
-          if (!userDoc.exists) {
-            Alert.alert('Login Failed', 'User role not found.');
-            return;
-          }
+      // Now safely sign in
+      const userCredential = await auth().signInWithEmailAndPassword(
+        email.trim(),
+        password,
+      );
+      const uid = userCredential.user.uid;
 
-          const userData = userDoc.data();
-          const role = userData.role;
+      console.log('✅ Logged in successfully, UID:', uid);
 
-          if (
-            role === 'Admin' ||
-            role === 'Printing' ||
-            role === 'Punching' ||
-            role === 'Slitting'
-          ) {
-            navigation.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [
-                  {
-                    name: 'BottomNavigation',
-                    params: {role},
-                  },
-                ],
-              }),
-            );
-          } else {
-            Alert.alert('Access Denied', 'Unknown user role.');
-          }
-        } catch (err) {
-          console.error(err);
-          Alert.alert('Error', 'Could not verify user role.');
-        }
-      })
-      .catch(error => {
-        console.log(error);
-        Alert.alert('Login Failed', 'Please Enter Valid Credentials');
-      });
+      // Fetch Firestore role
+      const userDoc = await firestore().collection('users').doc(uid).get();
+
+      if (!userDoc.exists) {
+        Alert.alert('Login Failed', 'User role not found.');
+        setLoading(false);
+        return;
+      }
+
+      const userData = userDoc.data();
+      const role = userData.role;
+
+      if (
+        role === 'Admin' ||
+        role === 'Printing' ||
+        role === 'Punching' ||
+        role === 'Slitting'
+      ) {
+        console.log('🔑 User role:', role);
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [
+              {
+                name: 'BottomNavigation',
+                params: {role},
+              },
+            ],
+          }),
+        );
+      } else {
+        Alert.alert('Access Denied', 'Unknown user role.');
+      }
+    } catch (error) {
+      console.error('❌ Login Error:', error);
+      Alert.alert('Login Failed', 'Please enter valid credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
-
   return (
     <View style={styles.loginMainContainer}>
+        <Loader visible={loading} />
       <CustomHeader show />
       <Image
         style={styles.loginScreenImg}
@@ -106,6 +160,7 @@ const LoginScreen = ({navigation}) => {
 
       <CustomButton
         title="Login"
+        // title={loading ? 'Logging in...' : 'Login'}
         onPress={handleLogin}
         style={styles.loginBtn}
       />

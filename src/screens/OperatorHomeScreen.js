@@ -12,6 +12,7 @@ import firestore from '@react-native-firebase/firestore';
 import CustomHeader from '../components/CustomHeader';
 import SearchBar from '../components/SearchBar';
 import auth from '@react-native-firebase/auth';
+import CustomDropdown from '../components/CustomDropdown';
 
 const OperatorHomeScreen = ({route, navigation}) => {
   const role = route?.params?.role || 'Operator';
@@ -20,6 +21,8 @@ const OperatorHomeScreen = ({route, navigation}) => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('allJobs');
   const [searchQuery, setSearchQuery] = useState('');
+  const [printingStatusFilter, setPrintingStatusFilter] = useState('all');
+
   // Refs to persist job data across renders
   const pendingJobsRef = useRef([]);
   const completedJobsRef = useRef([]);
@@ -114,6 +117,14 @@ const OperatorHomeScreen = ({route, navigation}) => {
         return jobCardMatch || customerNameMatch || dateMatch;
       });
     }
+    if (printingStatusFilter !== 'all') {
+      filtered = filtered.filter(job => {
+        const status = job.printingStatus
+          ? job.printingStatus.toLowerCase()
+          : 'pending';
+        return status === printingStatusFilter.toLowerCase();
+      });
+    }
 
     return filtered;
   };
@@ -180,6 +191,18 @@ const OperatorHomeScreen = ({route, navigation}) => {
       />
 
       <View style={styles.homeSubContainer}>
+        {/* 🔽 Printing Status Dropdown */}
+        <CustomDropdown
+          data={[
+            {label: 'All', value: 'all'},
+            {label: 'Started', value: 'started'},
+            {label: 'Pending', value: 'pending'},
+          ]}
+          onSelect={item => setPrintingStatusFilter(item.value)}
+          placeholder="Filter by Printing Status"
+          showIcon={true}
+          style={styles.dropdownContainer}
+        />
         <SearchBar
           placeholder="Search Job"
           style={styles.searchBarHome}
@@ -343,5 +366,14 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  dropdownContainer: {
+    width: '100%',
+    borderRadius: 10,
+    marginTop: 20,
+    marginBottom: 20,
+    height: 40,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
   },
 });

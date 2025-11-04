@@ -31,8 +31,8 @@ import {
 
 const AdminCreateOrder = ({navigation}) => {
   const [poNo, setPoNo] = useState('');
-  const [receivedDate, setReceivedDate] = useState(new Date());
-  const [openReceivedDate, setOpenReceivedDate] = useState(false);
+  // const [receivedDate, setReceivedDate] = useState(new Date());
+  // const [openReceivedDate, setOpenReceivedDate] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [jobCardNo, setJobCardNo] = useState('');
   const [jobName, setJobName] = useState('');
@@ -54,7 +54,8 @@ const AdminCreateOrder = ({navigation}) => {
     box3: false,
   });
   const [selectedLabelType, setSelectedLabelType] = useState('');
-  const[accept,setAccept]=useState(false);
+  const [accept, setAccept] = useState(false);
+  const [jobType, setJobType] = useState('');
 
   const printingColors = [];
   if (checkboxState.box1) printingColors.push('Uv');
@@ -74,13 +75,18 @@ const AdminCreateOrder = ({navigation}) => {
 
     let assignedUserUID;
     let jobStatus;
-
+ 
+    let punchingStatus;
     if (normalizedLabelType === 'printing') {
       assignedUserUID = 'uqTgURHeSvONdbFs154NfPYND1f2';
       jobStatus = 'Printing';
+      setJobType('Printing');
+      punchingStatus = 'pending';
     } else if (normalizedLabelType === 'plain') {
       assignedUserUID = 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2';
       jobStatus = 'Punching';
+      setJobType('Plain');
+      punchingStatus = null;
     } else {
       Alert.alert('Error', 'Please select a valid Label Type');
       return;
@@ -103,7 +109,7 @@ const AdminCreateOrder = ({navigation}) => {
 
       const orderData = {
         poNo,
-        receivedDate: firestore.Timestamp.fromDate(receivedDate),
+        // receivedDate: firestore.Timestamp.fromDate(receivedDate),
         jobDate: firestore.Timestamp.fromDate(jobDate),
         customerName,
         jobCardNo,
@@ -112,6 +118,7 @@ const AdminCreateOrder = ({navigation}) => {
         jobQty,
         // tooling,
         jobStatus,
+        jobType:selectedLabelType,
         assignedTo: assignedUserUID,
         createdBy: 'Admin',
         createdAt: firestore.FieldValue.serverTimestamp(),
@@ -124,8 +131,7 @@ const AdminCreateOrder = ({navigation}) => {
         windingDirection: windingDirectionValue,
         printingColors,
         punchingStatus: normalizedLabelType === 'printing' ? 'pending' : null,
-            accept: accept,
-        // punchingStatus: normalizedLabelType === 'plain' ? 'pending' : null,
+        accept: accept,
       };
 
       await firestore().collection('orders').add(orderData);
@@ -182,7 +188,7 @@ const AdminCreateOrder = ({navigation}) => {
           />
 
           {/* Job Received Date */}
-          <View style={styles.inputBackContainer}>
+          {/* <View style={styles.inputBackContainer}>
             <Text style={styles.inputLabel}>Job Received Date:</Text>
             <TouchableOpacity
               onPress={() => setOpenReceivedDate(true)}
@@ -202,7 +208,7 @@ const AdminCreateOrder = ({navigation}) => {
               setReceivedDate(date);
             }}
             onCancel={() => setOpenReceivedDate(false)}
-          />
+          /> */}
 
           <CustomLabelTextInput
             label="Customer Name :"
@@ -252,7 +258,7 @@ const AdminCreateOrder = ({navigation}) => {
             showIcon={true}
           />
           <CustomDropdown
-            placeholder={'Ups : Across'}
+            placeholder={'Sterio Ups'}
             data={upsAcross}
             style={styles.dropdownContainer}
             selectedText={styles.dropdownText}

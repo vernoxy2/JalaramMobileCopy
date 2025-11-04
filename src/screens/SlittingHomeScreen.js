@@ -12,12 +12,14 @@ import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import CustomHeader from '../components/CustomHeader';
 import SearchBar from '../components/SearchBar';
+import CustomDropdown from '../components/CustomDropdown';
 
 const SlittingHomeScreen = ({navigation}) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('allJobs');
   const [searchQuery, setSearchQuery] = useState('');
+  const [slittingStatusFilter, setSlittingStatusFilter] = useState('all');
 
   const pendingJobsRef = useRef([]);
   const completedJobsRef = useRef([]);
@@ -70,9 +72,8 @@ const SlittingHomeScreen = ({navigation}) => {
   const getFilteredJobs = () => {
     let filtered = orders;
 
-     // 🧹 Exclude completed jobs from all results
-        filtered = filtered.filter(job => job.slittingStatus !== 'completed');
-
+    // 🧹 Exclude completed jobs from all results
+    filtered = filtered.filter(job => job.slittingStatus !== 'completed');
 
     if (filter !== 'allJobs') {
       filtered = filtered.filter(
@@ -110,6 +111,14 @@ const SlittingHomeScreen = ({navigation}) => {
           })(),
       );
     }
+    if (slittingStatusFilter !== 'all') {
+      filtered = filtered.filter(job => {
+        const status = job.slittingStatus
+          ? job.slittingStatus.toLowerCase()
+          : 'pending';
+        return status === slittingStatusFilter.toLowerCase();
+      });
+    }
 
     return filtered;
   };
@@ -138,7 +147,7 @@ const SlittingHomeScreen = ({navigation}) => {
             : new Date(item.jobDate._seconds * 1000).toDateString()
           : ''}
       </Text>
-      <Text
+      {/* <Text
         style={[
           styles.statusCell,
           item.slittingStatus === 'completed' || item.isCompleted
@@ -146,6 +155,17 @@ const SlittingHomeScreen = ({navigation}) => {
             : styles.pendingStatus,
         ]}>
         {item.slittingStatus || (item.isCompleted ? 'completed' : 'pending')}
+      </Text> */}
+      <Text
+        style={[
+          styles.statusCell,
+          item.slittingStatus === 'completed'
+            ? styles.completedStatus
+            : item.slittingStatus === 'started'
+            ? {color: '#3668B1'}
+            : styles.pendingStatus,
+        ]}>
+        {item.slittingStatus || 'pending'}
       </Text>
     </Pressable>
   );
@@ -163,6 +183,17 @@ const SlittingHomeScreen = ({navigation}) => {
       />
 
       <View style={styles.homeSubContainer}>
+        <CustomDropdown
+          data={[
+            {label: 'All', value: 'all'},
+            {label: 'Started', value: 'started'},
+            {label: 'Pending', value: 'pending'},
+          ]}
+          onSelect={item => setSlittingStatusFilter(item.value)}
+          placeholder="Filter by Slitting Status"
+          showIcon={true}
+          style={styles.dropdownContainer}
+        />
         <SearchBar
           placeholder="Search Job"
           style={styles.searchBarHome}
@@ -320,6 +351,15 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 20,
+  },
+    dropdownContainer: {
+    width: '100%',
+    borderRadius: 10,
+    marginTop: 20,
+    marginBottom: 20,
+    height: 40,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
   },
 });
 

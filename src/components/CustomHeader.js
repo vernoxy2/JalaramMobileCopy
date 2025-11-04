@@ -3,7 +3,10 @@ import {View, Image, Text, StyleSheet, Pressable} from 'react-native';
 import CustomButton from './CustomButton';
 import CustomDropdown from './CustomDropdown';
 import SearchBar from './SearchBar';
-import { useNavigation } from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
+import {useState, useEffect} from 'react';
+import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
 
 const CustomHeader = ({
   showHeadingTextContainer = false,
@@ -15,8 +18,8 @@ const CustomHeader = ({
   showHeaderSearchBar = false,
   onPress,
   showHeadingSection1Container = false,
-  showBackBtn ,
-  onDropdownSelect
+  showBackBtn,
+  onDropdownSelect,
 }) => {
   const options = [
     {label: 'All Jobs', value: 'allJobs'},
@@ -28,45 +31,62 @@ const CustomHeader = ({
   ];
 
   const navigation = useNavigation();
+  const [role, setRole] = useState(null);
 
   const handleSelect = item => {
     console.log('Selected:', item);
     onDropdownSelect?.(item.value);
   };
 
+  useEffect(() => {
+    fetchUserRole();
+  }, []);
+
+  const fetchUserRole = async () => {
+    try {
+      const currentUser = auth().currentUser;
+      if (currentUser) {
+        const userDoc = await firestore()
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+        if (userDoc.exists) {
+          setRole(userDoc.data().role);
+        } else {
+          console.warn('User document not found');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+    }
+  };
+
   return (
     <View style={styles.loginTopContainer}>
-{
-    showHeadingSection1Container && (
+      {showHeadingSection1Container && (
         <View style={styles.headingSection1Container}>
-{
-    showBackBtn ? (
-        <Pressable onPress={()=>navigation.goBack()}>
-        <Image
-          style={styles.backBtnImg}
-          source={require('../assets/images/backArrow.png')}
-        />
-        </Pressable>
+          {showBackBtn ? (
+            <Pressable onPress={() => navigation.goBack()}>
+              <Image
+                style={styles.backBtnImg}
+                source={require('../assets/images/backArrow.png')}
+              />
+            </Pressable>
+          ) : (
+            <View />
+          )}
+          {showHeadingTextContainer && (
+            <View style={styles.headingTextContainer}>
+              <Text style={styles.headingText}>{headingTitle}</Text>
+            </View>
+          )}
 
-    ) : (
-        <View/>
-    )
-}
-        {showHeadingTextContainer && (
-          <View style={styles.headingTextContainer}>
-            <Text style={styles.headingText}>{headingTitle}</Text>
-          </View>
-        )}
-
-        <View></View>
-      </View>
-
-    )
-}
+          <View></View>
+        </View>
+      )}
       {showHeadingSection2Container && (
         <View style={styles.headingSection2Container}>
-          {
-          showHeaderBtn ? (
+          {showHeaderBtn ? (
             <CustomButton
               style={styles.btnContainer}
               title={btnHeading}
@@ -75,8 +95,8 @@ const CustomHeader = ({
             />
           ) : (
             <View></View>
-          )} 
-
+          )}
+          {/* {role && role.toLowerCase() === 'admin' ? (<>HELLO</>) : (<>HII</>)}
           {showHeaderDropDown && (
             <CustomDropdown
               data={options}
@@ -84,7 +104,22 @@ const CustomHeader = ({
               placeholder={'All Jobs'}
               showIcon={true}
             />
+          )} */}
+          {role && role.toLowerCase() === 'admin' ? (
+            <>
+              {showHeaderDropDown && (
+                <CustomDropdown
+                  data={options}
+                  onSelect={handleSelect}
+                  placeholder="All Jobs"
+                  showIcon={true}
+                />
+              )}
+            </>
+          ) : (
+            <></>
           )}
+
           {showHeaderSearchBar && <SearchBar placeholder={'Search Job'} />}
         </View>
       )}
@@ -129,7 +164,7 @@ const styles = StyleSheet.create({
   },
   headingText: {
     fontSize: 20,
-    fontFamily:'Lato-Black'
+    fontFamily: 'Lato-Black',
   },
   backBtnImg: {
     height: 20,

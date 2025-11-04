@@ -12,12 +12,14 @@ import firestore from '@react-native-firebase/firestore';
 import CustomHeader from '../components/CustomHeader';
 import SearchBar from '../components/SearchBar';
 import auth from '@react-native-firebase/auth';
+import CustomDropdown from '../components/CustomDropdown';
 
 const PunchingHomeScreen = ({navigation}) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('allJobs');
   const [searchQuery, setSearchQuery] = useState('');
+  const [punchingStatusFilter, setPunchingStatusFilter] = useState('all');
 
   const pendingJobsRef = useRef([]);
   const completedJobsRef = useRef([]);
@@ -70,7 +72,7 @@ const PunchingHomeScreen = ({navigation}) => {
   // Filter function remains mostly same, just maybe add handling for completed flag
   const getFilteredJobs = () => {
     let filtered = orders;
-     // 🧹 Exclude completed jobs from all results
+    // 🧹 Exclude completed jobs from all results
     filtered = filtered.filter(job => job.punchingStatus !== 'completed');
 
     if (filter !== 'allJobs') {
@@ -107,6 +109,14 @@ const PunchingHomeScreen = ({navigation}) => {
           })(),
       );
     }
+    if (punchingStatusFilter !== 'all') {
+      filtered = filtered.filter(job => {
+        const status = job.punchingStatus
+          ? job.punchingStatus.toLowerCase()
+          : 'pending';
+        return status === punchingStatusFilter.toLowerCase();
+      });
+    }
 
     return filtered;
   };
@@ -135,7 +145,7 @@ const PunchingHomeScreen = ({navigation}) => {
             : new Date(item.jobDate._seconds * 1000).toDateString()
           : ''}
       </Text>
-      <Text
+      {/* <Text
         style={[
           styles.statusCell,
           item.punchingStatus === 'completed' || item.isCompleted
@@ -143,6 +153,21 @@ const PunchingHomeScreen = ({navigation}) => {
             : styles.pendingStatus,
         ]}>
         {item.punchingStatus || (item.isCompleted ? 'completed' : 'pending')}
+      </Text> */}
+      <Text
+        style={[
+          styles.statusCell,
+          item.punchingStatus === 'completed'
+            ? styles.completedStatus
+            : item.punchingStatus === 'started'
+            ? {color: '#3668B1'}
+            : styles.pendingStatus,
+        ]}>
+        {item.punchingStatus === 'started'
+          ? 'started'
+          : item.punchingStatus === 'completed'
+          ? 'completed'
+          : 'pending'}
       </Text>
     </Pressable>
   );
@@ -160,6 +185,18 @@ const PunchingHomeScreen = ({navigation}) => {
       />
 
       <View style={styles.homeSubContainer}>
+        <CustomDropdown
+          data={[
+            {label: 'All', value: 'all'},
+            {label: 'Started', value: 'started'},
+            {label: 'Pending', value: 'pending'},
+          ]}
+          onSelect={item => setPunchingStatusFilter(item.value)}
+          placeholder="Filter by Punching Status"
+          showIcon={true}
+          style={styles.dropdownContainer}
+        />
+
         <SearchBar
           placeholder="Search Job"
           style={styles.searchBarHome}
@@ -313,5 +350,14 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  dropdownContainer: {
+    width: '100%',
+    borderRadius: 10,
+    marginTop: 20,
+    marginBottom: 20,
+    height: 40,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
   },
 });

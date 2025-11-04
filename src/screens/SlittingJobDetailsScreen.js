@@ -14,6 +14,8 @@ import CustomHeader from '../components/CustomHeader';
 import CustomButton from '../components/CustomButton';
 import {format} from 'date-fns';
 import auth from '@react-native-firebase/auth';
+import CustomDropdown from '../components/CustomDropdown';
+import {upsLabels} from '../constant/constant';
 
 const SlittingJobDetailsScreen = ({route, navigation}) => {
   const {order} = route.params;
@@ -22,11 +24,15 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
   const [totalA, setTotalA] = useState(0);
   const [totalB, setTotalB] = useState(0);
   const [totalC, setTotalC] = useState(0);
+  const [isSlittingStart, setIsSlittingStart] = useState(
+    order.isSlittingStart || false,
+  );
 
   const formatTimestamp = timestamp => {
     if (!timestamp) return 'Not started yet';
     return format(timestamp.toDate(), 'dd MMM yyyy, hh:mm a'); // Convert Firestore Timestamp to JS Date and format
   };
+  const [upsLabel, setUpsLabel] = useState('');
 
   useEffect(() => {
     let sumA = 0,
@@ -70,8 +76,6 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
-
-
       await firestore().collection('orders').doc(order.id).update({
         jobStatus: 'Completed',
         slittingStatus: 'completed',
@@ -80,12 +84,39 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
         updatedBySlittingAt: firestore.FieldValue.serverTimestamp(),
         slittingData: inputs,
         completedBySlitting: currentUser.uid,
+        isSlittingStart: false,
+        upsLabel: upsLabel,
       });
       Alert.alert('Success', 'Job completed ');
       navigation.goBack();
     } catch (error) {
       console.error('Error completing job:', error);
       Alert.alert('Error', 'Failed to complete job');
+    }
+  };
+
+  const handleSlittingStart = async () => {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        Alert.alert('Error', 'User not authenticated');
+        return;
+      }
+
+      await firestore().collection('orders').doc(order.id).update({
+        jobStatus: 'Slitting',
+        slittingStatus: 'started',
+        // assignedTo: currentUser.uid,
+        startBySlittingAt: firestore.FieldValue.serverTimestamp(),
+        isSlittingStart: true,
+        updatedBySlittingAt: firestore.FieldValue.serverTimestamp(),
+      });
+
+      Alert.alert('Success', 'Slitting started');
+      navigation.navigate('SlittingHomeScreen');
+    } catch (error) {
+      console.error('Error starting slitting:', error);
+      Alert.alert('Error', 'Failed to start slitting');
     }
   };
 
@@ -97,129 +128,158 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
         showHeadingTextContainer={true}
         headingTitle={'Job Details'}
       />
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.label}>Job Card No:</Text>
-        <Text style={styles.value}>{order.jobCardNo}</Text>
+      {!isSlittingStart ? (
+        <>
+          <ScrollView contentContainerStyle={styles.content}>
+            <Text style={styles.label}>Job Card No:</Text>
+            <Text style={styles.value}>{order.jobCardNo}</Text>
 
-        <Text style={styles.label}>Customer Name:</Text>
-        <Text style={styles.value}>{order.customerName}</Text>
+            <Text style={styles.label}>Customer Name:</Text>
+            <Text style={styles.value}>{order.customerName}</Text>
 
-        <Text style={styles.label}>Job Date:</Text>
-        <Text style={styles.value}>
-          {order.jobDate ? order.jobDate.toDate().toDateString() : 'N/A'}
-        </Text>
+            <Text style={styles.label}>Job Date:</Text>
+            <Text style={styles.value}>
+              {order.jobDate ? order.jobDate.toDate().toDateString() : 'N/A'}
+            </Text>
 
-        <Text style={styles.label}>Job Status:</Text>
-        <Text style={styles.value}>{order.jobStatus}</Text>
+            <Text style={styles.label}>Job Status:</Text>
+            <Text style={styles.value}>{order.jobStatus}</Text>
 
-        <Text style={styles.label}>Job Paper:</Text>
-        <Text style={styles.value}>{order.jobPaper.label}</Text>
+            <Text style={styles.label}>Job Paper:</Text>
+            <Text style={styles.value}>{order.jobPaper.label}</Text>
 
-        <View style={styles.readOnlyField}>
-          <Text style={styles.label}>Paper Product Code:</Text>
-          <Text style={styles.value}>
-            {typeof order.paperProductCode === 'object'
-              ? order.paperProductCode.label
-              : order.paperProductCode}
-          </Text>
+            <View style={styles.readOnlyField}>
+              <Text style={styles.label}>Paper Product Code:</Text>
+              <Text style={styles.value}>
+                {typeof order.paperProductCode === 'object'
+                  ? order.paperProductCode.label
+                  : order.paperProductCode}
+              </Text>
+            </View>
+
+            <Text style={styles.label}>Job Size</Text>
+            <Text style={styles.value}>{order.jobSize}</Text>
+
+            <Text style={styles.label}>Printing Plate Size</Text>
+            <Text style={styles.value}>{order.printingPlateSize.label}</Text>
+
+            <Text style={styles.label}>Sterio Ups</Text>
+            <Text style={styles.value}>{order.upsAcross.label}</Text>
+
+            <Text style={styles.label}>Around</Text>
+            <Text style={styles.value}>{order.around.label}</Text>
+
+            <Text style={styles.label}>Teeth Size</Text>
+            <Text style={styles.value}>{order.teethSize.label}</Text>
+
+            <Text style={styles.label}>Blocks</Text>
+            <Text style={styles.value}>{order.blocks.label}</Text>
+
+            <Text style={styles.label}>Winding Direction</Text>
+            <Text style={styles.value}>{order.windingDirection.label}</Text>
+
+            <Text style={styles.label}>Running Mtrs</Text>
+            <Text style={styles.value}>{order.runningMtr}</Text>
+
+            {/* Add more job fields as needed */}
+          </ScrollView>
+          <View style={styles.buttonContainer}>
+            <CustomButton
+              onPress={handleSlittingStart}
+              title={'Start Slitting'}
+              style={styles.completeBtn}
+            />
+          </View>
+        </>
+      ) : (
+        <ScrollView>
+        <View style={styles.homeSubContainer}>
+          <Text style={styles.label}>Job Card No:</Text>
+          <Text style={styles.value}>{order.jobCardNo}</Text>
+
+          <CustomDropdown
+            placeholder={'Label Ups'}
+            data={upsLabels}
+            style={styles.dropdownContainer}
+            selectedText={styles.dropdownText}
+            onSelect={item => setUpsLabel(item)}
+            showIcon={true}
+          />
+
+          <Pressable style={styles.addButton} onPress={addInputField}>
+            <Text style={styles.buttonText}>Add Row</Text>
+          </Pressable>
+
+          <View style={styles.headingRow}>
+            <Text style={styles.headingText}>No of Labels</Text>
+            <Text style={styles.headingText}>No of Rolls</Text>
+            <Text style={styles.headingText}>Total</Text>
+          </View>
+          {inputs.map((input, index) => (
+            <View key={index} style={styles.row}>
+              <TextInput
+                style={styles.textInput}
+                value={input.A}
+                placeholder="A"
+                keyboardType="numeric"
+                onChangeText={text => handleInputChange(text, index, 'A')}
+              />
+
+              <TextInput
+                style={styles.textInput}
+                value={input.B}
+                placeholder="B"
+                keyboardType="numeric"
+                onChangeText={text => handleInputChange(text, index, 'B')}
+              />
+
+              <TextInput
+                style={styles.textInput}
+                value={input.C}
+                editable={false}
+                placeholder="C"
+              />
+            </View>
+          ))}
+          <View style={styles.horizontalLine} />
+          <View style={styles.row}>
+            <View>
+              <Text style={styles.totalText}>Total Labels</Text>
+              <TextInput
+                style={styles.textInput}
+                value={totalA.toString()}
+                editable={false}
+              />
+            </View>
+            <View>
+              <Text style={styles.totalText}>Total Rolls</Text>
+              <TextInput
+                style={styles.textInput}
+                value={totalB.toString()}
+                editable={false}
+              />
+            </View>
+            <View>
+              <Text style={styles.totalText}>Grand Total</Text>
+              <TextInput
+                style={styles.textInput}
+                value={totalC.toString()}
+                editable={false}
+              />
+            </View>
+          </View>
+
+
+          <View style={styles.buttonContainer}>
+            <CustomButton
+              onPress={handleComplete}
+              title={'Slitting Complete'}
+              style={styles.completeBtn}
+            />
+          </View>
         </View>
-
-        <Text style={styles.label}>Job Size</Text>
-        <Text style={styles.value}>{order.jobSize}</Text>
-
-        <Text style={styles.label}>Printing Plate Size</Text>
-        <Text style={styles.value}>{order.printingPlateSize.label}</Text>
-
-        <Text style={styles.label}>Ups : Across</Text>
-        <Text style={styles.value}>{order.upsAcross.label}</Text>
-
-        <Text style={styles.label}>Around</Text>
-        <Text style={styles.value}>{order.around.label}</Text>
-
-        <Text style={styles.label}>Teeth Size</Text>
-        <Text style={styles.value}>{order.teethSize.label}</Text>
-
-        <Text style={styles.label}>Blocks</Text>
-        <Text style={styles.value}>{order.blocks.label}</Text>
-
-        <Text style={styles.label}>Winding Direction</Text>
-        <Text style={styles.value}>{order.windingDirection.label}</Text>
-
-        <Text style={styles.label}>Running Mtrs</Text>
-        <Text style={styles.value}>{order.runningMtr}</Text>
-
-        <Pressable style={styles.addButton} onPress={addInputField}>
-          <Text style={styles.buttonText}>Add Row</Text>
-        </Pressable>
-        <View style={styles.headingRow}>
-          <Text style={styles.headingText}>No of Labels</Text>
-          <Text style={styles.headingText}>No of Rolls</Text>
-          <Text style={styles.headingText}>Total</Text>
-        </View>
-        {inputs.map((input, index) => (
-          <View key={index} style={styles.row}>
-            <TextInput
-              style={styles.textInput}
-              value={input.A}
-              placeholder="A"
-              keyboardType="numeric"
-              onChangeText={text => handleInputChange(text, index, 'A')}
-            />
-
-            <TextInput
-              style={styles.textInput}
-              value={input.B}
-              placeholder="B"
-              keyboardType="numeric"
-              onChangeText={text => handleInputChange(text, index, 'B')}
-            />
-
-            <TextInput
-              style={styles.textInput}
-              value={input.C}
-              editable={false}
-              placeholder="C"
-            />
-          </View>
-        ))}
-        <View style={styles.horizontalLine} />
-        <View style={styles.row}>
-          <View>
-            <Text style={styles.totalText}>Total Labels</Text>
-            <TextInput
-              style={styles.textInput}
-              value={totalA.toString()}
-              editable={false}
-            />
-          </View>
-          <View>
-            <Text style={styles.totalText}>Total Rolls</Text>
-            <TextInput
-              style={styles.textInput}
-              value={totalB.toString()}
-              editable={false}
-            />
-          </View>
-          <View>
-            <Text style={styles.totalText}>Grand Total</Text>
-            <TextInput
-              style={styles.textInput}
-              value={totalC.toString()}
-              editable={false}
-            />
-          </View>
-        </View>
-
-        {/* Add more job fields as needed */}
-      </ScrollView>
-
-      <View style={styles.buttonContainer}>
-        <CustomButton
-          onPress={handleComplete}
-          title={'COMPLETE'}
-          style={styles.completeBtn}
-        />
-      </View>
+        </ScrollView>
+      )}
     </View>
   );
 };
@@ -245,7 +305,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Lato-Regular',
   },
   buttonContainer: {
-    padding: 20,
+    // padding: 20,
+    marginTop: 10,
     borderTopWidth: 1,
     borderColor: '#ddd',
     backgroundColor: '#fff',
@@ -307,6 +368,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#3668B1',
     height: 50,
     width: '100%',
+  },
+  dropdownContainer: {
+    width: '100%',
+    borderRadius: 10,
+    marginTop: 20,
+
+    height: 40,
+    justifyContent: 'space-between',
+
+    paddingHorizontal: 20,
+  },
+   homeSubContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
 });
 

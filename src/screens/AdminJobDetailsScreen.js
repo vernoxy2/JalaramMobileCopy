@@ -88,30 +88,30 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
     }
   };
 
-  const openPDFWithIntentLauncher = async filePath => {
-    if (Platform.OS === 'android') {
-      try {
-        await IntentLauncher.startActivity({
-          action: 'android.intent.action.VIEW',
-          data: `file://${filePath}`,
-          type: 'application/pdf',
-          flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
-        });
-        console.log('PDF opened with IntentLauncher');
-      } catch (err) {
-        console.error('IntentLauncher error:', err);
-        Alert.alert(
-          'Error Opening PDF',
-          'No app found to open PDF files. Please install a PDF viewer.',
-        );
-      }
-    } else {
-      Alert.alert(
-        'Not Supported',
-        'Opening PDFs via IntentLauncher is currently only supported on Android.',
-      );
-    }
-  };
+  // const openPDFWithIntentLauncher = async filePath => {
+  //   if (Platform.OS === 'android') {
+  //     try {
+  //       await IntentLauncher.startActivity({
+  //         action: 'android.intent.action.VIEW',
+  //         data: `file://${filePath}`,
+  //         type: 'application/pdf',
+  //         flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
+  //       });
+  //       console.log('PDF opened with IntentLauncher');
+  //     } catch (err) {
+  //       console.error('IntentLauncher error:', err);
+  //       Alert.alert(
+  //         'Error Opening PDF',
+  //         'No app found to open PDF files. Please install a PDF viewer.',
+  //       );
+  //     }
+  //   } else {
+  //     Alert.alert(
+  //       'Not Supported',
+  //       'Opening PDFs via IntentLauncher is currently only supported on Android.',
+  //     );
+  //   }
+  // };
 
   const generatePDF = async () => {
     try {
@@ -120,58 +120,264 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         Alert.alert('Permission Denied', 'Storage permission not granted');
         return;
       }
+      // Pre-calculate formatted values
+
+      const jobCreationTime = order.createdAt
+        ? formatTimestamp(order.createdAt)
+        : '';
+
+      const startTimeFormatted = order.updatedAt
+        ? formatTimestamp(order.updatedAt)
+        : '';
+      const endTimeFormatted = order.endTime
+        ? formatTimestamp(order.endTime)
+        : '';
+      const totalTimeFormatted =
+        totalTime !== null ? formatDuration(totalTime) : '';
+      const jobDateFormatted = order.jobDate
+        ? order.jobDate.toDate().toLocaleDateString()
+        : '';
+      const printingStartTimeFormatted = order.updatedAt
+        ? formatTimestamp(order.updatedAt)
+        : '';
+
+      const printingEndTimeFormatted = order.updatedByPrintingAt
+        ? formatTimestamp(order.updatedByPrintingAt)
+        : '';
+
+      const punchingStartTimeFormatted = order.punchingStartAt
+        ? formatTimestamp(order.punchingStartAt)
+        : '';
+
+      const punchingEndTimeFormatted = order.updatedByPunchingAt
+        ? formatTimestamp(order.updatedByPunchingAt)
+        : '';
+
+      const slittingStartTimeFormatted = order.startBySlittingAt
+        ? formatTimestamp(order.startBySlittingAt)
+        : '';
+
+      const slittingEndTimeFormatted = order.updatedBySlittingAt
+        ? formatTimestamp(order.updatedBySlittingAt)
+        : '';
+
+      const slittingRows =
+        order.slittingData && order.slittingData.length > 0
+          ? order.slittingData
+              .map(
+                item => `
+              <tr>
+                <td>${item.A || ''}</td>
+                <td>${item.B || ''}</td>
+                <td>${item.C || ''}</td>
+              </tr>`,
+              )
+              .join('')
+          : `<tr><td colspan="3">No data available</td></tr>`;
 
       const htmlContent = `
-      <h1>Job Details</h1>
-      <p><strong>Job Card No:</strong> ${order.jobCardNo}</p>
-      <p><strong>Customer Name:</strong> ${order.customerName}</p>
-      <p><strong>Job Date:</strong> ${
-        order.jobDate ? order.jobDate.toDate().toDateString() : 'N/A'
-      }</p>
-      <p><strong>Job Status:</strong> ${order.jobStatus}</p>
-      <p><strong>Start Time:</strong> ${formatTimestamp(
-        order.updatedAt || order.updatedByPunchingAt,
-      )}</p>
-      <p><strong>End Time:</strong> ${formatTimestamp(order.endTime)}</p>
-      <p><strong>Total Time:</strong> ${
-        totalTime !== null ? formatDuration(totalTime) : 'N/A'
-      }</p>
-      <p><strong>Running Mtrs:</strong> ${order.runningMtr}</p>
-      <p><strong>Job Paper:</strong> ${order.jobPaper.label}</p>
-      <p><strong>Paper Product Code:</strong> ${
-        typeof order.paperProductCode === 'object'
-          ? order.paperProductCode.label
-          : order.paperProductCode
-      }</p>
-      <p><strong>Job Size:</strong> ${order.jobSize}</p>
-      <p><strong>Printing Plate Size:</strong> ${
-        order.printingPlateSize.label
-      }</p>
-      <p><strong>Ups Across:</strong> ${order.upsAcross.label}</p>
-      <p><strong>Around:</strong> ${order.around.label}</p>
-      <p><strong>Teeth Size:</strong> ${order.teethSize.label}</p>
-      <p><strong>Blocks:</strong> ${order.blocks.label}</p>
-      <p><strong>Winding Direction:</strong> ${order.windingDirection.label}</p>
+      <html>
+      <head>
+          <style>
+          body { font-family: Arial, sans-serif; }
+          h1 { text-align: center; color: #3668B1; }
+          .section { border: 2px solid #3668B1; border-radius: 8px; margin-bottom: 18px; padding: 10px 15px; }
+          .section-title { background: #3668B1; color: #fff; font-weight: bold; padding: 3px 10px; border-radius: 5px; display: inline-block; margin-bottom: 10px; }
+          .row { display: flex; flex-wrap: wrap; margin-bottom: 8px; }
+          .col { flex: 1; min-width: 180px; margin-right: 10px; }
+          .label { font-weight: bold; }
+          .input { display: inline-block; min-width: 120px; } /* 🧹 removed underline */
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th, td { border: 1px solid #3668B1; padding: 4px 8px; text-align: center; }
+          .small-table td { min-width: 40px; }
+          .color-seq-table { margin-bottom: 15px; }
+          .time-row {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 20px;
+              flex-wrap: nowrap;
+            }
+            .time-row .col {
+              flex: 0 0 auto;  /* Prevent wrapping */
+              white-space: nowrap;
+            }
+            .time-row .col:last-child {
+              margin-left: auto; /* Push total time to right */
+            }
+        </style>
 
-      <h2>Slitting Data</h2>
-      ${
-        order.slittingData && order.slittingData.length > 0
-          ? `<table border="1" style="width:100%; border-collapse: collapse;">
-              <tr><th>Label</th><th>No of Rolls</th><th>Total</th></tr>
-              ${order.slittingData
-                .map(
-                  item =>
-                    `<tr><td>${item.A}</td><td>${item.B}</td><td>${item.C}</td></tr>`,
-                )
-                .join('')}
+      </head>
+      <body>    
+
+        <div class="section">
+
+          <div class="section-title">Admin</div>
+          <div class="row">
+                <div class="col"><span class="label">PO No.:</span> <span class="input">${
+                  order.poNo || ''
+                }</span></div>
+                <div class="col"><span class="label">Job Date:</span> <span class="input">${jobDateFormatted}</span></div>
+          </div>
+          <div class="row">
+                <div class="col"><span class="label">Customer Name:</span> <span class="input">${
+                  order.customerName || ''
+                }</span></div>
+                  <div class="col"><span class="label">Label Type:</span> <span class="input">${
+                    order.jobType || ''
+                  }</span></div>
+              
+          </div>
+          <div class="row">
+                <div class="col"><span class="label">Job Card no:</span> <span class="input">${
+                  order.jobCardNo || ''
+                }</span></div>
+                <div class="col"><span class="label">Job Name:</span> <span class="input">${
+                  order.jobName || ''
+                }</span></div>
+          </div>
+          <div class="row">
+              <div class="col"><span class="label">Job Original Size:</span> <span class="input">${
+                order.jobSize || ''
+              }</span></div>
+              <div class="col"><span class="label">Job Qty:</span> <span class="input">${
+                order.jobQty || ''
+              }</span></div>
+          </div>        
+          <div class="row">
+              <div class="col"><span class="label">Job Creation Time:</span> <span class="input">${jobCreationTime}</span></div>  
+              <div class="col"></div>           
+          </div>          
+            <div class="row time-row">
+            <div class="col"><span class="label">Start time:</span> <span class="input">${startTimeFormatted}</span></div>
+            <div class="col"><span class="label">End time:</span> <span class="input">${endTimeFormatted}</span></div>
+            <div class="col"><span class="label">Total time:</span> <span class="input">${totalTimeFormatted}</span></div>
+          </div>
+
+        </div>
+
+        <div class="section">
+          <div class="section-title">Printing</div>
+          <div class="row">
+            <div class="col"><span class="label">Printing Start Time:</span> <span class="input">${
+              printingStartTimeFormatted || ''
+            }</span></div>
+            <div class="col"><span class="label">Printing End Time:</span> <span class="input">${
+              printingEndTimeFormatted || ''
+            }</span></div>
+          </div>
+          <div class="row"><span class="label">Color Seq.</span></div>
+          
+                            <table class="small-table color-seq-table">
+                    <tr>
+                      <td>C : ${order.colorAniloxValues?.C?.value || ''}</td>
+                      <td>M : ${order.colorAniloxValues?.M?.value || ''}</td>
+                      <td>Y : ${order.colorAniloxValues?.Y?.value || ''}</td>
+                      <td>K : ${order.colorAniloxValues?.K?.value || ''}</td>
+                    </tr>
+                    <tr>
+                      <td>Sq1 : ${
+                        order.colorAniloxValues?.Sq1?.value || ''
+                      }</td>
+                      <td>Sq2 : ${
+                        order.colorAniloxValues?.Sq2?.value || ''
+                      }</td>    
+                      <td>Sq3 : ${
+                        order.colorAniloxValues?.Sq3?.value || ''
+                      }</td>
+                      <td>Sq4 : ${
+                        order.colorAniloxValues?.Sq4?.value || ''
+                      }</td>
+                    </tr>
+                  </table>
+
+                <div class="row">
+                  <div class="col"><span class="label">Running Mtrs:</span> <span class="input">${
+                    order.runningMtr || ''
+                  }</span></div>
+                  <div class="col"><span class="label">Paper Product Code:</span> <span class="input">${
+                    order.paperProductCode?.label ||
+                    order.paperProductCode ||
+                    ''
+                  }</span>
+                  </div>
+                </div>
+                 <div class="row">
+                    <div class="col">
+                      <span class="label">Printing Colors:</span>
+                      <span class="input">
+                        ${
+                          order.printingColors &&
+                          order.printingColors.length > 0
+                            ? order.printingColors.join(', ')
+                            : ''
+                        }
+                      </span>
+                    </div>
+                 </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Punching</div>
+          <div class="row">
+            <div class="col"><span class="label">Punching Start Time:</span> <span class="input">${
+              punchingStartTimeFormatted || ''
+            }</span></div>
+            <div class="col"><span class="label">Punching End Time:</span> <span class="input">${
+              punchingEndTimeFormatted || ''
+            }</span></div>
+          </div>
+          <div class="row">
+            <div class="col"><span class="label">Paper Code:</span> <span class="input">${
+              order.paperCode || ''
+            }</span></div>
+            <div class="col"><span class="label">Running Mtrs:</span> <span class="input">${
+              order.runningMtr || ''
+            }</span></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Slitting</div>
+          <div class="row">
+            <div class="col"><span class="label">Slitting Start Time:</span> <span class="input">${
+              slittingStartTimeFormatted || ''
+            }</span></div>
+            <div class="col"><span class="label">Slitting End Time:</span> <span class="input">${
+              slittingEndTimeFormatted || ''
+            }</span></div>
+          </div>
+          <div class="subsection">
+            <table border="1">
+              <thead>
+                <tr>
+                  <th>Labels</th>
+                  <th>No of Rolls</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${slittingRows}
+              </tbody>
             </table>
-            <p><strong>Total Rolls:</strong> ${totalB}</p>
-            <p><strong>Final Total:</strong> ${totalC}</p>`
-          : '<p>No slitting data available.</p>'
-      }
+
+          </div>
+        </div>
+      </body>
+      </html>
     `;
 
-      const path = `${RNFS.DocumentDirectoryPath}/Job_Details_${order.jobCardNo}.pdf`;
+      // 🧹 Safe filename logic
+      const rawJobCardNo = order.jobCardNo || 'Unknown';
+      const safeJobCardNo = rawJobCardNo
+        .toString()
+        .replace(/[^a-zA-Z0-9_-]/g, '') // remove special characters
+        .slice(0, 20); // limit length to 20 chars
+
+      const fileName = `Job_Details_${safeJobCardNo}`;
+
+      const path = `${RNFS.DocumentDirectoryPath}/${fileName}.pdf`;
+      // const path = `${RNFS.DocumentDirectoryPath}/Job_Details_${order.jobCardNo}.pdf`;
 
       const options = {
         html: htmlContent,
@@ -209,88 +415,277 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
-      const htmlContent = `
-      <h1>FLEXO JOB CARD</h1>
-      <p><strong>Job Card No:</strong> ${order.jobCardNo}</p>
-      <p><strong>Customer Name:</strong> ${order.customerName}</p>
-      <p><strong>Job Date:</strong> ${
-        order.jobDate ? order.jobDate.toDate().toDateString() : 'N/A'
-      }</p>
-      <p><strong>Job Status:</strong> ${order.jobStatus}</p>
-      <p><strong>Start Time:</strong> ${formatTimestamp(
-        order.updatedAt || order.updatedByPunchingAt,
-      )}</p>
-      <p><strong>End Time:</strong> ${formatTimestamp(order.endTime)}</p>
-      <p><strong>Total Time:</strong> ${
-        totalTime !== null ? formatDuration(totalTime) : 'N/A'
-      }</p>
-      <p><strong>Running Mtrs:</strong> ${order.runningMtr}</p>
-      <p><strong>Job Paper:</strong> ${order.jobPaper.label}</p>
-      <p><strong>Paper Product Code:</strong> ${
-        typeof order.paperProductCode === 'object'
-          ? order.paperProductCode.label
-          : order.paperProductCode
-      }</p>
-      <p><strong>Job Size:</strong> ${order.jobSize}</p>
-      <p><strong>Printing Plate Size:</strong> ${
-        order.printingPlateSize.label
-      }</p>
-      <p><strong>Ups Across:</strong> ${order.upsAcross.label}</p>
-      <p><strong>Around:</strong> ${order.around.label}</p>
-      <p><strong>Teeth Size:</strong> ${order.teethSize.label}</p>
-      <p><strong>Blocks:</strong> ${order.blocks.label}</p>
-      <p><strong>Winding Direction:</strong> ${order.windingDirection.label}</p>
+      // 🧮 Pre-calculate formatted values (your existing logic)
+      const jobCreationTime = order.createdAt
+        ? formatTimestamp(order.createdAt)
+        : '';
+      const startTimeFormatted = order.updatedAt
+        ? formatTimestamp(order.updatedAt)
+        : '';
+      const endTimeFormatted = order.endTime
+        ? formatTimestamp(order.endTime)
+        : '';
+      const totalTimeFormatted =
+        totalTime !== null ? formatDuration(totalTime) : '';
+      const jobDateFormatted = order.jobDate
+        ? order.jobDate.toDate().toLocaleDateString()
+        : '';
 
-      <h2>Slitting Data</h2>
-      ${
+      const printingStartTimeFormatted = order.updatedAt
+        ? formatTimestamp(order.updatedAt)
+        : '';
+      const printingEndTimeFormatted = order.updatedByPrintingAt
+        ? formatTimestamp(order.updatedByPrintingAt)
+        : '';
+      const punchingStartTimeFormatted = order.punchingStartAt
+        ? formatTimestamp(order.punchingStartAt)
+        : '';
+      const punchingEndTimeFormatted = order.updatedByPunchingAt
+        ? formatTimestamp(order.updatedByPunchingAt)
+        : '';
+      const slittingStartTimeFormatted = order.startBySlittingAt
+        ? formatTimestamp(order.startBySlittingAt)
+        : '';
+      const slittingEndTimeFormatted = order.updatedBySlittingAt
+        ? formatTimestamp(order.updatedBySlittingAt)
+        : '';
+
+      const slittingRows =
         order.slittingData && order.slittingData.length > 0
-          ? `<table border="1" style="width:100%; border-collapse: collapse;">
-              <tr><th>Label</th><th>No of Rolls</th><th>Total</th></tr>
-              ${order.slittingData
-                .map(
-                  item =>
-                    `<tr><td>${item.A}</td><td>${item.B}</td><td>${item.C}</td></tr>`,
-                )
-                .join('')}
+          ? order.slittingData
+              .map(
+                item => `
+              <tr>
+                <td>${item.A || ''}</td>
+                <td>${item.B || ''}</td>
+                <td>${item.C || ''}</td>
+              </tr>`,
+              )
+              .join('')
+          : `<tr><td colspan="3">No data available</td></tr>`;
+
+      // ✅ Keep your existing HTML content as-is
+      const htmlContent = `
+      <html>
+      <head>
+          <style>
+          body { font-family: Arial, sans-serif; }
+          h1 { text-align: center; color: #3668B1; }
+          .section { border: 2px solid #3668B1; border-radius: 8px; margin-bottom: 18px; padding: 10px 15px; }
+          .section-title { background: #3668B1; color: #fff; font-weight: bold; padding: 3px 10px; border-radius: 5px; display: inline-block; margin-bottom: 10px; }
+          .row { display: flex; flex-wrap: wrap; margin-bottom: 8px; }
+          .col { flex: 1; min-width: 180px; margin-right: 10px; }
+          .label { font-weight: bold; }
+          .input { display: inline-block; min-width: 120px; } /* 🧹 removed underline */
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th, td { border: 1px solid #3668B1; padding: 4px 8px; text-align: center; }
+          .small-table td { min-width: 40px; }
+          .color-seq-table { margin-bottom: 15px; }
+          .time-row {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 20px;
+              flex-wrap: nowrap;
+            }
+            .time-row .col {
+              flex: 0 0 auto;  /* Prevent wrapping */
+              white-space: nowrap;
+            }
+            .time-row .col:last-child {
+              margin-left: auto; /* Push total time to right */
+            }
+        </style>
+
+      </head>
+      <body>    
+
+        <div class="section">
+
+          <div class="section-title">Admin</div>
+          <div class="row">
+                <div class="col"><span class="label">PO No.:</span> <span class="input">${
+                  order.poNo || ''
+                }</span></div>
+                <div class="col"><span class="label">Job Date:</span> <span class="input">${jobDateFormatted}</span></div>
+          </div>
+          <div class="row">
+                <div class="col"><span class="label">Customer Name:</span> <span class="input">${
+                  order.customerName || ''
+                }</span></div>
+                  <div class="col"><span class="label">Label Type:</span> <span class="input">${
+                    order.jobType || ''
+                  }</span></div>
+              
+          </div>
+          <div class="row">
+                <div class="col"><span class="label">Job Card no:</span> <span class="input">${
+                  order.jobCardNo || ''
+                }</span></div>
+                <div class="col"><span class="label">Job Name:</span> <span class="input">${
+                  order.jobName || ''
+                }</span></div>
+          </div>
+          <div class="row">
+              <div class="col"><span class="label">Job Original Size:</span> <span class="input">${
+                order.jobSize || ''
+              }</span></div>
+              <div class="col"><span class="label">Job Qty:</span> <span class="input">${
+                order.jobQty || ''
+              }</span></div>
+          </div>        
+          <div class="row">
+              <div class="col"><span class="label">Job Creation Time:</span> <span class="input">${jobCreationTime}</span></div>  
+              <div class="col"></div>           
+          </div>          
+            <div class="row time-row">
+            <div class="col"><span class="label">Start time:</span> <span class="input">${startTimeFormatted}</span></div>
+            <div class="col"><span class="label">End time:</span> <span class="input">${endTimeFormatted}</span></div>
+            <div class="col"><span class="label">Total time:</span> <span class="input">${totalTimeFormatted}</span></div>
+          </div>
+
+        </div>
+
+        <div class="section">
+          <div class="section-title">Printing</div>
+          <div class="row">
+            <div class="col"><span class="label">Printing Start Time:</span> <span class="input">${
+              printingStartTimeFormatted || ''
+            }</span></div>
+            <div class="col"><span class="label">Printing End Time:</span> <span class="input">${
+              printingEndTimeFormatted || ''
+            }</span></div>
+          </div>
+          <div class="row"><span class="label">Color Seq.</span></div>
+          
+          <table class="small-table color-seq-table">
+  <tr>
+    <td>C : ${order.colorAniloxValues?.C?.value || ''}</td>
+    <td>M : ${order.colorAniloxValues?.M?.value || ''}</td>
+    <td>Y : ${order.colorAniloxValues?.Y?.value || ''}</td>
+    <td>K : ${order.colorAniloxValues?.K?.value || ''}</td>
+  </tr>
+  <tr>
+    <td>Sq1 : ${order.colorAniloxValues?.Sq1?.value || ''}</td>
+    <td>Sq2 : ${order.colorAniloxValues?.Sq2?.value || ''}</td>    
+    <td>Sq3 : ${order.colorAniloxValues?.Sq3?.value || ''}</td>
+    <td>Sq4 : ${order.colorAniloxValues?.Sq4?.value || ''}</td>
+  </tr>
+</table>
+
+          <div class="row">
+            <div class="col"><span class="label">Running Mtrs:</span> <span class="input">${
+              order.runningMtr || ''
+            }</span></div>
+            <div class="col"><span class="label">Paper Product Code:</span> <span class="input">${
+              order.paperProductCode?.label || order.paperProductCode || ''
+            }</span>
+            </div>
+          </div>
+           <div class="row">
+              <div class="col">
+                <span class="label">Printing Colors:</span>
+                <span class="input">
+                  ${
+                    order.printingColors && order.printingColors.length > 0
+                      ? order.printingColors.join(', ')
+                      : ''
+                  }
+                </span>
+              </div>
+         </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Punching</div>
+          <div class="row">
+            <div class="col"><span class="label">Punching Start Time:</span> <span class="input">${
+              punchingStartTimeFormatted || ''
+            }</span></div>
+            <div class="col"><span class="label">Punching End Time:</span> <span class="input">${
+              punchingEndTimeFormatted || ''
+            }</span></div>
+          </div>
+          <div class="row">
+            <div class="col"><span class="label">Paper Code:</span> <span class="input">${
+              order.paperCode || ''
+            }</span></div>
+            <div class="col"><span class="label">Running Mtrs:</span> <span class="input">${
+              order.runningMtr || ''
+            }</span></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Slitting</div>
+          <div class="row">
+            <div class="col"><span class="label">Slitting Start Time:</span> <span class="input">${
+              slittingStartTimeFormatted || ''
+            }</span></div>
+            <div class="col"><span class="label">Slitting End Time:</span> <span class="input">${
+              slittingEndTimeFormatted || ''
+            }</span></div>
+          </div>
+          <div class="subsection">
+            <table border="1">
+              <thead>
+                <tr>
+                  <th>Labels</th>
+                  <th>No of Rolls</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${slittingRows}
+              </tbody>
             </table>
-            <p><strong>Total Rolls:</strong> ${totalB}</p>
-            <p><strong>Final Total:</strong> ${totalC}</p>`
-          : '<p>No slitting data available.</p>'
-      }
+
+          </div>
+        </div>
+      </body>
+      </html>
     `;
 
-      const privatePath = `${RNFS.DocumentDirectoryPath}/Job_Details_${order.jobCardNo}.pdf`;
+      // 🕒 Short timestamp: "hmm" (e.g. 937 → 9:37)
+      const now = new Date();
+      const shortStamp = `${now.getHours()}${now.getMinutes()}`;
 
-      const options = {
+      const cleanCustomerName = (order.customerName || 'Customer')
+        .replace(/[^a-zA-Z0-9]/g, '_')
+        .substring(0, 10);
+      // 🧹 Clean job name and job card number for filename
+      const cleanJobName = (order.jobName || 'Job')
+        .replace(/[^a-zA-Z0-9]/g, '_')
+        .substring(0, 12); // limit for readability
+
+      const cleanJobCardNo = (order.jobCardNo || '0000')
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .substring(0, 8);
+
+      // 🏷️ Final short & meaningful filename
+      // const fileName = `${cleanJobName}_${cleanJobCardNo}_${shortStamp}`;
+      const fileName = `JobDetails_${cleanCustomerName}_${cleanJobName}_${cleanJobCardNo}_${shortStamp}`;
+
+      const privatePath = `${RNFS.DocumentDirectoryPath}/${fileName}.pdf`;
+      const downloadsPath = `${RNFS.DownloadDirectoryPath}/${fileName}.pdf`;
+
+      // 🧾 Generate and copy PDF
+      const file = await RNHTMLtoPDF.convert({
         html: htmlContent,
-        fileName: `Job_Details_${order.jobCardNo}`,
+        fileName,
         filePath: privatePath,
         base64: false,
-      };
+      });
 
-      // Generate PDF in app private directory
-      const file = await RNHTMLtoPDF.convert(options);
-
-      // Define path in public Downloads directory
-      const downloadsPath = `${RNFS.DownloadDirectoryPath}/Job_Details_${order.jobCardNo}.pdf`;
-
-      // Copy file from private to public Downloads folder
       await RNFS.copyFile(file.filePath, downloadsPath);
 
-      Alert.alert(
-        'Success',
-        `PDF saved to Downloads folder:\n${downloadsPath}`,
-      );
-
-      // Optional: open the PDF directly after saving
-      // await FileViewer.open(downloadsPath, { showOpenWithDialog: true });
+      Alert.alert('Success', `PDF saved to Downloads:\n${downloadsPath}`);
+      console.log('✅ PDF saved:', downloadsPath);
     } catch (error) {
       console.error('PDF Generation Error:', error);
       Alert.alert('Error', 'Failed to generate or save PDF');
     }
-  }; 
-
-
+  };
 
   return (
     <View style={styles.container}>
@@ -361,7 +756,7 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         <Text style={styles.label}>Printing Plate Size</Text>
         <Text style={styles.value}>{order.printingPlateSize.label}</Text>
 
-        <Text style={styles.label}>Ups : Across</Text>
+        <Text style={styles.label}>Sterio Ups</Text>
         <Text style={styles.value}>{order.upsAcross.label}</Text>
 
         <Text style={styles.label}>Around</Text>

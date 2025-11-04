@@ -248,7 +248,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
               </View>
 
               <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>Ups : Across</Text>
+                <Text style={styles.boldText}>Sterio Ups</Text>
                 <View style={styles.disabledDropdown}>
                   <Text style={styles.value}>{upsAcrossValue.label}</Text>
                 </View>
@@ -280,7 +280,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
                     {windingDirectionValue.label}
                   </Text>
                 </View>
-              </View>             
+              </View>
 
               <CustomDropdown
                 placeholder={'Paper Product Code'}
@@ -298,7 +298,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
                 style={{width: '100%'}}
               />
 
-            
               <View style={styles.btnContainer}>
                 <CustomButton
                   title={'Start Job'}
@@ -309,70 +308,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
             </>
           ) : (
             <>
-              {/* <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>Job Paper:</Text>
-                <View style={styles.disabledDropdown}>
-                  <Text style={styles.value}>{jobPaper.label}</Text>
-                </View>
-              </View>
-              <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>Job Size</Text>
-                <TextInput
-                  style={styles.sizeInput}
-                  value={size}
-                  onChangeText={setSize}
-                  editable={false}
-                />
-              </View>
-
-              <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>Printing Plate Size:</Text>
-                <View style={styles.disabledDropdown}>
-                  <Text style={styles.value}>{plateSize.label}</Text>
-                </View>
-              </View>
-
-              <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>Ups : Across</Text>
-                <View style={styles.disabledDropdown}>
-                  <Text style={styles.value}>{upsAcrossValue.label}</Text>
-                </View>
-              </View>
-
-              <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>Around:</Text>
-                <View style={styles.disabledDropdown}>
-                  <Text style={styles.value}>{aroundValue.label}</Text>
-                </View>
-              </View>
-              <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>Teeth Size</Text>
-                <View style={styles.disabledDropdown}>
-                  <Text style={styles.value}>{teethSizeValue.label}</Text>
-                </View>
-              </View>
-
-              <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>Blocks</Text>
-                <View style={styles.disabledDropdown}>
-                  <Text style={styles.value}>{blocksValue.label}</Text>
-                </View>
-              </View>
-              <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>Winding Direction</Text>
-                <View style={styles.disabledDropdown}>
-                  <Text style={styles.value}>
-                    {windingDirectionValue.label}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>Tooling</Text>
-                <View style={styles.disabledDropdown}>
-                  <Text style={styles.value}>{tooling}</Text>
-                </View>
-              </View> */}
-
               <View style={styles.colorAniloxMainContainer}>
                 <View style={styles.colorAniloxRowContainer}>
                   <Text style={styles.colorAniloxText}>Color Seq</Text>
@@ -450,16 +385,22 @@ const OperatorCreateOrder = ({navigation, route}) => {
                 value={runningMtrValue}
                 onChangeText={setRunningMtrValue}
               /> */}
-                <View style={styles.detailsRowContainer}>
+              <View style={styles.detailsRowContainer}>
                 <Text style={styles.boldText}>Running Mtrs</Text>
                 <TextInput
                   style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
                   value={runningMtrValue}
-                  onChangeText={setRunningMtrValue}
+                  // onChangeText={setRunningMtrValue}
+                  onChangeText={text => {
+                    // Allow only digits (0–9)
+                    const numericValue = text.replace(/[^0-9]/g, '');
+                    setRunningMtrValue(numericValue);
+                  }}
                   placeholder="Enter Running Mtrs"
+                  keyboardType="numeric"
                 />
               </View>
-               <View style={styles.detailsRowContainer}>
+              <View style={styles.detailsRowContainer}>
                 <Text style={styles.boldText}>Tooling</Text>
                 <TextInput
                   style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
@@ -468,7 +409,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
                   placeholder="Enter tooling"
                 />
               </View>
-                <View style={styles.container}>
+              <View style={styles.container}>
                 <View style={styles.printingContainer}>
                   <Text style={styles.dropdownText1}>Printing Colors:</Text>
 
