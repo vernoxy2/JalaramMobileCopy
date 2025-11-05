@@ -1,0 +1,24 @@
+<!-- <resources>
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+      
+        <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+
+    
+        <item name="android:windowSplashScreenBackground">#3668B1</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@null</item>
+    </style>
+</resources> -->
+
+<resources>
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <!-- keep your existing attributes -->
+        <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+
+        <!-- Android 12+ splash customization -->
+        <item name="android:windowSplashScreenAnimatedIcon">@null</item>   <!-- removes ic_launcher -->
+        <item name="android:windowSplashScreenBackground">@android:color/white</item> <!-- plain white screen -->
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/white</item> <!-- avoid ring color -->
+    </style>
+</resources>
+ 
+ 
