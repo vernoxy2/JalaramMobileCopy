@@ -2,7 +2,7 @@ import React from "react";
 import {View , TextInput , Text , StyleSheet} from 'react-native';
 
 
-const CustomLabelTextInput = ({label, inputStyle,value,onChangeText})=> {
+const CustomLabelTextInput = ({label, inputStyle,value,onChangeText, keyboardType = 'default', ...props})=> {
     return (
         <View style={styles.customLabelTextInputContainer}>
             <Text style={styles.inputLabel}>{label}</Text>
@@ -10,6 +10,8 @@ const CustomLabelTextInput = ({label, inputStyle,value,onChangeText})=> {
             style={[styles.borderInput, inputStyle]} 
             value={value}
             onChangeText={onChangeText}
+             keyboardType={keyboardType} // ✅ pass it here!
+        {...props} // ✅ allows future props to pass through
             />
         </View>
     )
