@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ import {
   upsAcross,
   windingDirection,
 } from '../constant/constant';
+import moment from 'moment';
 
 const AdminCreateOrder = ({navigation}) => {
   const [poNo, setPoNo] = useState('');
@@ -69,13 +70,48 @@ const AdminCreateOrder = ({navigation}) => {
     }));
   };
 
+  useEffect(() => {
+    generateJobCardNo();
+  }, []);
+
+ const generateJobCardNo = async () => {
+  try {
+    const monthPrefix = moment().format('MMM'); // e.g. Nov
+    const yearSuffix = moment().format('YY'); // e.g. 25 (for 2025)
+    const prefix = `${monthPrefix}.${yearSuffix}`; // e.g. Nov.25
+
+    const snapshot = await firestore()
+      .collection('orders')
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .get();
+
+    let nextNumber = 1;
+
+    if (!snapshot.empty) {
+      const lastJob = snapshot.docs[0].data().jobCardNo;
+      const [lastPrefix, numStr] = lastJob.split('-');
+
+      if (lastPrefix === prefix && !isNaN(numStr)) {
+        nextNumber = parseInt(numStr, 10) + 1;
+      }
+    }
+
+    const newJobNo = `${prefix}-${String(nextNumber).padStart(2, '0')}`;
+    setJobCardNo(newJobNo);
+  } catch (err) {
+    console.error('Error generating job card number:', err);
+  }
+};
+
+
   const handleSubmit = async () => {
     console.log('Selected Label Type:', selectedLabelType);
     const normalizedLabelType = selectedLabelType.trim().toLowerCase();
 
     let assignedUserUID;
     let jobStatus;
- 
+
     let punchingStatus;
     if (normalizedLabelType === 'printing') {
       assignedUserUID = 'uqTgURHeSvONdbFs154NfPYND1f2';
@@ -118,7 +154,7 @@ const AdminCreateOrder = ({navigation}) => {
         jobQty,
         // tooling,
         jobStatus,
-        jobType:selectedLabelType,
+        jobType: selectedLabelType,
         assignedTo: assignedUserUID,
         createdBy: 'Admin',
         createdAt: firestore.FieldValue.serverTimestamp(),
@@ -186,30 +222,6 @@ const AdminCreateOrder = ({navigation}) => {
             }}
             onCancel={() => setOpenJobDate(false)}
           />
-
-          {/* Job Received Date */}
-          {/* <View style={styles.inputBackContainer}>
-            <Text style={styles.inputLabel}>Job Received Date:</Text>
-            <TouchableOpacity
-              onPress={() => setOpenReceivedDate(true)}
-              style={styles.inputContainer}>
-              <Text>{receivedDate.toDateString()}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <DatePicker
-            modal
-            mode="date"
-            open={openReceivedDate}
-            date={receivedDate}
-            minimumDate={new Date()} // No past dates
-            onConfirm={date => {
-              setOpenReceivedDate(false);
-              setReceivedDate(date);
-            }}
-            onCancel={() => setOpenReceivedDate(false)}
-          /> */}
-
           <CustomLabelTextInput
             label="Customer Name :"
             value={customerName}
@@ -218,7 +230,9 @@ const AdminCreateOrder = ({navigation}) => {
           <CustomLabelTextInput
             label="Job Card No :"
             value={jobCardNo}
-            onChangeText={setJobCardNo}
+            // onChangeText={setJobCardNo}
+            // keyboardType="number-pad"
+            editable={false}
           />
           <CustomLabelTextInput
             label="Job Name :"
@@ -297,36 +311,6 @@ const AdminCreateOrder = ({navigation}) => {
             onSelect={item => setWindingDirectionValue(item)}
             showIcon={true}
           />
-
-          {/* <View style={styles.container}>
-            <View style={styles.printingContainer}>
-              <Text style={styles.dropdownText}>Printing Colors:</Text>
-
-              {['Uv', 'Water', 'Special'].map((label, index) => {
-                const boxKey = `box${index + 1}`;
-                return (
-                  <TouchableOpacity
-                    key={label}
-                    style={styles.checkboxContainer}
-                    onPress={() => handleCheckboxChange(boxKey)}>
-                    <View
-                      style={[
-                        styles.checkbox,
-                        checkboxState[boxKey] && styles.checked,
-                      ]}>
-                      {checkboxState[boxKey] && (
-                        <Image
-                          style={styles.checkmarkImage}
-                          source={require('../assets/images/check.png')}
-                        />
-                      )}
-                    </View>
-                    <Text style={styles.checkboxText}>{label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View> */}
 
           <CustomDropdown
             placeholder={'Label Type'}

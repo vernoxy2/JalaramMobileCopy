@@ -11,11 +11,13 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Image,
+  ScrollView,
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import CustomHeader from '../components/CustomHeader';
 import SearchBar from '../components/SearchBar';
 import DatePicker from 'react-native-date-picker';
+import {Dimensions} from 'react-native';
 
 const HomeScreen = ({navigation}) => {
   const [jobData, setJobData] = useState([]);
@@ -26,6 +28,31 @@ const HomeScreen = ({navigation}) => {
   const [toDate, setToDate] = useState(null);
   const [openFrom, setOpenFrom] = useState(false);
   const [openTo, setOpenTo] = useState(false);
+  const [listHeight, setListHeight] = useState(0);
+
+  const [screenInfo, setScreenInfo] = useState({
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+    isLandscape:
+      Dimensions.get('window').width > Dimensions.get('window').height,
+  });
+
+  const maxTableHeight = screenInfo.isLandscape
+    ? screenInfo.height * (isTablet ? 0.7 : 0.6)
+    : screenInfo.height * (isTablet ? 0.5 : 0.4);
+  const isTablet = screenInfo.width >= 768;
+
+  useEffect(() => {
+    const onChange = ({window}) => {
+      setScreenInfo({
+        width: window.width,
+        height: window.height,
+        isLandscape: window.width > window.height,
+      });
+    };
+    const subscription = Dimensions.addEventListener('change', onChange);
+    return () => subscription?.remove();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = firestore()
@@ -119,7 +146,8 @@ const HomeScreen = ({navigation}) => {
   const renderHeader = () => (
     <View style={[styles.row, styles.header]}>
       <Text style={styles.cellHeading}>Job Card No</Text>
-      <Text style={styles.cellHeading}>Name</Text>
+      <Text style={styles.cellHeading}>Job Name</Text>
+      <Text style={styles.cellHeading}>Customer Name</Text>
       <Text style={styles.cellHeading}>Date</Text>
       <Text style={styles.cellHeading}>Status</Text>
     </View>
@@ -132,6 +160,7 @@ const HomeScreen = ({navigation}) => {
       }
       style={styles.row}>
       <Text style={styles.cell}>{item.jobCardNo}</Text>
+      <Text style={styles.cell}>{item.jobName}</Text>
       <Text style={styles.cell}>{item.customerName}</Text>
       <Text style={styles.cell}>
         {item.jobDate
@@ -157,140 +186,166 @@ const HomeScreen = ({navigation}) => {
       style={{flex: 1}}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.homeMainContainer}>
-          <CustomHeader
-            showHeadingSection1Container={true}
-            showHeadingTextContainer={true}
-            headingTitle={'Dashboard'}
-            showHeadingSection2Container={true}
-            onPress={() => navigation.navigate('AdminCreateOrder')}
-            showHeaderBtn={true}
-            btnHeading={'Create New'}
-            showHeaderDropDown={true}
-            onDropdownSelect={value => setFilter(value)}
-          />
-          <View style={styles.homeSubContainer}>
-            <SearchBar
-              placeholder="Search Job"
-              style={styles.searchBarHome}
-              value={searchQuery}
-              onChangeText={text => setSearchQuery(text)}
+        <ScrollView
+          contentContainerStyle={{flexGrow: 1, paddingBottom: 40}}
+          showsVerticalScrollIndicator={true}>
+          <View style={styles.homeMainContainer}>
+            <CustomHeader
+              showHeadingSection1Container={true}
+              showHeadingTextContainer={true}
+              headingTitle={'Dashboard'}
+              showHeadingSection2Container={true}
+              onPress={() => navigation.navigate('AdminCreateOrder')}
+              showHeaderBtn={true}
+              btnHeading={'Create New'}
+              showHeaderDropDown={true}
+              onDropdownSelect={value => setFilter(value)}
             />
+            <View style={styles.homeSubContainer}>
+              <SearchBar
+                placeholder="Search Job"
+                style={styles.searchBarHome}
+                value={searchQuery}
+                onChangeText={text => setSearchQuery(text)}
+              />
 
-            <View style={styles.dateFilterContainer}>
-              <Pressable
-                onPress={() => setOpenFrom(true)}
-                style={styles.dateFilterButton}>
-                <Text style={styles.dateFilterText}>
-                  {fromDate ? fromDate.toDateString() : 'From Date'}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => setOpenTo(true)}
-                style={styles.dateFilterButton}>
-                <Text style={styles.dateFilterText}>
-                  {toDate ? toDate.toDateString() : 'To Date'}
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* <DatePicker
-              modal
-              mode="date"
-              open={openFrom}
-              date={fromDate || new Date()}
-              onConfirm={date => {
-                setOpenFrom(false);
-                setFromDate(date);
-              }}
-              onCancel={() => setOpenFrom(false)}
-            /> */}
-
-            <DatePicker
-              modal
-              open={openFrom}
-              date={fromDate || new Date()}
-              mode="date"
-              maximumDate={new Date()}
-              onConfirm={date => {
-                setOpenFrom(false);
-                setFromDate(date);
-              }}
-              onCancel={() => setOpenFrom(false)}
-            />
-
-            {/* <DatePicker
-              modal
-              mode="date"
-              open={openTo}
-              date={toDate || new Date()}
-              onConfirm={date => {
-                setOpenTo(false);
-                setToDate(date);
-              }}
-              onCancel={() => setOpenTo(false)}
-            /> */}
-
-            <DatePicker
-              modal
-              open={openTo}
-              date={toDate || new Date()}
-              mode="date"
-              maximumDate={new Date()}
-              minimumDate={fromDate || undefined} // optional: restrict to after fromDate
-              onConfirm={date => {
-                setOpenTo(false);
-                setToDate(date);
-              }}
-              onCancel={() => setOpenTo(false)}
-            />
-
-            <View style={styles.tableHeadingTypesContainer}>
-              <Text style={styles.tableHeadingTypesText}>All Jobs</Text>
-            </View>
-            <View>
-              {loading ? (
-                <ActivityIndicator
-                  size="large"
-                  color="#0000ff"
-                  style={{marginTop: 20}}
-                />
-              ) : getFilteredJobs().length > 0 ? (
-                <View style={styles.tableContainer}>
-                  {renderHeader()}
-                  <FlatList
-                    data={getFilteredJobs()}
-                    renderItem={renderItem}
-                    keyExtractor={item => item.id}
-                    contentContainerStyle={{paddingBottom: 20}}
-                    showsVerticalScrollIndicator={true}
-                    nestedScrollEnabled={true}
-                    persistentScrollbar={true}
-                  />
-                </View>
-              ) : (
-                <View style={styles.noJobsContainer}>
-                  <Image
-                    source={require('../assets/images/listing.png')}
-                    style={styles.noJobsImage}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.noJobsTitle}>No Jobs Available</Text>
-                  <Text style={styles.noJobsSubtitle}>
-                    You're all caught up! {'\n'}No such jobs are available.
+              <View style={styles.dateFilterContainer}>
+                <Pressable
+                  onPress={() => setOpenFrom(true)}
+                  style={styles.dateFilterButton}>
+                  <Text style={styles.dateFilterText}>
+                    {fromDate ? fromDate.toDateString() : 'From Date'}
                   </Text>
-                </View>
-              )}
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setOpenTo(true)}
+                  style={styles.dateFilterButton}>
+                  <Text style={styles.dateFilterText}>
+                    {toDate ? toDate.toDateString() : 'To Date'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              <DatePicker
+                modal
+                open={openFrom}
+                date={fromDate || new Date()}
+                mode="date"
+                maximumDate={new Date()}
+                onConfirm={date => {
+                  setOpenFrom(false);
+                  setFromDate(date);
+                }}
+                onCancel={() => setOpenFrom(false)}
+              />
+
+              <DatePicker
+                modal
+                open={openTo}
+                date={toDate || new Date()}
+                mode="date"
+                maximumDate={new Date()}
+                minimumDate={fromDate || undefined}
+                onConfirm={date => {
+                  setOpenTo(false);
+                  setToDate(date);
+                }}
+                onCancel={() => setOpenTo(false)}
+              />
+
+              <View style={styles.tableHeadingTypesContainer}>
+                <Text style={styles.tableHeadingTypesText}>All Jobs</Text>
+              </View>
+              <View>
+                {loading ? (
+                  <ActivityIndicator
+                    size="large"
+                    color="#0000ff"
+                    style={{marginTop: 20}}
+                  />
+                ) : getFilteredJobs().length > 0 ? (
+                  <View
+                    key={screenInfo.width} // ✅ re-renders when width changes
+                    style={[
+                      styles.tableContainer,
+                      {
+                        width: isTablet ? '90%' : '100%',
+                        alignSelf: isTablet ? 'center' : 'stretch',
+                        maxHeight: screenInfo.isLandscape
+                          ? screenInfo.height * (isTablet ? 0.7 : 0.6)
+                          : screenInfo.height * (isTablet ? 0.5 : 0.4),
+                      },
+                    ]}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={true}
+                      contentContainerStyle={{
+                        justifyContent: isTablet ? 'center' : 'flex-start',
+                        width: isTablet ? '100%' : 'auto',
+                      }}>
+                      <View
+                        style={[
+                          styles.tableContainer1,
+                          {
+                            maxHeight: screenInfo.isLandscape
+                              ? screenInfo.height * (isTablet ? 0.7 : 0.6)
+                              : screenInfo.height * (isTablet ? 0.5 : 0.4),
+                          },
+                        ]}>
+                        {renderHeader()}
+                        <FlatList
+                          data={getFilteredJobs()}
+                          renderItem={renderItem}
+                          keyExtractor={item => item.id}
+                          contentContainerStyle={{paddingBottom: 20}}
+                          showsVerticalScrollIndicator={true}
+                          nestedScrollEnabled={true}
+                          persistentScrollbar={true}
+                          extraData={screenInfo.width}
+                          // onContentSizeChange={(w, h) => setListHeight(h)}
+                          onContentSizeChange={(w, h) => {
+                            // Only update if height difference > 5px
+                            setListHeight(prev =>
+                              Math.abs(prev - h) > 5 ? h : prev,
+                            );
+                          }}
+                          style={{
+                            maxHeight: maxTableHeight,
+                            height:
+                              listHeight < maxTableHeight
+                                ? listHeight
+                                : maxTableHeight,
+                          }}
+                        />
+                      </View>
+                    </ScrollView>
+                  </View>
+                ) : (
+                  <View style={styles.noJobsContainer}>
+                    <Image
+                      source={require('../assets/images/listing.png')}
+                      style={styles.noJobsImage}
+                      resizeMode="contain"
+                    />
+                    <Text style={styles.noJobsTitle}>No Jobs Available</Text>
+                    <Text style={styles.noJobsSubtitle}>
+                      You're all caught up! {'\n'}No such jobs are available.
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
-        </View>
+        </ScrollView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 };
 
 export default HomeScreen;
+const screen = Dimensions.get('window');
+const isTablet = screen.width > 768; // Adjust breakpoint if needed
 
 const styles = StyleSheet.create({
   // Your existing styles
@@ -321,8 +376,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Lato-Regular',
   },
   tableContainer: {
-    // flex: 1,
-    maxHeight: 340,
+    minWidth: '100%',
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 10,
@@ -331,6 +385,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
+    backgroundColor: '#fff',
+    alignSelf: 'center',
+    width: isTablet ? '90%' : '100%',
+  },
+  tableContainer1: {
+    maxHeight: '100%',
+    minWidth: '100%',
     backgroundColor: '#fff',
   },
   row: {
@@ -349,20 +410,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#3668B1',
   },
   cellHeading: {
-    width: 80,
+    width: 100,
     textAlign: 'center',
     fontSize: 12,
     color: '#fff',
     fontFamily: 'Lato-Black',
   },
   cell: {
-    width: 80,
+    width: 100,
     textAlign: 'center',
     fontSize: 12,
     fontFamily: 'Lato-Regular',
   },
   statusCell: {
-    width: 80,
+    width: 100,
     textAlign: 'center',
     color: '#ff0000',
     fontSize: 12,
