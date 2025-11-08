@@ -17,6 +17,7 @@ const CustomDropdown = ({
   selectedText,
   disabled = false,
   showIcon = false,
+  value,
 }) => {
   const [visible, setVisible] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -26,6 +27,18 @@ const CustomDropdown = ({
     onSelect(item);
     setVisible(false);
   };
+    useEffect(() => {
+    if (value) {
+      // If value is an object (like {value: 'Cromo', label: 'Cromo'})
+      if (typeof value === 'object' && value.label) {
+        setSelected(value);
+      } else {
+        // Otherwise, find it in the data list
+        const found = data.find(item => item.value === value);
+        if (found) setSelected(found);
+      }
+    }
+  }, [value, data]);
 
   const selectedLabel = selected?.label || placeholder;
 

@@ -276,16 +276,16 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
                       <td>K : ${order.colorAniloxValues?.K?.value || ''}</td>
                     </tr>
                     <tr>
-                      <td>Sq1 : ${
+                      <td>Sp1 : ${
                         order.colorAniloxValues?.Sq1?.value || ''
                       }</td>
-                      <td>Sq2 : ${
+                      <td>Sp2 : ${
                         order.colorAniloxValues?.Sq2?.value || ''
                       }</td>    
-                      <td>Sq3 : ${
+                      <td>Sp3 : ${
                         order.colorAniloxValues?.Sq3?.value || ''
                       }</td>
-                      <td>Sq4 : ${
+                      <td>Sp4 : ${
                         order.colorAniloxValues?.Sq4?.value || ''
                       }</td>
                     </tr>
@@ -566,10 +566,10 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
     <td>K : ${order.colorAniloxValues?.K?.value || ''}</td>
   </tr>
   <tr>
-    <td>Sq1 : ${order.colorAniloxValues?.Sq1?.value || ''}</td>
-    <td>Sq2 : ${order.colorAniloxValues?.Sq2?.value || ''}</td>    
-    <td>Sq3 : ${order.colorAniloxValues?.Sq3?.value || ''}</td>
-    <td>Sq4 : ${order.colorAniloxValues?.Sq4?.value || ''}</td>
+    <td>Sp1 : ${order.colorAniloxValues?.Sq1?.value || ''}</td>
+    <td>Sp2 : ${order.colorAniloxValues?.Sq2?.value || ''}</td>    
+    <td>Sp3 : ${order.colorAniloxValues?.Sq3?.value || ''}</td>
+    <td>Sp4 : ${order.colorAniloxValues?.Sq4?.value || ''}</td>
   </tr>
 </table>
 
@@ -700,6 +700,12 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         <Text style={styles.label}>Job Card No:</Text>
         <Text style={styles.value}>{order.jobCardNo}</Text>
 
+        <Text style={styles.label}>Job Name:</Text>
+        <Text style={styles.value}>{order.jobName}</Text>
+
+        <Text style={styles.label}>Job Qty:</Text>
+        <Text style={styles.value}>{order.jobQty}</Text>
+
         <Text style={styles.label}>Customer Name:</Text>
         <Text style={styles.value}>{order.customerName}</Text>
 
@@ -756,11 +762,17 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         <Text style={styles.label}>Printing Plate Size</Text>
         <Text style={styles.value}>{order.printingPlateSize.label}</Text>
 
-        <Text style={styles.label}>Sterio Ups</Text>
+        <Text style={styles.label}>Across Ups</Text>
         <Text style={styles.value}>{order.upsAcross.label}</Text>
+
+        <Text style={styles.label}>Across Gap</Text>
+        <Text style={styles.value}>{order.acrossGap}</Text>
 
         <Text style={styles.label}>Around</Text>
         <Text style={styles.value}>{order.around.label}</Text>
+
+        <Text style={styles.label}>Around Gap</Text>
+        <Text style={styles.value}>{order.aroundGap}</Text>
 
         <Text style={styles.label}>Teeth Size</Text>
         <Text style={styles.value}>{order.teethSize.label}</Text>

@@ -134,6 +134,12 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
             <Text style={styles.label}>Job Card No:</Text>
             <Text style={styles.value}>{order.jobCardNo}</Text>
 
+            <Text style={styles.label}>Job Name:</Text>
+            <Text style={styles.value}>{order.jobName}</Text>
+
+            <Text style={styles.label}>Job Qty:</Text>
+            <Text style={styles.value}>{order.jobQty}</Text>
+
             <Text style={styles.label}>Customer Name:</Text>
             <Text style={styles.value}>{order.customerName}</Text>
 
@@ -163,11 +169,17 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
             <Text style={styles.label}>Printing Plate Size</Text>
             <Text style={styles.value}>{order.printingPlateSize.label}</Text>
 
-            <Text style={styles.label}>Sterio Ups</Text>
+            <Text style={styles.label}>Across Ups</Text>
             <Text style={styles.value}>{order.upsAcross.label}</Text>
+
+            <Text style={styles.label}>Across Gap</Text>
+            <Text style={styles.value}>{order.acrossGap}</Text>
 
             <Text style={styles.label}>Around</Text>
             <Text style={styles.value}>{order.around.label}</Text>
+
+            <Text style={styles.label}>Around Gap</Text>
+            <Text style={styles.value}>{order.aroundGap}</Text>
 
             <Text style={styles.label}>Teeth Size</Text>
             <Text style={styles.value}>{order.teethSize.label}</Text>
@@ -193,91 +205,90 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
         </>
       ) : (
         <ScrollView>
-        <View style={styles.homeSubContainer}>
-          <Text style={styles.label}>Job Card No:</Text>
-          <Text style={styles.value}>{order.jobCardNo}</Text>
+          <View style={styles.homeSubContainer}>
+            <Text style={styles.label}>Job Card No:</Text>
+            <Text style={styles.value}>{order.jobCardNo}</Text>
 
-          <CustomDropdown
-            placeholder={'Label Ups'}
-            data={upsLabels}
-            style={styles.dropdownContainer}
-            selectedText={styles.dropdownText}
-            onSelect={item => setUpsLabel(item)}
-            showIcon={true}
-          />
-
-          <Pressable style={styles.addButton} onPress={addInputField}>
-            <Text style={styles.buttonText}>Add Row</Text>
-          </Pressable>
-
-          <View style={styles.headingRow}>
-            <Text style={styles.headingText}>No of Labels</Text>
-            <Text style={styles.headingText}>No of Rolls</Text>
-            <Text style={styles.headingText}>Total</Text>
-          </View>
-          {inputs.map((input, index) => (
-            <View key={index} style={styles.row}>
-              <TextInput
-                style={styles.textInput}
-                value={input.A}
-                placeholder="A"
-                keyboardType="numeric"
-                onChangeText={text => handleInputChange(text, index, 'A')}
-              />
-
-              <TextInput
-                style={styles.textInput}
-                value={input.B}
-                placeholder="B"
-                keyboardType="numeric"
-                onChangeText={text => handleInputChange(text, index, 'B')}
-              />
-
-              <TextInput
-                style={styles.textInput}
-                value={input.C}
-                editable={false}
-                placeholder="C"
-              />
-            </View>
-          ))}
-          <View style={styles.horizontalLine} />
-          <View style={styles.row}>
-            <View>
-              <Text style={styles.totalText}>Total Labels</Text>
-              <TextInput
-                style={styles.textInput}
-                value={totalA.toString()}
-                editable={false}
-              />
-            </View>
-            <View>
-              <Text style={styles.totalText}>Total Rolls</Text>
-              <TextInput
-                style={styles.textInput}
-                value={totalB.toString()}
-                editable={false}
-              />
-            </View>
-            <View>
-              <Text style={styles.totalText}>Grand Total</Text>
-              <TextInput
-                style={styles.textInput}
-                value={totalC.toString()}
-                editable={false}
-              />
-            </View>
-          </View>
-
-
-          <View style={styles.buttonContainer}>
-            <CustomButton
-              onPress={handleComplete}
-              title={'Slitting Complete'}
-              style={styles.completeBtn}
+            <CustomDropdown
+              placeholder={'Label Ups'}
+              data={upsLabels}
+              style={styles.dropdownContainer}
+              selectedText={styles.dropdownText}
+              onSelect={item => setUpsLabel(item)}
+              showIcon={true}
             />
+
+            <Pressable style={styles.addButton} onPress={addInputField}>
+              <Text style={styles.buttonText}>Add Row</Text>
+            </Pressable>
+
+            <View style={styles.headingRow}>
+              <Text style={styles.headingText}>No of Labels</Text>
+              <Text style={styles.headingText}>No of Rolls</Text>
+              <Text style={styles.headingText}>Total</Text>
+            </View>
+            {inputs.map((input, index) => (
+              <View key={index} style={styles.row}>
+                <TextInput
+                  style={styles.textInput}
+                  value={input.A}
+                  placeholder="A"
+                  keyboardType="numeric"
+                  onChangeText={text => handleInputChange(text, index, 'A')}
+                />
+
+                <TextInput
+                  style={styles.textInput}
+                  value={input.B}
+                  placeholder="B"
+                  keyboardType="numeric"
+                  onChangeText={text => handleInputChange(text, index, 'B')}
+                />
+
+                <TextInput
+                  style={styles.textInput}
+                  value={input.C}
+                  editable={false}
+                  placeholder="C"
+                />
+              </View>
+            ))}
+            <View style={styles.horizontalLine} />
+            <View style={styles.row}>
+              <View>
+                <Text style={styles.totalText}>Total Labels</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={totalA.toString()}
+                  editable={false}
+                />
+              </View>
+              <View>
+                <Text style={styles.totalText}>Total Rolls</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={totalB.toString()}
+                  editable={false}
+                />
+              </View>
+              <View>
+                <Text style={styles.totalText}>Grand Total</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={totalC.toString()}
+                  editable={false}
+                />
+              </View>
+            </View>
+
+            <View style={styles.buttonContainer}>
+              <CustomButton
+                onPress={handleComplete}
+                title={'Slitting Complete'}
+                style={styles.completeBtn}
+              />
+            </View>
           </View>
-        </View>
         </ScrollView>
       )}
     </View>
@@ -379,7 +390,7 @@ const styles = StyleSheet.create({
 
     paddingHorizontal: 20,
   },
-   homeSubContainer: {
+  homeSubContainer: {
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
