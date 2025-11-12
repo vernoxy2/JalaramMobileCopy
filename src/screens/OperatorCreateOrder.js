@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   colorAniloxText: {
-    width: 70,
+    width: 100,
     alignItems: 'left',
     textAlign: 'left',
     fontSize: 16,
@@ -718,7 +718,7 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: '#ffffff',
     justifyContent: 'right',
-    height: 35,
+    height: 37,
     width: '50%',
     color: '#000',
   },

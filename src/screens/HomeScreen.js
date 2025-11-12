@@ -179,16 +179,27 @@ const HomeScreen = ({navigation}) => {
         ]}>
         {item.jobStatus}
       </Text>
-      <Pressable
-        pointerEvents="box-only"
-        onStartShouldSetResponder={() => true}
-        onPress={e => {
-          e.stopPropagation();
-          navigation.navigate('AdminCreateOrder', {id: item.id, isEdit: true});
-        }}
-        style={[styles.cell, styles.editButtonContainer]}>
-        <Text style={styles.editText}>Edit</Text>
-      </Pressable>
+      <View
+        style={[
+          styles.cell,
+          {width: 80, alignItems: 'center', justifyContent: 'center'},
+        ]}>
+        {['plain', 'printing'].includes(item.jobStatus?.toLowerCase()) && (
+          <Pressable
+            pointerEvents="box-only"
+            onStartShouldSetResponder={() => true}
+            onPress={e => {
+              e.stopPropagation();
+              navigation.navigate('AdminCreateOrder', {
+                id: item.id,
+                isEdit: true,
+              });
+            }}
+            style={styles.editButton}>
+            <Text style={styles.editText}>Edit</Text>
+          </Pressable>
+        )}
+      </View>
     </Pressable>
   );
 
@@ -501,8 +512,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 60,
   },
-
   editText: {
     color: '#fff',
     fontSize: 12,

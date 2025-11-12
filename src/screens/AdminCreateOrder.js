@@ -29,8 +29,6 @@ import {useRoute} from '@react-navigation/native';
 
 const AdminCreateOrder = ({navigation}) => {
   const [poNo, setPoNo] = useState('');
-  // const [receivedDate, setReceivedDate] = useState(new Date());
-  // const [openReceivedDate, setOpenReceivedDate] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [jobCardNo, setJobCardNo] = useState('');
   const [jobName, setJobName] = useState('');
@@ -38,7 +36,6 @@ const AdminCreateOrder = ({navigation}) => {
   const [openJobDate, setOpenJobDate] = useState(false);
   const [jobSize, setJobSize] = useState('');
   const [jobQty, setJobQty] = useState('');
-  // const [tooling, setTooling] = useState('');
   const [jobPaper, setJobPaper] = useState('');
   const [plateSize, setPlateSize] = useState('');
   const [upsAcrossValue, setUpsAcrossValue] = useState('');
@@ -56,6 +53,8 @@ const AdminCreateOrder = ({navigation}) => {
   const [jobType, setJobType] = useState('');
   const [acrossGap, setAcrossGap] = useState('');
   const [aroundGap, setAroundGap] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedJob, setSelectedJob] = useState(null);
 
   const route = useRoute();
   const {id, isEdit} = route.params || {};
@@ -233,15 +232,73 @@ const AdminCreateOrder = ({navigation}) => {
     }
   };
 
+  const searchJobNames = async text => {
+    try {
+      const snapshot = await firestore()
+        .collection('orders')
+        .where('jobName', '>=', text[0].toUpperCase())
+        .where('jobName', '<=', text[0].toUpperCase() + '\uf8ff')
+        .limit(10)
+        .get();
+
+      const results = snapshot.docs
+        .map(doc => ({id: doc.id, ...doc.data()}))
+        .filter(doc => doc.jobName.toLowerCase().includes(text.toLowerCase()));
+
+      setSearchResults(results);
+    } catch (error) {
+      console.error('Error searching job names:', error);
+    }
+  };
+
+  const handleSelectJob = item => {
+    setSelectedJob(item);
+    setJobName(item.jobName);
+    setSearchResults([]);
+
+    // Auto-fill other fields (except jobCardNo)
+    setPoNo(item.poNo || '');
+    setCustomerName(item.customerName || '');
+    setJobSize(item.jobSize || '');
+    setJobQty(item.jobQty || '');
+    setAcrossGap(item.acrossGap || '');
+    setAroundGap(item.aroundGap || '');
+    setJobPaper(item.jobPaper || '');
+    setPlateSize(item.printingPlateSize || '');
+    setUpsAcrossValue(item.upsAcross || '');
+    setAroundValue(item.around || '');
+    setTeethSizeValue(item.teethSize || '');
+    setBlocksValue(item.blocks || '');
+    setWindingDirectionValue(item.windingDirection || '');
+    setSelectedLabelType(item.jobType || '');
+    setAccept(item.accept || false);
+
+    setCheckboxState({
+      box1: item.printingColors?.includes('Uv') || false,
+      box2: item.printingColors?.includes('Water') || false,
+      box3: item.printingColors?.includes('Special') || false,
+    });
+  };
+  const clearAutoFilledData = () => {
+    setCustomerName('');
+    setJobSize('');
+    setJobQty('');
+    setAcrossGap('');
+    setAroundGap('');
+    setJobPaper('');
+    setPlateSize('');
+    setUpsAcrossValue('');
+    setAroundValue('');
+    setTeethSizeValue('');
+    setBlocksValue('');
+    setWindingDirectionValue('');
+    setSelectedLabelType('');
+    setCheckboxState({box1: false, box2: false, box3: false});
+    setPoNo('');
+  };
+
   return (
-    <View style={styles.adminFormMainContainer}>
-      {/* <CustomHeader
-        showHeadingSection1Container={true}
-        showBackBtn
-        showHeadingTextContainer={true}
-        headingTitle={'Flexo Job Card'}
-        showHeadingSection2Container
-      /> */}
+    <View style={styles.adminFormMainContainer}>      
       <CustomHeader
         showHeadingSection1Container={true}
         showBackBtn
@@ -282,17 +339,64 @@ const AdminCreateOrder = ({navigation}) => {
             }}
             onCancel={() => setOpenJobDate(false)}
           />
+          {/* Job Name */}
+          <View style={{position: 'relative', marginTop: 5}}>
+            <View style={[styles.inputBackContainer, {alignItems: 'center'}]}>
+              <Text style={styles.inputLabel}>Job Name :</Text>
+              <View
+                style={{flex: 1, flexDirection: 'row', alignItems: 'center'}}>
+                <TextInput
+                  style={[styles.inputContainer, {flex: 1}]}
+                  value={jobName}
+                  onChangeText={text => {
+                    setJobName(text);
+                    setSelectedJob(null); // clear previous selection
+                    if (text.length >= 2) {
+                      searchJobNames(text);
+                    } else {
+                      setSearchResults([]);
+                    }
+                  }}
+                  placeholder="Enter job name"
+                />
+                {selectedJob && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedJob(null);
+                      setJobName('');
+                      setSearchResults([]);
+                      clearAutoFilledData();
+                    }}
+                    style={{marginLeft: 5}}>
+                    <Text style={{fontSize: 18, color: 'red'}}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* Dropdown list for matching job names */}
+            {searchResults.length > 0 && !selectedJob && (
+              <View style={styles.dropdownSuggestionContainer}>
+                {searchResults.map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => handleSelectJob(item)}
+                    style={styles.dropdownSuggestionItem}>
+                    <Text style={styles.dropdownSuggestionText}>
+                      {item.jobName}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
           <CustomLabelTextInput
             label="Job Card No :"
             value={jobCardNo}
             // onChangeText={setJobCardNo}
             // keyboardType="number-pad"
             editable={false}
-          />
-          <CustomLabelTextInput
-            label="Job Name :"
-            value={jobName}
-            onChangeText={setJobName}
           />
           <CustomLabelTextInput
             label="Customer Name :"
@@ -310,11 +414,7 @@ const AdminCreateOrder = ({navigation}) => {
             value={jobQty}
             onChangeText={setJobQty}
           />
-          {/* <CustomLabelTextInput
-            label="Tooling"
-            value={tooling}
-            onChangeText={setTooling}
-          /> */}
+
           <CustomDropdown
             placeholder={'Job Paper / Film Material'}
             data={options}
@@ -524,5 +624,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#000',
     fontFamily: 'Lato-Black',
+  },
+  dropdownSuggestionContainer: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    zIndex: 10,
+    elevation: 5,
+  },
+  dropdownSuggestionItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  dropdownSuggestionText: {
+    fontSize: 14,
+    color: '#000',
   },
 });
