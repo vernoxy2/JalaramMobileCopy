@@ -25,7 +25,7 @@ import {
 } from '../constant/constant';
 import CustomColorDropdown from '../components/CustomColorDropdown';
 import CustomButton from '../components/CustomButton';
-import firestore from '@react-native-firebase/firestore';
+import firestore, {or} from '@react-native-firebase/firestore';
 import CustomLabelTextInput from '../components/CustomLabelTextInput';
 import CustomTextInput from '../components/CustomTextInput';
 import auth from '@react-native-firebase/auth';
@@ -67,6 +67,14 @@ const OperatorCreateOrder = ({navigation, route}) => {
   const isCompleted = order.printingStatus === 'completed';
   const [jobCardNo, setJobCardNo] = useState(order.jobCardNo || '');
   const [jobName, setJobName] = useState(order.jobName || '');
+  const [sp1Color, setSp1Color] = useState('');
+  const [sp2Color, setSp2Color] = useState('');
+  const [sp3Color, setSp3Color] = useState('');
+  const [sp4Color, setSp4Color] = useState('');
+  const [customerName, setCustomerName] = useState(order.customerName || '');
+  const [jobQty, setJobQty] = useState(order.jobQty || '');
+  const [acrossGap, setAcrossGap] = useState(order.acrossGap || '');
+  const [aroundGap, setAroundGap] = useState(order.aroundGap || '');
 
   const printingColors = [];
   if (checkboxState.box1) printingColors.push('Uv');
@@ -98,6 +106,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
     setJobStarted(order.jobStarted || false);
     setJobCardNo(order.jobCardNo || '');
     setJobName(order.jobName || '');
+    setJobQty(order.jobQty || '');
   }, [order]); // Only trigger this when `order` changes
 
   const [colorAniloxValues, setColorAniloxValues] = useState({
@@ -188,6 +197,10 @@ const OperatorCreateOrder = ({navigation, route}) => {
         colorAniloxValues,
         tooling,
         printingColors,
+        sp1Color,
+        sp2Color,
+        sp3Color,
+        sp4Color,
       });
       alert('Job successfully updated and reassigned!');
       setTimeout(() => {
@@ -228,6 +241,20 @@ const OperatorCreateOrder = ({navigation, route}) => {
                 </View>
               </View>
               <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Job Qty</Text>
+                <View style={styles.disabledDropdown}>
+                  <Text style={styles.value}>{jobQty}</Text>
+                </View>
+              </View>
+
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Customer Name:</Text>
+                <View style={styles.disabledDropdown}>
+                  <Text style={styles.value}>{customerName}</Text>
+                </View>
+              </View>
+
+              <View style={styles.detailsRowContainer}>
                 <Text style={styles.boldText}>Job Paper</Text>
                 <View style={styles.disabledDropdown}>
                   <Text style={styles.value}>{jobPaper.label}</Text>
@@ -248,9 +275,16 @@ const OperatorCreateOrder = ({navigation, route}) => {
               </View>
 
               <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>Sterio Ups</Text>
+                <Text style={styles.boldText}>Across Ups</Text>
                 <View style={styles.disabledDropdown}>
                   <Text style={styles.value}>{upsAcrossValue.label}</Text>
+                </View>
+              </View>
+
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Across Gap</Text>
+                <View style={styles.disabledDropdown}>
+                  <Text style={styles.value}>{acrossGap}</Text>
                 </View>
               </View>
 
@@ -260,6 +294,14 @@ const OperatorCreateOrder = ({navigation, route}) => {
                   <Text style={styles.value}>{aroundValue.label}</Text>
                 </View>
               </View>
+
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Around Gap</Text>
+                <View style={styles.disabledDropdown}>
+                  <Text style={styles.value}>{aroundGap}</Text>
+                </View>
+              </View>
+
               <View style={styles.detailsRowContainer}>
                 <Text style={styles.boldText}>Teeth Size</Text>
                 <View style={styles.disabledDropdown}>
@@ -347,34 +389,74 @@ const OperatorCreateOrder = ({navigation, route}) => {
                 </View>
 
                 <View style={styles.colorAniloxRowContainer}>
-                  <Text style={styles.colorAniloxText}>Sq1</Text>
+                  <Text style={styles.colorAniloxText}>Sp1</Text>
                   <CustomColorDropdown
                     data={colorAnilox}
                     onSelect={item => handleColorSelect('Sq1', item)}
                   />
                 </View>
+                <View style={styles.colorAniloxRowContainer}>
+                  <Text style={styles.colorAniloxText}>Sp1 Color</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Add Color"
+                    placeholderTextColor="#999"
+                    value={sp1Color}
+                    onChangeText={setSp1Color}
+                  />
+                </View>
 
                 <View style={styles.colorAniloxRowContainer}>
-                  <Text style={styles.colorAniloxText}>Sq2</Text>
+                  <Text style={styles.colorAniloxText}>Sp2</Text>
                   <CustomColorDropdown
                     data={colorAnilox}
                     onSelect={item => handleColorSelect('Sq2', item)}
                   />
                 </View>
+                <View style={styles.colorAniloxRowContainer}>
+                  <Text style={styles.colorAniloxText}>Sp2 Color</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Add Color"
+                    placeholderTextColor="#999"
+                    value={sp2Color}
+                    onChangeText={setSp2Color}
+                  />
+                </View>
 
                 <View style={styles.colorAniloxRowContainer}>
-                  <Text style={styles.colorAniloxText}>Sq3</Text>
+                  <Text style={styles.colorAniloxText}>Sp3</Text>
                   <CustomColorDropdown
                     data={colorAnilox}
                     onSelect={item => handleColorSelect('Sq3', item)}
                   />
                 </View>
+                <View style={styles.colorAniloxRowContainer}>
+                  <Text style={styles.colorAniloxText}>Sp3 Color</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Add Color"
+                    placeholderTextColor="#999"
+                    value={sp3Color}
+                    onChangeText={setSp3Color}
+                  />
+                </View>
 
                 <View style={styles.colorAniloxRowContainer}>
-                  <Text style={styles.colorAniloxText}>Sq4</Text>
+                  <Text style={styles.colorAniloxText}>Sp4</Text>
                   <CustomColorDropdown
                     data={colorAnilox}
                     onSelect={item => handleColorSelect('Sq4', item)}
+                  />
+                </View>
+                <View style={styles.colorAniloxRowContainer}>
+                  <Text style={styles.colorAniloxText}>Sp4 Color</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Add Color"
+                    placeholderTextColor="#999"
+                    value={sp4Color}
+                    onChangeText={setSp4Color}
                   />
                 </View>
               </View>
@@ -605,13 +687,14 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '70%',
+    width: '90%',
     alignItems: 'center',
+    marginVertical: 4,
   },
   colorAniloxText: {
-    width: 70,
-    alignItems: 'center',
-    textAlign: 'center',
+    width: 100,
+    alignItems: 'left',
+    textAlign: 'left',
     fontSize: 16,
     fontFamily: 'Lato-Regular',
   },
@@ -629,7 +712,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   input: {
-    width: '100%',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    padding: 10,
+    backgroundColor: '#ffffff',
+    justifyContent: 'right',
+    height: 37,
+    width: '50%',
+    color: '#000',
   },
 
   selectedColorsContainer: {

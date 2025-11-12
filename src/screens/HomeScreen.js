@@ -150,6 +150,7 @@ const HomeScreen = ({navigation}) => {
       <Text style={styles.cellHeading}>Customer Name</Text>
       <Text style={styles.cellHeading}>Date</Text>
       <Text style={styles.cellHeading}>Status</Text>
+      <Text style={styles.cellHeading}>Action</Text>
     </View>
   );
 
@@ -171,13 +172,34 @@ const HomeScreen = ({navigation}) => {
       </Text>
       <Text
         style={[
-          styles.statusCell,
+          styles.cell,
           item.jobStatus?.toLowerCase() === 'completed'
             ? styles.completedStatus
             : styles.pendingStatus,
         ]}>
         {item.jobStatus}
       </Text>
+      <View
+        style={[
+          styles.cell,
+          {width: 80, alignItems: 'center', justifyContent: 'center'},
+        ]}>
+        {['plain', 'printing'].includes(item.jobStatus?.toLowerCase()) && (
+          <Pressable
+            pointerEvents="box-only"
+            onStartShouldSetResponder={() => true}
+            onPress={e => {
+              e.stopPropagation();
+              navigation.navigate('AdminCreateOrder', {
+                id: item.id,
+                isEdit: true,
+              });
+            }}
+            style={styles.editButton}>
+            <Text style={styles.editText}>Edit</Text>
+          </Pressable>
+        )}
+      </View>
     </Pressable>
   );
 
@@ -283,6 +305,9 @@ const HomeScreen = ({navigation}) => {
                       contentContainerStyle={{
                         justifyContent: isTablet ? 'center' : 'flex-start',
                         width: isTablet ? '100%' : 'auto',
+                        flexDirection: 'column',
+                        minWidth: 600, // ✅ Ensures all 6 columns fit
+                        alignItems: 'flex-start',
                       }}>
                       <View
                         style={[
@@ -402,6 +427,7 @@ const styles = StyleSheet.create({
     display: 'flex',
     paddingHorizontal: 4,
     justifyContent: 'space-between',
+    // justifyContent: 'flex-start',
     alignItems: 'center',
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
@@ -480,5 +506,27 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 14,
     fontFamily: 'Lato-Regular',
+  },
+  editButton: {
+    backgroundColor: '#3668B1',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 60,
+  },
+  editText: {
+    color: '#fff',
+    fontSize: 12,
+    fontFamily: 'Lato-Bold',
+  },
+  editButtonContainer: {
+    width: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#3668B1', // ✅ visible color
+    paddingVertical: 8,
+    borderRadius: 6,
   },
 });

@@ -17,6 +17,7 @@ const CustomDropdown = ({
   selectedText,
   disabled = false,
   showIcon = false,
+  value,
 }) => {
   const [visible, setVisible] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -26,6 +27,20 @@ const CustomDropdown = ({
     onSelect(item);
     setVisible(false);
   };
+
+  useEffect(() => {
+    if (!value) {
+      setSelected(null);
+      return;
+    }
+
+    if (typeof value === 'object' && value.label) {
+      setSelected(value);
+    } else {
+      const found = data.find(item => item.value === value);
+      setSelected(found || null);
+    }
+  }, [value, data]);
 
   const selectedLabel = selected?.label || placeholder;
 
@@ -38,8 +53,13 @@ const CustomDropdown = ({
         }}
         activeOpacity={disabled ? 1 : 0.7}>
         <Text style={[styles.selectedText, selectedText]}>
-          {selected ? selected.label : placeholder}
+          {selected
+            ? selected.label
+            : value
+            ? value.label || value
+            : placeholder}
         </Text>
+
         {showIcon && (
           <Image
             style={styles.dropdownImg}
@@ -90,7 +110,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '40%',
-    height: 40,
+    height: 41,
     backgroundColor: '#fff',
     display: 'flex',
     flexDirection: 'row',

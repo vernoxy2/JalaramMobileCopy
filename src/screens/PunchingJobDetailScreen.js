@@ -55,17 +55,6 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
 
       const jobRef = firestore().collection('orders').doc(order.id);
 
-      // await jobRef.update({
-      //   jobStatus: 'Slitting', // marks it completed for punching
-      //   punchingStatus: 'completed',
-      //   paperCode: paperCodeValue || '',
-      //   // paperProductNo: paperProductNo || order.paperProductNo || '',
-      //   // runningMtr: runningMtrValue ? parseFloat(runningMtrValue) : null,
-      //   updatedByPunchingAt: firestore.FieldValue.serverTimestamp(),
-      //   assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33', // assign to slitting operator
-      //   completedByPunching: currentUser.uid, // <--- Add this to track who completed the punching
-      // });
-
       await jobRef.update({
         jobStatus: 'Slitting',
         punchingStatus: 'completed',
@@ -93,19 +82,6 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
       }
 
       const jobRef = firestore().collection('orders').doc(order.id);
-
-      // await jobRef.update({
-      //   paperProductCode: paperProduct,
-      //   paperProductNo: paperProductNo || order.paperProductNo || '',
-      //   runningMtr: runningMtrValue ? parseFloat(runningMtrValue) : null,
-      //   // updatedByPunchingAt: firestore.FieldValue.serverTimestamp(),
-      //   assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33', // assign to slitting operator
-      //   startByPunching: currentUser.uid, // <--- Add this to track who completed the punching
-      //   punchingStartAt: firestore.FieldValue.serverTimestamp(),
-      //   isPunchingStart: true,
-      //   punchingStatus: 'started',
-      //   completedByPunching: currentUser.uid,
-      // });
 
       await jobRef.update({
         paperProductCode: paperProduct,
@@ -174,6 +150,12 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
             <Text style={styles.label}>Job Card No:</Text>
             <Text style={styles.value}>{order.jobCardNo}</Text>
 
+            <Text style={styles.label}>Job Name:</Text>
+            <Text style={styles.value}>{order.jobName}</Text>
+
+            <Text style={styles.label}>Job Qty:</Text>
+            <Text style={styles.value}>{order.jobQty}</Text>
+
             <Text style={styles.label}>Customer Name:</Text>
             <Text style={styles.value}>{order.customerName}</Text>
 
@@ -196,11 +178,17 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
             <Text style={styles.label}>Printing Plate Size</Text>
             <Text style={styles.value}>{order.printingPlateSize.label}</Text>
 
-            <Text style={styles.label}>Sterio Ups</Text>
+            <Text style={styles.label}>Across Ups</Text>
             <Text style={styles.value}>{order.upsAcross.label}</Text>
+
+            <Text style={styles.label}>Across Gap</Text>
+            <Text style={styles.value}>{order.acrossGap}</Text>
 
             <Text style={styles.label}>Around</Text>
             <Text style={styles.value}>{order.around.label}</Text>
+
+            <Text style={styles.label}>Around Gap</Text>
+            <Text style={styles.value}>{order.aroundGap}</Text>
 
             <Text style={styles.label}>Teeth Size</Text>
             <Text style={styles.value}>{order.teethSize.label}</Text>
@@ -246,40 +234,44 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         <View style={styles.homeSubContainer}>
           <Text style={styles.label}>Job Card No:</Text>
           <Text style={styles.value}>{order.jobCardNo}</Text>
-          <Text style={styles.label}>Paper Code</Text>
-          {order.paperCode ? (
-            <Text style={styles.value}>
-              {typeof order.paperCode === 'object'
-                ? JSON.stringify(order.paperCode)
-                : order.paperCode}
-            </Text>
-          ) : (
-            <TextInput
-              style={styles.input}
-              value={paperCodeValue}
-              onChangeText={setPaperCodeValue}
-              placeholder="Enter Paper Code"
-              // keyboardType="numeric"
-            />
-          )}
-          {!isCompleted && (
-            // <View style={styles.buttonContainer}>
-            //   <Button
-            //     title="Punching Complete"
-            //     onPress={handlePunchingComplete}
-            //     color="#4CAF50"
-            //   />
-            // </View>
+
+          <Text style={styles.label}>Job Name:</Text>
+          <Text style={styles.value}>{order.jobName}</Text>
+
+          {order.jobType !== 'Printing' ? (
+            <View>
+              <Text style={styles.label}>Paper Code</Text>
+              {order.paperCode ? (
+                <Text style={styles.value}>
+                  {typeof order.paperCode === 'object'
+                    ? JSON.stringify(order.paperCode)
+                    : order.paperCode}
+                </Text>
+              ) : (
+                <TextInput
+                  style={styles.input}
+                  value={paperCodeValue}
+                  onChangeText={setPaperCodeValue}
+                  placeholder="Enter Paper Code"
+                  // keyboardType="numeric"
+                />
+              )}
+            </View>
+          ) : null}
+
+          {!isCompleted && (        
             <View style={styles.buttonContainer}>
               <Button
                 title="Punching Complete"
                 onPress={() => {
-                  if (!paperCodeValue?.trim() && !order.paperCode) {
-                    Alert.alert(
-                      'Missing Field',
-                      'Please enter the Paper Code before completing punching.',
-                    );
-                    return;
+                  if (order.jobType !== 'Printing') {
+                    if (!paperCodeValue?.trim() && !order.paperCode) {
+                      Alert.alert(
+                        'Missing Field',
+                        'Please enter the Paper Code before completing punching.',
+                      );
+                      return;
+                    }
                   }
                   handlePunchingComplete();
                 }}
@@ -344,7 +336,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 14,
   },
-     homeSubContainer: {
+  homeSubContainer: {
     paddingHorizontal: 20,
     paddingVertical: 20,
   },

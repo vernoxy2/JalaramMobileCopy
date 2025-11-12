@@ -9,14 +9,14 @@ import {
   Image,
 } from 'react-native';
 
-const CustomColorDropdown = ({ data, onSelect }) => {
+const CustomColorDropdown = ({ data, onSelect, placeholder = 'Select Value' }) => {
   const [visible, setVisible] = useState(false);
-  const [selected, setSelected] = useState(null); // To store the selected item
+  const [selected, setSelected] = useState(null);
 
   const handleSelect = (item) => {
-    setSelected(item);  // Update the selected item state
-    onSelect(item);      // Pass the selected item to the parent component
-    setVisible(false);   // Close the dropdown
+    setSelected(item);
+    onSelect(item);
+    setVisible(false);
   };
 
   return (
@@ -25,14 +25,15 @@ const CustomColorDropdown = ({ data, onSelect }) => {
         style={styles.dropdown}
         onPress={() => setVisible(true)}
       >
-        {selected ? (  // Check if an item is selected
-          <Text style={styles.selectedText}>{selected.label}</Text>  // Show the selected label
+        {selected ? (
+          <Text style={styles.selectedText}>{selected.label}</Text>
         ) : (
-          <Image
-            style={styles.dropdownImg}
-            source={require('../assets/images/dropDownImg.png')}  // Show the dropdown icon
-          />
+          <Text style={styles.placeholderText}>{placeholder}</Text>
         )}
+        <Image
+          style={styles.dropdownImg}
+          source={require('../assets/images/dropDownImg.png')}
+        />
       </TouchableOpacity>
 
       <Modal
@@ -53,7 +54,7 @@ const CustomColorDropdown = ({ data, onSelect }) => {
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.item}
-                  onPress={() => handleSelect(item)}  // Select item when clicked
+                  onPress={() => handleSelect(item)}
                 >
                   <Text>{item.label}</Text>
                 </TouchableOpacity>
@@ -68,17 +69,24 @@ const CustomColorDropdown = ({ data, onSelect }) => {
 
 const styles = StyleSheet.create({
   dropdown: {
-
-    width: '30%',
-    height: 40,
-    justifyContent: 'center',
+    width: '50%',
+    height: 35,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    flexDirection: 'row',
     alignItems: 'center',
-    // paddingHorizontal: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    backgroundColor: '#fff',
   },
   selectedText: {
     fontSize: 16,
     color: '#000',
-    fontWeight: 'medium',
+  },
+  placeholderText: {
+    fontSize: 14,
+    color: '#999', // lighter color for placeholder
   },
   modalOverlay: {
     flex: 1,
@@ -99,9 +107,11 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
   },
   dropdownImg: {
-    height: 20,
-    width: 20,
+    height: 15,
+    width: 18,
+    tintColor: '#666',
   },
 });
 
 export default CustomColorDropdown;
+

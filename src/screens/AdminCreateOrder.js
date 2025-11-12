@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,6 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
-  Image,
-  Platform,
-  Modal,
-  Pressable,
 } from 'react-native';
 import CustomHeader from '../components/CustomHeader';
 import CustomLabelTextInput from '../components/CustomLabelTextInput';
@@ -29,11 +25,10 @@ import {
   windingDirection,
 } from '../constant/constant';
 import moment from 'moment';
+import {useRoute} from '@react-navigation/native';
 
 const AdminCreateOrder = ({navigation}) => {
   const [poNo, setPoNo] = useState('');
-  // const [receivedDate, setReceivedDate] = useState(new Date());
-  // const [openReceivedDate, setOpenReceivedDate] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [jobCardNo, setJobCardNo] = useState('');
   const [jobName, setJobName] = useState('');
@@ -41,7 +36,6 @@ const AdminCreateOrder = ({navigation}) => {
   const [openJobDate, setOpenJobDate] = useState(false);
   const [jobSize, setJobSize] = useState('');
   const [jobQty, setJobQty] = useState('');
-  // const [tooling, setTooling] = useState('');
   const [jobPaper, setJobPaper] = useState('');
   const [plateSize, setPlateSize] = useState('');
   const [upsAcrossValue, setUpsAcrossValue] = useState('');
@@ -57,6 +51,13 @@ const AdminCreateOrder = ({navigation}) => {
   const [selectedLabelType, setSelectedLabelType] = useState('');
   const [accept, setAccept] = useState(false);
   const [jobType, setJobType] = useState('');
+  const [acrossGap, setAcrossGap] = useState('');
+  const [aroundGap, setAroundGap] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedJob, setSelectedJob] = useState(null);
+
+  const route = useRoute();
+  const {id, isEdit} = route.params || {};
 
   const printingColors = [];
   if (checkboxState.box1) printingColors.push('Uv');
@@ -71,93 +72,115 @@ const AdminCreateOrder = ({navigation}) => {
   };
 
   useEffect(() => {
-    generateJobCardNo();
-  }, []);
-
- const generateJobCardNo = async () => {
-  try {
-    const monthPrefix = moment().format('MMM'); // e.g. Nov
-    const yearSuffix = moment().format('YY'); // e.g. 25 (for 2025)
-    const prefix = `${monthPrefix}.${yearSuffix}`; // e.g. Nov.25
-
-    const snapshot = await firestore()
-      .collection('orders')
-      .orderBy('createdAt', 'desc')
-      .limit(1)
-      .get();
-
-    let nextNumber = 1;
-
-    if (!snapshot.empty) {
-      const lastJob = snapshot.docs[0].data().jobCardNo;
-      const [lastPrefix, numStr] = lastJob.split('-');
-
-      if (lastPrefix === prefix && !isNaN(numStr)) {
-        nextNumber = parseInt(numStr, 10) + 1;
-      }
-    }
-
-    const newJobNo = `${prefix}-${String(nextNumber).padStart(2, '0')}`;
-    setJobCardNo(newJobNo);
-  } catch (err) {
-    console.error('Error generating job card number:', err);
-  }
-};
-
-
-  const handleSubmit = async () => {
-    console.log('Selected Label Type:', selectedLabelType);
-    const normalizedLabelType = selectedLabelType.trim().toLowerCase();
-
-    let assignedUserUID;
-    let jobStatus;
-
-    let punchingStatus;
-    if (normalizedLabelType === 'printing') {
-      assignedUserUID = 'uqTgURHeSvONdbFs154NfPYND1f2';
-      jobStatus = 'Printing';
-      setJobType('Printing');
-      punchingStatus = 'pending';
-    } else if (normalizedLabelType === 'plain') {
-      assignedUserUID = 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2';
-      jobStatus = 'Punching';
-      setJobType('Plain');
-      punchingStatus = null;
+    if (isEdit && id) {
+      fetchOrderDetails();
     } else {
-      Alert.alert('Error', 'Please select a valid Label Type');
-      return;
+      generateJobCardNo();
     }
+  }, [isEdit, id, fetchOrderDetails, generateJobCardNo]);
 
+  const fetchOrderDetails = useCallback(async () => {
     try {
-      // 🔍 Check if jobCardNo already exists
+      const doc = await firestore().collection('orders').doc(id).get();
+      if (doc.exists) {
+        const data = doc.data();
+        // ✅ Text Inputs
+        setPoNo(data.poNo || '');
+        setCustomerName(data.customerName || '');
+        setJobCardNo(data.jobCardNo || '');
+        setJobName(data.jobName || '');
+        setJobDate(data.jobDate?.toDate() || new Date());
+        setJobSize(data.jobSize || '');
+        setJobQty(data.jobQty || '');
+        setAcrossGap(data.acrossGap || '');
+        setAroundGap(data.aroundGap || '');
+        setAccept(data.accept || false);
+
+        // ✅ Dropdowns
+        setJobPaper(data.jobPaper || '');
+        setPlateSize(data.printingPlateSize || '');
+        setUpsAcrossValue(data.upsAcross || '');
+        setAroundValue(data.around || '');
+        setTeethSizeValue(data.teethSize || '');
+        setBlocksValue(data.blocks || '');
+        setWindingDirectionValue(data.windingDirection || '');
+        setSelectedLabelType(data.jobType || '');
+
+        // ✅ Checkbox logic for printing colors
+        setCheckboxState({
+          box1: data.printingColors?.includes('Uv') || false,
+          box2: data.printingColors?.includes('Water') || false,
+          box3: data.printingColors?.includes('Special') || false,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching order details:', error);
+    }
+  }, [id]); // depends only on id
+
+  const generateJobCardNo = useCallback(async () => {
+    try {
+      const monthPrefix = moment().format('MMM'); // e.g. Nov
+      const yearSuffix = moment().format('YY'); // e.g. 25
+      const prefix = `${monthPrefix}.${yearSuffix}`; // e.g. Nov.25
+
       const snapshot = await firestore()
         .collection('orders')
-        .where('jobCardNo', '==', jobCardNo)
+        .where('jobCardNo', '>=', `${prefix}-`)
+        .where('jobCardNo', '<=', `${prefix}-\uf8ff`) // ensures prefix match
         .get();
 
-      if (!snapshot.empty) {
-        Alert.alert(
-          'Job Card No already exists!',
-          'Enter another job card no.',
-        );
+      let maxNumber = 0;
+
+      snapshot.forEach(doc => {
+        const jobCardNo = doc.data().jobCardNo;
+        if (jobCardNo && jobCardNo.startsWith(prefix)) {
+          const parts = jobCardNo.split('-');
+          if (parts.length === 2 && !isNaN(parts[1])) {
+            const num = parseInt(parts[1], 10);
+            if (num > maxNumber) {
+              maxNumber = num;
+            }
+          }
+        }
+      });
+
+      const nextNumber = maxNumber + 1;
+      const newJobNo = `${prefix}-${String(nextNumber).padStart(2, '0')}`;
+      setJobCardNo(newJobNo);
+    } catch (err) {
+      console.error('Error generating job card number:', err);
+    }
+  }, []); // no dependencies
+
+  const handleSubmit = async () => {
+    try {
+      const normalizedLabelType = selectedLabelType.trim().toLowerCase();
+
+      let assignedUserUID;
+      let jobStatus;
+
+      if (normalizedLabelType === 'printing') {
+        assignedUserUID = 'uqTgURHeSvONdbFs154NfPYND1f2';
+        jobStatus = 'Printing';
+      } else if (normalizedLabelType === 'plain') {
+        assignedUserUID = 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2';
+        jobStatus = 'Punching';
+      } else {
+        Alert.alert('Error', 'Please select a valid Label Type');
         return;
       }
 
       const orderData = {
         poNo,
-        // receivedDate: firestore.Timestamp.fromDate(receivedDate),
         jobDate: firestore.Timestamp.fromDate(jobDate),
         customerName,
         jobCardNo,
         jobName,
         jobSize,
         jobQty,
-        // tooling,
-        jobStatus,
         jobType: selectedLabelType,
         assignedTo: assignedUserUID,
-        createdBy: 'Admin',
-        createdAt: firestore.FieldValue.serverTimestamp(),
         jobPaper,
         printingPlateSize: plateSize,
         upsAcross: upsAcrossValue,
@@ -166,14 +189,42 @@ const AdminCreateOrder = ({navigation}) => {
         blocks: blocksValue,
         windingDirection: windingDirectionValue,
         printingColors,
-        punchingStatus: normalizedLabelType === 'printing' ? 'pending' : null,
-        accept: accept,
+        accept,
+        acrossGap,
+        aroundGap,
+        updatedAt: firestore.FieldValue.serverTimestamp(),
       };
 
-      await firestore().collection('orders').add(orderData);
-      console.log('orderData', orderData);
+      if (isEdit && id) {
+        // ✅ Keep the old jobStatus instead of overwriting it
+        await firestore().collection('orders').doc(id).update(orderData);
+        Alert.alert('Success', 'Job updated successfully');
+      } else {
+        // ✅ Only assign jobStatus when creating a new record
+        const exists = await firestore()
+          .collection('orders')
+          .where('jobCardNo', '==', jobCardNo)
+          .get();
 
-      Alert.alert('Success', 'Job Created');
+        if (!exists.empty) {
+          Alert.alert(
+            'Duplicate Job Card No',
+            'Please generate another number',
+          );
+          return;
+        }
+
+        await firestore()
+          .collection('orders')
+          .add({
+            ...orderData,
+            jobStatus, // ✅ assign only when creating
+            createdAt: firestore.FieldValue.serverTimestamp(),
+            createdBy: 'Admin',
+          });
+        Alert.alert('Success', 'Job created successfully');
+      }
+
       navigation.goBack();
     } catch (error) {
       console.error('Submit Error:', error);
@@ -181,15 +232,81 @@ const AdminCreateOrder = ({navigation}) => {
     }
   };
 
+  const searchJobNames = async text => {
+    try {
+      const snapshot = await firestore()
+        .collection('orders')
+        .where('jobName', '>=', text[0].toUpperCase())
+        .where('jobName', '<=', text[0].toUpperCase() + '\uf8ff')
+        .limit(10)
+        .get();
+
+      const results = snapshot.docs
+        .map(doc => ({id: doc.id, ...doc.data()}))
+        .filter(doc => doc.jobName.toLowerCase().includes(text.toLowerCase()));
+
+      setSearchResults(results);
+    } catch (error) {
+      console.error('Error searching job names:', error);
+    }
+  };
+
+  const handleSelectJob = item => {
+    setSelectedJob(item);
+    setJobName(item.jobName);
+    setSearchResults([]);
+
+    // Auto-fill other fields (except jobCardNo)
+    setPoNo(item.poNo || '');
+    setCustomerName(item.customerName || '');
+    setJobSize(item.jobSize || '');
+    setJobQty(item.jobQty || '');
+    setAcrossGap(item.acrossGap || '');
+    setAroundGap(item.aroundGap || '');
+    setJobPaper(item.jobPaper || '');
+    setPlateSize(item.printingPlateSize || '');
+    setUpsAcrossValue(item.upsAcross || '');
+    setAroundValue(item.around || '');
+    setTeethSizeValue(item.teethSize || '');
+    setBlocksValue(item.blocks || '');
+    setWindingDirectionValue(item.windingDirection || '');
+    setSelectedLabelType(item.jobType || '');
+    setAccept(item.accept || false);
+
+    setCheckboxState({
+      box1: item.printingColors?.includes('Uv') || false,
+      box2: item.printingColors?.includes('Water') || false,
+      box3: item.printingColors?.includes('Special') || false,
+    });
+  };
+  const clearAutoFilledData = () => {
+    setCustomerName('');
+    setJobSize('');
+    setJobQty('');
+    setAcrossGap('');
+    setAroundGap('');
+    setJobPaper('');
+    setPlateSize('');
+    setUpsAcrossValue('');
+    setAroundValue('');
+    setTeethSizeValue('');
+    setBlocksValue('');
+    setWindingDirectionValue('');
+    setSelectedLabelType('');
+    setCheckboxState({box1: false, box2: false, box3: false});
+    setPoNo('');
+  };
+
   return (
-    <View style={styles.adminFormMainContainer}>
+    <View style={styles.adminFormMainContainer}>      
       <CustomHeader
         showHeadingSection1Container={true}
         showBackBtn
         showHeadingTextContainer={true}
-        headingTitle={'Flexo Job Card'}
+        headingTitle={isEdit ? 'Edit Job Card' : 'Flexo Job Card'}
         showHeadingSection2Container
       />
+
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.adminFormSubContainer}>
           {/* PO No */}
@@ -222,11 +339,58 @@ const AdminCreateOrder = ({navigation}) => {
             }}
             onCancel={() => setOpenJobDate(false)}
           />
-          <CustomLabelTextInput
-            label="Customer Name :"
-            value={customerName}
-            onChangeText={setCustomerName}
-          />
+          {/* Job Name */}
+          <View style={{position: 'relative', marginTop: 5}}>
+            <View style={[styles.inputBackContainer, {alignItems: 'center'}]}>
+              <Text style={styles.inputLabel}>Job Name :</Text>
+              <View
+                style={{flex: 1, flexDirection: 'row', alignItems: 'center'}}>
+                <TextInput
+                  style={[styles.inputContainer, {flex: 1}]}
+                  value={jobName}
+                  onChangeText={text => {
+                    setJobName(text);
+                    setSelectedJob(null); // clear previous selection
+                    if (text.length >= 2) {
+                      searchJobNames(text);
+                    } else {
+                      setSearchResults([]);
+                    }
+                  }}
+                  placeholder="Enter job name"
+                />
+                {selectedJob && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedJob(null);
+                      setJobName('');
+                      setSearchResults([]);
+                      clearAutoFilledData();
+                    }}
+                    style={{marginLeft: 5}}>
+                    <Text style={{fontSize: 18, color: 'red'}}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* Dropdown list for matching job names */}
+            {searchResults.length > 0 && !selectedJob && (
+              <View style={styles.dropdownSuggestionContainer}>
+                {searchResults.map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => handleSelectJob(item)}
+                    style={styles.dropdownSuggestionItem}>
+                    <Text style={styles.dropdownSuggestionText}>
+                      {item.jobName}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
           <CustomLabelTextInput
             label="Job Card No :"
             value={jobCardNo}
@@ -235,9 +399,9 @@ const AdminCreateOrder = ({navigation}) => {
             editable={false}
           />
           <CustomLabelTextInput
-            label="Job Name :"
-            value={jobName}
-            onChangeText={setJobName}
+            label="Customer Name :"
+            value={customerName}
+            onChangeText={setCustomerName}
           />
 
           <CustomLabelTextInput
@@ -250,11 +414,7 @@ const AdminCreateOrder = ({navigation}) => {
             value={jobQty}
             onChangeText={setJobQty}
           />
-          {/* <CustomLabelTextInput
-            label="Tooling"
-            value={tooling}
-            onChangeText={setTooling}
-          /> */}
+
           <CustomDropdown
             placeholder={'Job Paper / Film Material'}
             data={options}
@@ -262,6 +422,7 @@ const AdminCreateOrder = ({navigation}) => {
             selectedText={styles.dropdownText}
             onSelect={item => setJobPaper(item)}
             showIcon={true}
+            value={jobPaper}
           />
           <CustomDropdown
             placeholder={'Printing Plate Size'}
@@ -270,14 +431,25 @@ const AdminCreateOrder = ({navigation}) => {
             selectedText={styles.dropdownText}
             onSelect={item => setPlateSize(item)}
             showIcon={true}
+            value={plateSize}
           />
           <CustomDropdown
-            placeholder={'Sterio Ups'}
+            placeholder={'Across Ups'}
             data={upsAcross}
             style={styles.dropdownContainer}
             selectedText={styles.dropdownText}
             onSelect={item => setUpsAcrossValue(item)}
             showIcon={true}
+            value={upsAcrossValue}
+          />
+
+          <TextInput
+            style={styles.enableDropdown}
+            placeholder="Across Gap"
+            placeholderTextColor="#000"
+            keyboardType="numeric"
+            onChangeText={setAcrossGap}
+            value={acrossGap}
           />
           <CustomDropdown
             placeholder={'Around'}
@@ -286,6 +458,15 @@ const AdminCreateOrder = ({navigation}) => {
             selectedText={styles.dropdownText}
             onSelect={item => setAroundValue(item)}
             showIcon={true}
+            value={aroundValue}
+          />
+          <TextInput
+            style={styles.enableDropdown}
+            placeholder="Around Gap"
+            placeholderTextColor="#000"
+            keyboardType="numeric"
+            onChangeText={setAroundGap}
+            value={aroundGap}
           />
           <CustomDropdown
             placeholder={'Teeth Size'}
@@ -294,6 +475,7 @@ const AdminCreateOrder = ({navigation}) => {
             selectedText={styles.dropdownText}
             onSelect={item => setTeethSizeValue(item)}
             showIcon={true}
+            value={teethSizeValue}
           />
           <CustomDropdown
             placeholder={'Blocks'}
@@ -302,6 +484,7 @@ const AdminCreateOrder = ({navigation}) => {
             selectedText={styles.dropdownText}
             onSelect={item => setBlocksValue(item)}
             showIcon={true}
+            value={blocksValue}
           />
           <CustomDropdown
             placeholder={'Winding Direction'}
@@ -310,6 +493,7 @@ const AdminCreateOrder = ({navigation}) => {
             selectedText={styles.dropdownText}
             onSelect={item => setWindingDirectionValue(item)}
             showIcon={true}
+            value={windingDirectionValue}
           />
 
           <CustomDropdown
@@ -319,11 +503,12 @@ const AdminCreateOrder = ({navigation}) => {
             selectedText={styles.dropdownText}
             showIcon={true}
             onSelect={item => setSelectedLabelType(item.value)}
+            value={selectedLabelType}
           />
 
           <View style={styles.btnContainer}>
             <CustomButton
-              title={'Submit'}
+              title={isEdit ? 'Update' : 'Submit'}
               style={styles.submitBtn}
               onPress={handleSubmit}
             />
@@ -425,5 +610,41 @@ const styles = StyleSheet.create({
     fontFamily: 'Lato-Regular',
     color: '#000',
     marginLeft: 10,
+  },
+  enableDropdown: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    padding: 10,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    height: 40,
+    width: '100%',
+    marginTop: 20,
+    fontSize: 14,
+    color: '#000',
+    fontFamily: 'Lato-Black',
+  },
+  dropdownSuggestionContainer: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    zIndex: 10,
+    elevation: 5,
+  },
+  dropdownSuggestionItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  dropdownSuggestionText: {
+    fontSize: 14,
+    color: '#000',
   },
 });
