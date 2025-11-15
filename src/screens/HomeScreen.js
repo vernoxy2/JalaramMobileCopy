@@ -93,6 +93,7 @@ const HomeScreen = ({navigation}) => {
           (job.jobCardNo && job.jobCardNo.toLowerCase().includes(query)) ||
           (job.customerName &&
             job.customerName.toLowerCase().includes(query)) ||
+          (job.jobName && job.jobName.toLowerCase().includes(query)) ||
           (() => {
             if (!job.jobDate) return false;
             let jobDateObj;
@@ -184,7 +185,7 @@ const HomeScreen = ({navigation}) => {
           styles.cell,
           {width: 80, alignItems: 'center', justifyContent: 'center'},
         ]}>
-        {['plain', 'printing'].includes(item.jobStatus?.toLowerCase()) && (
+        {item.jobStatus?.toLowerCase() !== 'completed' && (
           <Pressable
             pointerEvents="box-only"
             onStartShouldSetResponder={() => true}

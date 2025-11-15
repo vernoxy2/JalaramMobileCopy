@@ -126,6 +126,8 @@ const OperatorHomeScreen = ({route, navigation}) => {
         const customerNameMatch =
           job.customerName && job.customerName.toLowerCase().includes(query);
 
+        const jobNameMatch =
+          job.jobName && job.jobName.toLowerCase().includes(query);
         let jobDateStr = '';
         if (job.jobDate?.toDate) {
           jobDateStr = job.jobDate.toDate().toDateString();
@@ -141,7 +143,7 @@ const OperatorHomeScreen = ({route, navigation}) => {
           ? jobDateStr.toLowerCase().includes(query)
           : false;
 
-        return jobCardMatch || customerNameMatch || dateMatch;
+        return jobCardMatch || customerNameMatch || jobNameMatch || dateMatch;
       });
     }
     if (printingStatusFilter !== 'all') {

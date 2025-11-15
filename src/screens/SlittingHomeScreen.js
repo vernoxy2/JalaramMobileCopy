@@ -118,6 +118,7 @@ const SlittingHomeScreen = ({navigation}) => {
           (job.jobCardNo && job.jobCardNo.toLowerCase().includes(query)) ||
           (job.customerName &&
             job.customerName.toLowerCase().includes(query)) ||
+          (job.jobName && job.jobName.toLowerCase().includes(query)) ||
           (() => {
             if (!job.jobDate) return false;
 
