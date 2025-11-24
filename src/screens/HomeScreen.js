@@ -256,9 +256,14 @@ const HomeScreen = ({navigation}) => {
                 date={fromDate || new Date()}
                 mode="date"
                 maximumDate={new Date()}
+                // onConfirm={date => {
+                //   setOpenFrom(false);
+                //   setFromDate(date);
+                // }}
                 onConfirm={date => {
                   setOpenFrom(false);
-                  setFromDate(date);
+                  const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+                  setFromDate(startOfDay);
                 }}
                 onCancel={() => setOpenFrom(false)}
               />
@@ -270,9 +275,14 @@ const HomeScreen = ({navigation}) => {
                 mode="date"
                 maximumDate={new Date()}
                 minimumDate={fromDate || undefined}
+                // onConfirm={date => {
+                //   setOpenTo(false);
+                //   setToDate(date);
+                // }}
                 onConfirm={date => {
                   setOpenTo(false);
-                  setToDate(date);
+                  const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+                  setToDate(endOfDay);
                 }}
                 onCancel={() => setOpenTo(false)}
               />

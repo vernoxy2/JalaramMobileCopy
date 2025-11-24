@@ -575,15 +575,16 @@ const styles = StyleSheet.create({
     fontFamily: 'Lato-Regular',
     marginVertical: 5,
   },
-  dropdownContainer: {
+ dropdownContainer: {
     width: '100%',
     borderRadius: 10,
     marginTop: 20,
-
-    height: 40,
-    justifyContent: 'space-between',
-
-    paddingHorizontal: 20,
+  },
+    dropdownText: {
+    fontSize: 14,
+    fontFamily: 'Lato-Black',
+    color: '#000',
+    marginVertical: 10,
   },
   buttonContainer: {
     padding: 20,

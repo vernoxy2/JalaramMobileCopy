@@ -638,15 +638,10 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: 20,
   },
-  dropdownContainer: {
+ dropdownContainer: {
     width: '100%',
     borderRadius: 10,
     marginTop: 20,
-
-    height: 40,
-    justifyContent: 'space-between',
-
-    paddingHorizontal: 20,
   },
   disabledDropdown: {
     borderRadius: 10,
@@ -725,10 +720,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  dropdownText: {
+   dropdownText: {
     fontSize: 14,
     fontFamily: 'Lato-Black',
     color: '#000',
+    marginVertical: 10,
   },
   dropdownText1: {
     fontSize: 14,
