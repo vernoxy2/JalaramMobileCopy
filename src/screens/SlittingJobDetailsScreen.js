@@ -120,6 +120,23 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
     }
   };
 
+  const getExtraPaperProducts = () => {
+    let products = [];
+
+    Object.keys(order).forEach(key => {
+      const match = key.match(/^paperProductCode(\d+)$/);
+      if (match) {
+        const index = match[1];
+        products.push({
+          code: order[`paperProductCode${index}`],
+          number: order[`paperProductNo${index}`] || '',
+        });
+      }
+    });
+
+    return products;
+  };
+
   return (
     <View style={styles.container}>
       <CustomHeader
@@ -154,6 +171,16 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
             <Text style={styles.label}>Job Paper:</Text>
             <Text style={styles.value}>{order.jobPaper.label}</Text>
 
+            {/* <View style={styles.readOnlyField}>
+              <Text style={styles.label}>Paper Product Code:</Text>
+              <Text style={styles.value}>
+                {typeof order.paperProductCode === 'object'
+                  ? order.paperProductCode.label
+                  : order.paperProductCode}
+              </Text>
+            </View> */}
+
+            {/* Base Paper Product */}
             <View style={styles.readOnlyField}>
               <Text style={styles.label}>Paper Product Code:</Text>
               <Text style={styles.value}>
@@ -162,6 +189,41 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
                   : order.paperProductCode}
               </Text>
             </View>
+
+            <View style={styles.readOnlyField}>
+              <Text style={styles.label}>Paper Product No:</Text>
+              <Text style={styles.value}>{order.paperProductNo}</Text>
+            </View>
+
+            {/* ExtraList */}
+            {getExtraPaperProducts().map((item, index) => (
+              <View key={index} style={{marginTop: 10}}>
+                <View style={styles.readOnlyField}>
+                  <Text style={styles.label}>
+                    Paper Product Code {item.index}:
+                  </Text>
+                  <Text style={styles.value}>
+                    {typeof item.code === 'object'
+                      ? item.code.label
+                      : item.code}
+                  </Text>
+                </View>
+
+                <View style={styles.readOnlyField}>
+                  <Text style={styles.label}>
+                    Paper Product No {item.index}:
+                  </Text>
+                  <Text style={styles.value}>{item.number}</Text>
+                </View>
+              </View>
+            ))}
+
+            {order.jobType !== 'Printing' ? (
+              <View>
+                <Text style={styles.label}>Paper Code</Text>
+                <Text style={styles.value}>{order.paperCode}</Text>
+              </View>
+            ) : null}
 
             <Text style={styles.label}>Job Size</Text>
             <Text style={styles.value}>{order.jobSize}</Text>

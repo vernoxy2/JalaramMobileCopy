@@ -175,6 +175,23 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
               .join('')
           : `<tr><td colspan="3">No data available</td></tr>`;
 
+      const extraPaperProductsHTML = getExtraPaperProducts()
+        .map(
+          (item, i) => `
+      <div class="row">
+        <div class="col">
+          <span class="label">Paper Product Code ${i + 1}:</span>
+          <span class="input">${item.code?.label || item.code || ''}</span>
+        </div>
+        <div class="col">
+          <span class="label">Paper Product No ${i + 1}:</span>
+          <span class="input">${item.number || ''}</span>
+        </div>
+      </div>
+    `,
+        )
+        .join('');
+
       const htmlContent = `
       <html>
       <head>
@@ -246,7 +263,9 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
           </div>        
           <div class="row">
               <div class="col"><span class="label">Job Creation Time:</span> <span class="input">${jobCreationTime}</span></div>  
-              <div class="col"></div>           
+              <div class="col"><span class="label">Teeth Size:</span> <span class="input">${
+                order.teethSize.label || order.teethSize || ''
+              }</span></div>           
           </div>          
             <div class="row time-row">
             <div class="col"><span class="label">Start time:</span> <span class="input">${startTimeFormatted}</span></div>
@@ -268,53 +287,55 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
           </div>
           <div class="row"><span class="label">Color Seq.</span></div>
           
-                            <table class="small-table color-seq-table">
-                    <tr>
-                      <td>C : ${order.colorAniloxValues?.C?.value || ''}</td>
-                      <td>M : ${order.colorAniloxValues?.M?.value || ''}</td>
-                      <td>Y : ${order.colorAniloxValues?.Y?.value || ''}</td>
-                      <td>K : ${order.colorAniloxValues?.K?.value || ''}</td>
-                    </tr>
-                    <tr>
-                      <td>Sp1 : ${
-                        order.colorAniloxValues?.Sq1?.value || ''
-                      }</td>
-                      <td>Sp2 : ${
-                        order.colorAniloxValues?.Sq2?.value || ''
-                      }</td>    
-                      <td>Sp3 : ${
-                        order.colorAniloxValues?.Sq3?.value || ''
-                      }</td>
-                      <td>Sp4 : ${
-                        order.colorAniloxValues?.Sq4?.value || ''
-                      }</td>
-                    </tr>
-                  </table>
+          <table class="small-table color-seq-table">
+              <tr>
+                <td>C : ${order.colorAniloxValues?.C?.value || ''}</td>
+                <td>M : ${order.colorAniloxValues?.M?.value || ''}</td>
+                <td>Y : ${order.colorAniloxValues?.Y?.value || ''}</td>
+                <td>K : ${order.colorAniloxValues?.K?.value || ''}</td>
+              </tr>
+              <tr>
+                <td>Sp1 : ${order.colorAniloxValues?.Sq1?.value || ''}</td>
+                <td>Sp2 : ${order.colorAniloxValues?.Sq2?.value || ''}</td>    
+                <td>Sp3 : ${order.colorAniloxValues?.Sq3?.value || ''}</td>
+                <td>Sp4 : ${order.colorAniloxValues?.Sq4?.value || ''}</td>
+              </tr>
+            </table>
 
-                <div class="row">
-                  <div class="col"><span class="label">Running Mtrs:</span> <span class="input">${
-                    order.runningMtr || ''
-                  }</span></div>
-                  <div class="col"><span class="label">Paper Product Code:</span> <span class="input">${
-                    order.paperProductCode?.label ||
-                    order.paperProductCode ||
-                    ''
-                  }</span>
-                  </div>
-                </div>
-                 <div class="row">
-                    <div class="col">
-                      <span class="label">Printing Colors:</span>
-                      <span class="input">
-                        ${
-                          order.printingColors &&
-                          order.printingColors.length > 0
-                            ? order.printingColors.join(', ')
-                            : ''
-                        }
-                      </span>
+          <div class="row">
+                <div class="col"><span class="label">Running Mtrs:</span> <span class="input">${
+                  order.runningMtr || ''
+                }</span></div>
+                <div class="col"><span class="label">Tooling:</span> <span class="input">${
+                  order.tooling || ''
+                }</span></div>
+          </div>
+
+            <div class="row">
+                    <div class="col"><span class="label">Paper Product Code:</span> <span class="input">${
+                      order.paperProductCode?.label ||
+                      order.paperProductCode ||
+                      ''
+                    }</span></div>
+                    <div class="col"><span class="label">Paper Product No:</span> <span class="input">${
+                      order.paperProductNo || ''
+                    }</span>
                     </div>
-                 </div>
+          </div>
+          ${extraPaperProductsHTML}
+
+           <div class="row">
+              <div class="col">
+                <span class="label">Printing Colors:</span>
+                <span class="input">
+                  ${
+                    order.printingColors && order.printingColors.length > 0
+                      ? order.printingColors.join(', ')
+                      : ''
+                  }
+                </span>
+              </div>
+         </div>
         </div>
 
         <div class="section">
@@ -464,7 +485,23 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
               .join('')
           : `<tr><td colspan="3">No data available</td></tr>`;
 
-      // ✅ Keep your existing HTML content as-is
+      const extraPaperProductsHTML = getExtraPaperProducts()
+        .map(
+          (item, i) => `
+      <div class="row">
+        <div class="col">
+          <span class="label">Paper Product Code ${i + 1}:</span>
+          <span class="input">${item.code?.label || item.code || ''}</span>
+        </div>
+        <div class="col">
+          <span class="label">Paper Product No ${i + 1}:</span>
+          <span class="input">${item.number || ''}</span>
+        </div>
+      </div>
+    `,
+        )
+        .join('');
+
       const htmlContent = `
       <html>
       <head>
@@ -536,7 +573,9 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
           </div>        
           <div class="row">
               <div class="col"><span class="label">Job Creation Time:</span> <span class="input">${jobCreationTime}</span></div>  
-              <div class="col"></div>           
+              <div class="col"><span class="label">Teeth Size:</span> <span class="input">${
+                order.teethSize.label || order.teethSize || ''
+              }</span></div>           
           </div>          
             <div class="row time-row">
             <div class="col"><span class="label">Start time:</span> <span class="input">${startTimeFormatted}</span></div>
@@ -559,29 +598,42 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
           <div class="row"><span class="label">Color Seq.</span></div>
           
           <table class="small-table color-seq-table">
-  <tr>
-    <td>C : ${order.colorAniloxValues?.C?.value || ''}</td>
-    <td>M : ${order.colorAniloxValues?.M?.value || ''}</td>
-    <td>Y : ${order.colorAniloxValues?.Y?.value || ''}</td>
-    <td>K : ${order.colorAniloxValues?.K?.value || ''}</td>
-  </tr>
-  <tr>
-    <td>Sp1 : ${order.colorAniloxValues?.Sq1?.value || ''}</td>
-    <td>Sp2 : ${order.colorAniloxValues?.Sq2?.value || ''}</td>    
-    <td>Sp3 : ${order.colorAniloxValues?.Sq3?.value || ''}</td>
-    <td>Sp4 : ${order.colorAniloxValues?.Sq4?.value || ''}</td>
-  </tr>
-</table>
+              <tr>
+                <td>C : ${order.colorAniloxValues?.C?.value || ''}</td>
+                <td>M : ${order.colorAniloxValues?.M?.value || ''}</td>
+                <td>Y : ${order.colorAniloxValues?.Y?.value || ''}</td>
+                <td>K : ${order.colorAniloxValues?.K?.value || ''}</td>
+              </tr>
+              <tr>
+                <td>Sp1 : ${order.colorAniloxValues?.Sq1?.value || ''}</td>
+                <td>Sp2 : ${order.colorAniloxValues?.Sq2?.value || ''}</td>    
+                <td>Sp3 : ${order.colorAniloxValues?.Sq3?.value || ''}</td>
+                <td>Sp4 : ${order.colorAniloxValues?.Sq4?.value || ''}</td>
+              </tr>
+            </table>
 
           <div class="row">
-            <div class="col"><span class="label">Running Mtrs:</span> <span class="input">${
-              order.runningMtr || ''
-            }</span></div>
-            <div class="col"><span class="label">Paper Product Code:</span> <span class="input">${
-              order.paperProductCode?.label || order.paperProductCode || ''
-            }</span>
-            </div>
+                <div class="col"><span class="label">Running Mtrs:</span> <span class="input">${
+                  order.runningMtr || ''
+                }</span></div>
+                <div class="col"><span class="label">Tooling:</span> <span class="input">${
+                  order.tooling || ''
+                }</span></div>
           </div>
+
+            <div class="row">
+                    <div class="col"><span class="label">Paper Product Code:</span> <span class="input">${
+                      order.paperProductCode?.label ||
+                      order.paperProductCode ||
+                      ''
+                    }</span></div>
+                    <div class="col"><span class="label">Paper Product No:</span> <span class="input">${
+                      order.paperProductNo || ''
+                    }</span>
+                    </div>
+          </div>
+          ${extraPaperProductsHTML}
+
            <div class="row">
               <div class="col">
                 <span class="label">Printing Colors:</span>
@@ -686,6 +738,22 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
       Alert.alert('Error', 'Failed to generate or save PDF');
     }
   };
+  const getExtraPaperProducts = () => {
+    let products = [];
+
+    Object.keys(order).forEach(key => {
+      const match = key.match(/^paperProductCode(\d+)$/);
+      if (match) {
+        const index = match[1];
+        products.push({
+          code: order[`paperProductCode${index}`],
+          number: order[`paperProductNo${index}`] || '',
+        });
+      }
+    });
+
+    return products;
+  };
 
   return (
     <View style={styles.container}>
@@ -755,6 +823,28 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
 
         <Text style={styles.label}>Paper Product No</Text>
         <Text style={styles.value}>{order.paperProductNo}</Text>
+
+        {getExtraPaperProducts().map((item, index) => (
+          <View key={index} style={{marginTop: 10}}>
+            <View style={styles.readOnlyField}>
+              <Text style={styles.label}>Paper Product Code {item.index}:</Text>
+              <Text style={styles.value}>
+                {typeof item.code === 'object' ? item.code.label : item.code}
+              </Text>
+            </View>
+
+            <View style={styles.readOnlyField}>
+              <Text style={styles.label}>Paper Product No {item.index}:</Text>
+              <Text style={styles.value}>{item.number}</Text>
+            </View>
+          </View>
+        ))}
+        {order.jobType !== 'Printing' ? (
+          <View>
+            <Text style={styles.label}>Paper Code</Text>
+            <Text style={styles.value}>{order.paperCode}</Text>
+          </View>
+        ) : null}
 
         <Text style={styles.label}>Job Size</Text>
         <Text style={styles.value}>{order.jobSize}</Text>
