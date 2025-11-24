@@ -16,7 +16,7 @@ import {
   blocks,
   colorAnilox,
   options,
-  paperProductCode,
+  paperProductCodeData,
   printingPlateSize,
   slitting,
   teethSize,
@@ -41,7 +41,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
   const [selectedColor, setSelectedColor] = useState(null);
   const [size, setSize] = useState(order.jobSize || '');
   const [jobPaper, setJobPaper] = useState(order.jobPaper || '');
-  const [paperProduct, setPaperProduct] = useState(
+  const [paperProductCode, setPaperProductCode] = useState(
     order.paperProductCode || '',
   );
   const [plateSize, setPlateSize] = useState(order.printingPlateSize || '');
@@ -75,6 +75,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
   const [jobQty, setJobQty] = useState(order.jobQty || '');
   const [acrossGap, setAcrossGap] = useState(order.acrossGap || '');
   const [aroundGap, setAroundGap] = useState(order.aroundGap || '');
+  const [extraPaperProducts, setExtraPaperProducts] = useState([]);
 
   const printingColors = [];
   if (checkboxState.box1) printingColors.push('Uv');
@@ -87,7 +88,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
     // Directly use the `order` values to set form state
     setSize(order.jobSize || '');
     setJobPaper(order.jobPaper || '');
-    setPaperProduct(order.paperProductCode || '');
+    setPaperProductCode(order.paperProductCode || '');
     setPlateSize(order.printingPlateSize || '');
     setUpsAcrossValue(order.upsAcross || '');
     setAroundValue(order.around || '');
@@ -145,15 +146,36 @@ const OperatorCreateOrder = ({navigation, route}) => {
       if (checkboxState.box1) printingColors.push('Uv');
       if (checkboxState.box2) printingColors.push('Water');
       if (checkboxState.box3) printingColors.push('Special');
+
+         const hasEmptyRow = extraPaperProducts.some(
+              item => item.code === '' || item.number === '',
+            );
+      
+            if (hasEmptyRow) {
+              Alert.alert(
+                'Incomplete Entry',
+                'Please fill all extra Paper Product fields or remove empty rows.',
+              );
+              return;
+            }
+
       const orderRef = firestore().collection('orders').doc(order.id);
+      const extraFields = {};
+      extraPaperProducts.forEach((item, index) => {
+        const num = index + 1;
+        extraFields[`paperProductCode${num}`] = item.code;
+        extraFields[`paperProductNo${num}`] = item.number;
+      });
+
       await orderRef.update({
         jobStarted: true,
         printingStatus: 'started',
         updatedAt: firestore.FieldValue.serverTimestamp(),
         jobSize: size,
         jobPaper,
-        paperProductCode: paperProduct,
+        paperProductCode: paperProductCode,
         paperProductNo,
+        ...extraFields,
         printingPlateSize: plateSize,
         upsAcross: upsAcrossValue,
         around: aroundValue,
@@ -210,6 +232,32 @@ const OperatorCreateOrder = ({navigation, route}) => {
       console.error('Error updating order:', err);
       alert('Failed to update order');
     }
+  };
+
+  const addExtraPaperProduct = () => {
+    if (extraPaperProducts.length >= 10) {
+      Alert.alert('Limit Reached', 'You can add only up to 10 extra products');
+      return;
+    }
+
+    setExtraPaperProducts(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        index: prev.length + 1,
+        code: '',
+        number: '',
+      },
+    ]);
+  };
+
+  const updateExtraPaperProduct = (id, field, value) => {
+    setExtraPaperProducts(prev =>
+      prev.map(item => (item.id === id ? {...item, [field]: value} : item)),
+    );
+  };
+  const removeExtraPaperProduct = id => {
+    setExtraPaperProducts(prev => prev.filter(item => item.id !== id));
   };
 
   return (
@@ -326,10 +374,10 @@ const OperatorCreateOrder = ({navigation, route}) => {
 
               <CustomDropdown
                 placeholder={'Paper Product Code'}
-                data={paperProductCode}
+                data={paperProductCodeData}
                 style={styles.dropdownContainer}
                 selectedText={styles.dropdownText}
-                onSelect={item => setPaperProduct(item)}
+                onSelect={item => setPaperProductCode(item)}
                 showIcon={true}
               />
 
@@ -340,6 +388,43 @@ const OperatorCreateOrder = ({navigation, route}) => {
                 style={{width: '100%'}}
               />
 
+              {/* Extra paper product pairs */}
+              {extraPaperProducts.map((item, index) => (
+                <View key={item.id}>
+                  <CustomDropdown
+                    placeholder={`Paper Product Code`}
+                    data={paperProductCodeData}
+                    style={styles.dropdownContainer}
+                    selectedText={styles.dropdownText}
+                    onSelect={val =>
+                      updateExtraPaperProduct(item.id, 'code', val)
+                    }
+                    showIcon={true}
+                  />
+
+                  <CustomTextInput
+                    placeholder={`Paper Product No`}
+                    value={item.number}
+                    onChangeText={text =>
+                      updateExtraPaperProduct(item.id, 'number', text)
+                    }
+                    style={{width: '100%'}}
+                  />
+                  {/* REMOVE button */}
+                  <TouchableOpacity
+                    onPress={() => removeExtraPaperProduct(item.id)}
+                    style={{marginTop: 6, alignSelf: 'flex-end'}}>
+                    <Text style={{color: 'red'}}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <TouchableOpacity
+                style={{marginVertical: 10}}
+                onPress={addExtraPaperProduct}>
+                <Text style={{color: '#3668B1', fontSize: 16}}>
+                  + Add Extra Paper Product
+                </Text>
+              </TouchableOpacity>
               <View style={styles.btnContainer}>
                 <CustomButton
                   title={'Start Job'}

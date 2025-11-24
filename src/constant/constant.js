@@ -6,7 +6,7 @@ export const options = [
   {label: 'Silver Paper', value: 'Silver Paper'},
 ];
 
-export const paperProductCode = [
+export const paperProductCodeData = [
   {label: 'Capri', value: 'Capri'},
   {label: 'Krutika', value: 'Krutika'},
   {label: 'Stiqa', value: 'Stiqa'},
