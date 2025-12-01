@@ -59,17 +59,17 @@ const AdminCreateOrder = ({navigation}) => {
   const route = useRoute();
   const {id, isEdit} = route.params || {};
 
-  const printingColors = [];
-  if (checkboxState.box1) printingColors.push('Uv');
-  if (checkboxState.box2) printingColors.push('Water');
-  if (checkboxState.box3) printingColors.push('Special');
+  // const printingColors = [];
+  // if (checkboxState.box1) printingColors.push('Uv');
+  // if (checkboxState.box2) printingColors.push('Water');
+  // if (checkboxState.box3) printingColors.push('Special');    
 
   const handleCheckboxChange = box => {
     setCheckboxState(prevState => ({
       ...prevState,
       [box]: !prevState[box],
     }));
-  };
+  };  
 
   useEffect(() => {
     if (isEdit && id) {
@@ -188,7 +188,7 @@ const AdminCreateOrder = ({navigation}) => {
         teethSize: teethSizeValue,
         blocks: blocksValue,
         windingDirection: windingDirectionValue,
-        printingColors,
+        // printingColors,
         accept,
         acrossGap,
         aroundGap,

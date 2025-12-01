@@ -140,11 +140,6 @@ export const blocks = [
   {label: 'Dripoff UV', value: 'Dripoff UV'},
 ];
 
-
-
-
-
-
 export const windingDirection = [
   {label: 'Clock Wise', value: 'clockWise'},
   {label: 'Anti-Clockwise', value: 'antiClockWise'},
