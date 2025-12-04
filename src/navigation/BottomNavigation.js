@@ -86,6 +86,8 @@ import AdminCreateOrder from '../screens/AdminCreateOrder';
 
 import homeIcon from '../assets/images/homeBottomImg.png';
 import profileIcon from '../assets/images/profileBottomImg.png';
+import MaterialRequestPrinting from '../screens/MaterialRequestPrinting';
+import MaterialRequestPunching from '../screens/MaterialRequestPunching';
 // import notificationIcon from '../assets/images/notificationBottomImg.png';
 
 const Tab = createBottomTabNavigator();
@@ -104,6 +106,7 @@ const PrintingStack = () => (
   <Stack.Navigator screenOptions={{headerShown: false}}>
     <Stack.Screen name="PrintingHome" component={OperatorHomeScreen} />
     <Stack.Screen name="OperatorCreateOrder" component={OperatorCreateOrder} />
+    <Stack.Screen name="MaterialRequestPrinting" component={MaterialRequestPrinting} />
   </Stack.Navigator>
 );
 
@@ -114,6 +117,7 @@ const PunchingStack = () => (
       name="PunchingJobDetailsScreen"
       component={PunchingJobDetailsScreen}
     />
+    <Stack.Screen name="MaterialRequestPunching" component={MaterialRequestPunching} />
   </Stack.Navigator>
 );
 

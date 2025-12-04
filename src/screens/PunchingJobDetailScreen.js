@@ -46,6 +46,10 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
   const [isPunchingStart, setIsPunchingStart] = useState(
     order.isPunchingStart || false,
   );
+  const [usedByPunch, setUsedByPunch] = useState('');
+  const [wasteByPunch, setWasteByPunch] = useState('');
+  const [leftoverByPunch, setLeftoverByPunch] = useState('');
+  const [wipByPunch, setWipByPunch] = useState('');
 
   const extraFields = {};
   extraPaperProducts.forEach((item, index) => {
@@ -71,6 +75,11 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         updatedByPunchingAt: firestore.FieldValue.serverTimestamp(),
         assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33', // ✅ now it's OK to hand off to slitting operator
         completedByPunching: currentUser.uid,
+        usedByPunch: usedByPunch ? parseFloat(usedByPunch) : 0,
+        wasteByPunch: wasteByPunch ? parseFloat(wasteByPunch) : 0,
+        leftoverByPunch: leftoverByPunch ? parseFloat(leftoverByPunch) : 0,
+        wipByPunch: wipByPunch ? parseFloat(wipByPunch) : 0,
+        ...extraFields,
       });
 
       Alert.alert('Success', 'Punching marked as completed');
@@ -120,7 +129,6 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
   //     Alert.alert('Error', 'Failed to start punching');
   //   }
   // };
-
 
   const handlePunchingStart = async () => {
     try {
@@ -525,6 +533,72 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
               )}
             </View>
           ) : null}
+          {/* NEW SECTION: Job Completion Fields */}
+          <View style={styles.completionFieldsContainer}>
+            <Text
+              style={[
+                styles.boldText,
+                {marginBottom: 10, fontSize: 16, width: '100%'},
+              ]}>
+              Job Completion Details
+            </Text>
+
+            <View style={styles.detailsRowContainer}>
+              <Text style={styles.boldText}>Used</Text>
+              <TextInput
+                style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                value={usedByPunch}
+                onChangeText={text => {
+                  const numericValue = text.replace(/[^0-9.]/g, '');
+                  setUsedByPunch(numericValue);
+                }}
+                placeholder="Enter Used"
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={styles.detailsRowContainer}>
+              <Text style={styles.boldText}>Waste</Text>
+              <TextInput
+                style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                value={wasteByPunch}
+                onChangeText={text => {
+                  const numericValue = text.replace(/[^0-9.]/g, '');
+                  setWasteByPunch(numericValue);
+                }}
+                placeholder="Enter Waste"
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={styles.detailsRowContainer}>
+              <Text style={styles.boldText}>Leftover (LO)</Text>
+              <TextInput
+                style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                value={leftoverByPunch}
+                onChangeText={text => {
+                  const numericValue = text.replace(/[^0-9.]/g, '');
+                  setLeftoverByPunch(numericValue);
+                }}
+                placeholder="Enter Leftover"
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={styles.detailsRowContainer}>
+              <Text style={styles.boldText}>WIP</Text>
+              <TextInput
+                style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                value={wipByPunch}
+                onChangeText={text => {
+                  const numericValue = text.replace(/[^0-9.]/g, '');
+                  setWipByPunch(numericValue);
+                }}
+                placeholder="Enter WIP"
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
 
           {!isCompleted && (
             <View style={styles.buttonContainer}>
@@ -575,12 +649,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Lato-Regular',
     marginVertical: 5,
   },
- dropdownContainer: {
+  dropdownContainer: {
     width: '100%',
     borderRadius: 10,
     marginTop: 20,
   },
-    dropdownText: {
+  dropdownText: {
     fontSize: 14,
     fontFamily: 'Lato-Black',
     color: '#000',
@@ -607,5 +681,35 @@ const styles = StyleSheet.create({
   homeSubContainer: {
     paddingHorizontal: 20,
     paddingVertical: 20,
+  },
+    completionFieldsContainer: {
+    marginTop: 15,
+    marginBottom: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+    detailsRowContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    width: '100%',
+  },
+    boldText: {
+    fontSize: 14,
+    fontFamily: 'Lato-Black',
+    color: '#000',
+    width: '20%',
+  },
+    enableDropdown: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    padding: 10,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    height: 40,
+    width: '80%',
   },
 });

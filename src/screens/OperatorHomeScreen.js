@@ -164,7 +164,9 @@ const OperatorHomeScreen = ({route, navigation}) => {
       <Text style={styles.cellHeading}>Job Name</Text>
       <Text style={styles.cellHeading}>Customer Name</Text>
       <Text style={styles.cellHeading}>Date</Text>
-      <Text style={styles.cellHeading}>Status</Text>
+      <Text style={styles.cellHeading}>Material Status</Text>
+      <Text style={styles.cellHeading}>Job Status</Text>
+      <Text style={styles.cellHeading}>Action</Text>
     </View>
   );
 
@@ -185,6 +187,19 @@ const OperatorHomeScreen = ({route, navigation}) => {
       <Text
         style={[
           styles.statusCell,
+          item.materialAllotStatus === 'alloted' ||
+          item.materialAllotStatus === 'Alloted'
+            ? styles.completedStatus
+            : styles.pendingStatus,
+        ]}>
+        {item.materialAllotStatus === 'alloted' ||
+        item.materialAllotStatus === 'Alloted'
+          ? 'Alloted'
+          : 'Pending'}
+      </Text>
+      <Text
+        style={[
+          styles.statusCell,
           item.printingStatus === 'completed'
             ? styles.completedStatus
             : item.printingStatus === 'started'
@@ -197,6 +212,27 @@ const OperatorHomeScreen = ({route, navigation}) => {
           ? 'Started'
           : 'Pending'}
       </Text>
+      <View
+        style={[
+          styles.cell,
+          {width: 80, alignItems: 'center', justifyContent: 'center'},
+        ]}>
+        {item.jobStatus?.toLowerCase() !== 'completed' && (
+          <Pressable
+            pointerEvents="box-only"
+            onStartShouldSetResponder={() => true}
+            onPress={e => {
+              e.stopPropagation();
+              navigation.navigate('MaterialRequestPrinting', {
+                id: item.id,
+                isEdit: true,
+              });
+            }}
+            style={styles.editButton}>
+            <Text style={styles.editText}>Request Material</Text>
+          </Pressable>
+        )}
+      </View>
     </Pressable>
   );
 
@@ -456,5 +492,19 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'space-between',
     paddingHorizontal: 20,
+  },
+  editButton: {
+    backgroundColor: '#3668B1',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 80,
+  },
+  editText: {
+    color: '#fff',
+    fontSize: 12,
+    fontFamily: 'Lato-Bold',
   },
 });

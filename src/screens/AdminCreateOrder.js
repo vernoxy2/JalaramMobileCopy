@@ -26,6 +26,8 @@ import {
 } from '../constant/constant';
 import moment from 'moment';
 import {useRoute} from '@react-navigation/native';
+import JobOriginalSizeInput from '../components/JobOriginalSizeInput ';
+import {set} from 'date-fns';
 
 const AdminCreateOrder = ({navigation}) => {
   const [poNo, setPoNo] = useState('');
@@ -55,6 +57,9 @@ const AdminCreateOrder = ({navigation}) => {
   const [aroundGap, setAroundGap] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [jobLength, setJobLength] = useState('');
+  const [jobWidth, setJobWidth] = useState('');
+  const [totalPaperRequired, setTotalPaperRequired] = useState('');
 
   const route = useRoute();
   const {id, isEdit} = route.params || {};
@@ -62,14 +67,14 @@ const AdminCreateOrder = ({navigation}) => {
   // const printingColors = [];
   // if (checkboxState.box1) printingColors.push('Uv');
   // if (checkboxState.box2) printingColors.push('Water');
-  // if (checkboxState.box3) printingColors.push('Special');    
+  // if (checkboxState.box3) printingColors.push('Special');
 
   const handleCheckboxChange = box => {
     setCheckboxState(prevState => ({
       ...prevState,
       [box]: !prevState[box],
     }));
-  };  
+  };
 
   useEffect(() => {
     if (isEdit && id) {
@@ -78,6 +83,24 @@ const AdminCreateOrder = ({navigation}) => {
       generateJobCardNo();
     }
   }, [isEdit, id, fetchOrderDetails, generateJobCardNo]);
+
+  useEffect(() => {
+    if (jobLength && jobWidth && jobQty) {
+      const length = parseFloat(jobLength);
+      const width = parseFloat(jobWidth);
+      const qty = parseInt(jobQty, 10);
+
+      // Check if all values are valid numbers
+      if (!isNaN(length) && !isNaN(width) && !isNaN(qty)) {
+        const total = length * width * qty;
+        setTotalPaperRequired(total.toFixed(2)); // Format to 2 decimal places
+      } else {
+        setTotalPaperRequired('');
+      }
+    } else {
+      setTotalPaperRequired('');
+    }
+  }, [jobLength, jobWidth, jobQty]);
 
   const fetchOrderDetails = useCallback(async () => {
     try {
@@ -95,6 +118,9 @@ const AdminCreateOrder = ({navigation}) => {
         setAcrossGap(data.acrossGap || '');
         setAroundGap(data.aroundGap || '');
         setAccept(data.accept || false);
+        setJobLength(data.jobLength || ''); // ✅ Added
+        setJobWidth(data.jobWidth || ''); // ✅ Added
+        setTotalPaperRequired(data.totalPaperRequired || ''); // ✅ Added
 
         // ✅ Dropdowns
         setJobPaper(data.jobPaper || '');
@@ -151,12 +177,11 @@ const AdminCreateOrder = ({navigation}) => {
     } catch (err) {
       console.error('Error generating job card number:', err);
     }
-  }, []); // no dependencies
+  }, []);
 
   const handleSubmit = async () => {
     try {
       const normalizedLabelType = selectedLabelType.trim().toLowerCase();
-
       let assignedUserUID;
       let jobStatus;
 
@@ -179,6 +204,9 @@ const AdminCreateOrder = ({navigation}) => {
         jobName,
         jobSize,
         jobQty,
+        jobLength, // ✅ Added
+        jobWidth, // ✅ Added
+        totalPaperRequired, // ✅ Added
         jobType: selectedLabelType,
         assignedTo: assignedUserUID,
         jobPaper,
@@ -188,19 +216,60 @@ const AdminCreateOrder = ({navigation}) => {
         teethSize: teethSizeValue,
         blocks: blocksValue,
         windingDirection: windingDirectionValue,
-        // printingColors,
         accept,
         acrossGap,
         aroundGap,
+        materialAllotStatus: 'Pending', // ✅ Added default status
+        materialAllocations: [],
         updatedAt: firestore.FieldValue.serverTimestamp(),
       };
 
+      // ✅ Material Request Data
+      const materialRequestData = {
+        jobCardNo,
+        jobName,
+        jobLength,
+        jobWidth,
+        jobPaper,
+        jobQty,
+        totalPaperRequired,
+        requestStatus: 'Pending', // Default status for material request
+        requestType: 'Initial',
+        createdAt: firestore.FieldValue.serverTimestamp(),
+        createdBy: 'Admin',
+      };
+
       if (isEdit && id) {
-        // ✅ Keep the old jobStatus instead of overwriting it
+        // ✅ Update existing order (keep old jobStatus)
         await firestore().collection('orders').doc(id).update(orderData);
+
+        // ✅ Update materialRequest if it exists, or create new one
+        const materialRequestSnapshot = await firestore()
+          .collection('materialRequest')
+          .where('jobCardNo', '==', jobCardNo)
+          .where('requestType', '==', 'Initial')
+          .get();
+
+        if (!materialRequestSnapshot.empty) {
+          // Update existing material request
+          const docId = materialRequestSnapshot.docs[0].id;
+          await firestore()
+            .collection('materialRequest')
+            .doc(docId)
+            .update({
+              ...materialRequestData,
+              updatedAt: firestore.FieldValue.serverTimestamp(),
+            });
+        } else {
+          // Create new material request if doesn't exist
+          await firestore()
+            .collection('materialRequest')
+            .add(materialRequestData);
+        }
+
         Alert.alert('Success', 'Job updated successfully');
       } else {
-        // ✅ Only assign jobStatus when creating a new record
+        // ✅ Create new order
         const exists = await firestore()
           .collection('orders')
           .where('jobCardNo', '==', jobCardNo)
@@ -214,13 +283,35 @@ const AdminCreateOrder = ({navigation}) => {
           return;
         }
 
-        await firestore()
+        // ✅ Add to orders collection
+        // await firestore()
+        //   .collection('orders')
+        //   .add({
+        //     ...orderData,
+        //     jobStatus,
+        //     createdAt: firestore.FieldValue.serverTimestamp(),
+        //     createdBy: 'Admin',
+        //   });
+
+        // await firestore()
+        //   .collection('materialRequest')
+        //   .add(materialRequestData);
+
+        const orderRef = await firestore()
           .collection('orders')
           .add({
             ...orderData,
-            jobStatus, // ✅ assign only when creating
+            jobStatus,
             createdAt: firestore.FieldValue.serverTimestamp(),
             createdBy: 'Admin',
+          });
+
+        // Add material request with orderId
+        await firestore()
+          .collection('materialRequest')
+          .add({
+            ...materialRequestData,
+            orderId: orderRef.id,
           });
         Alert.alert('Success', 'Job created successfully');
       }
@@ -298,7 +389,7 @@ const AdminCreateOrder = ({navigation}) => {
   };
 
   return (
-    <View style={styles.adminFormMainContainer}>      
+    <View style={styles.adminFormMainContainer}>
       <CustomHeader
         showHeadingSection1Container={true}
         showBackBtn
@@ -404,15 +495,30 @@ const AdminCreateOrder = ({navigation}) => {
             onChangeText={setCustomerName}
           />
 
-          <CustomLabelTextInput
+          {/* <CustomLabelTextInput
             label="Job Original Size :"
             value={jobSize}
             onChangeText={setJobSize}
+          /> */}
+          <JobOriginalSizeInput
+            label="Job Original Size :"
+            lengthValue={jobLength}
+            widthValue={jobWidth}
+            onLengthChange={setJobLength}
+            onWidthChange={setJobWidth}
           />
+
           <CustomLabelTextInput
             label="Job Qty :"
             value={jobQty}
             onChangeText={setJobQty}
+          />
+
+          <CustomLabelTextInput
+            label="Total Paper Required :"
+            value={totalPaperRequired}
+            onChangeText={setTotalPaperRequired}
+            // editable={false}
           />
 
           <CustomDropdown
@@ -646,5 +752,41 @@ const styles = StyleSheet.create({
   dropdownSuggestionText: {
     fontSize: 14,
     color: '#000',
+  },
+  customLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+
+  sizeInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+
+  sizeInput: {
+    flex: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: '#000',
+    paddingVertical: 5,
+    fontSize: 14,
+    color: '#000',
+    marginHorizontal: 90,
+  },
+
+  multiplySign: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginHorizontal: 5,
+    color: '#000',
+  },
+  completionFieldsContainer: {
+    marginTop: 15,
+    marginBottom: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
   },
 });

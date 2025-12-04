@@ -16,6 +16,8 @@ import SlittingHomeScreen from '../screens/SlittingHomeScreen';
 import AdminJobDetailsScreen from '../screens/AdminJobDetailsScreen';
 import SlittingJobDetailsScreen from '../screens/SlittingJobDetailsScreen';
 import AuthLoadingScreen from '../screens/AuthLoadingScreen';
+import MaterialRequestPrinting from '../screens/MaterialRequestPrinting';
+import MaterialRequestPunching from '../screens/MaterialRequestPunching';
 
 const Stack = createNativeStackNavigator();
 
@@ -91,6 +93,16 @@ const StackNavigation = () => {
         <Stack.Screen
           name="AdminJobDetailsScreen"
           component={AdminJobDetailsScreen}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="MaterialRequestPrinting"
+          component={MaterialRequestPrinting}
+          options={{headerShown: false}}
+        />
+             <Stack.Screen
+          name="MaterialRequestPunching"
+          component={MaterialRequestPunching}
           options={{headerShown: false}}
         />
       </Stack.Navigator>

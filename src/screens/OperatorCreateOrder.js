@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, use} from 'react';
 import {
   View,
   Text,
@@ -76,6 +76,10 @@ const OperatorCreateOrder = ({navigation, route}) => {
   const [acrossGap, setAcrossGap] = useState(order.acrossGap || '');
   const [aroundGap, setAroundGap] = useState(order.aroundGap || '');
   const [extraPaperProducts, setExtraPaperProducts] = useState([]);
+  const [usedByPrint, setUsedByPrint] = useState('');
+  const [wasteByPrint, setWasteByPrint] = useState('');
+  const [leftoverByPrint, setLeftoverByPrint] = useState('');
+  const [wipByPrint, setWipByPrint] = useState('');
 
   const printingColors = [];
   if (checkboxState.box1) printingColors.push('Uv');
@@ -147,17 +151,17 @@ const OperatorCreateOrder = ({navigation, route}) => {
       if (checkboxState.box2) printingColors.push('Water');
       if (checkboxState.box3) printingColors.push('Special');
 
-         const hasEmptyRow = extraPaperProducts.some(
-              item => item.code === '' || item.number === '',
-            );
-      
-            if (hasEmptyRow) {
-              Alert.alert(
-                'Incomplete Entry',
-                'Please fill all extra Paper Product fields or remove empty rows.',
-              );
-              return;
-            }
+      const hasEmptyRow = extraPaperProducts.some(
+        item => item.code === '' || item.number === '',
+      );
+
+      if (hasEmptyRow) {
+        Alert.alert(
+          'Incomplete Entry',
+          'Please fill all extra Paper Product fields or remove empty rows.',
+        );
+        return;
+      }
 
       const orderRef = firestore().collection('orders').doc(order.id);
       const extraFields = {};
@@ -205,7 +209,11 @@ const OperatorCreateOrder = ({navigation, route}) => {
         Alert.alert('Error', 'User not authenticated');
         return;
       }
-
+      // Validate material fields
+    if (!usedByPrint || !wasteByPrint || !leftoverByPrint || !wipByPrint) {
+      Alert.alert('Missing Data', 'Please fill all material usage fields');
+      return;
+    }
       const orderRef = firestore().collection('orders').doc(order.id);
 
       await orderRef.update({
@@ -223,6 +231,10 @@ const OperatorCreateOrder = ({navigation, route}) => {
         sp2Color,
         sp3Color,
         sp4Color,
+        usedByPrint,
+        wasteByPrint,
+        leftoverByPrint,
+        wipByPrint,
       });
       alert('Job successfully updated and reassigned!');
       setTimeout(() => {
@@ -602,7 +614,71 @@ const OperatorCreateOrder = ({navigation, route}) => {
                         <Text style={styles.checkboxText}>{label}</Text>
                       </TouchableOpacity>
                     );
+                    
                   })}
+                </View>
+              </View>
+              {/* NEW SECTION: Job Completion Fields */}
+              <View style={styles.completionFieldsContainer}>
+                <Text
+                  style={[styles.boldText, {marginBottom: 10, fontSize: 16, width: '100%'}]}>
+                  Job Completion Details
+                </Text>
+
+                <View style={styles.detailsRowContainer}>
+                  <Text style={styles.boldText}>Used</Text>
+                  <TextInput
+                    style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                    value={usedByPrint}
+                    onChangeText={text => {
+                      const numericValue = text.replace(/[^0-9.]/g, '');
+                      setUsedByPrint(numericValue);
+                    }}
+                    placeholder="Enter Used"
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <View style={styles.detailsRowContainer}>
+                  <Text style={styles.boldText}>Waste</Text>
+                  <TextInput
+                    style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                    value={wasteByPrint}
+                    onChangeText={text => {
+                      const numericValue = text.replace(/[^0-9.]/g, '');
+                      setWasteByPrint(numericValue);
+                    }}
+                    placeholder="Enter Waste"
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <View style={styles.detailsRowContainer}>
+                  <Text style={styles.boldText}>Leftover (LO)</Text>
+                  <TextInput
+                    style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                    value={leftoverByPrint}
+                    onChangeText={text => {
+                      const numericValue = text.replace(/[^0-9.]/g, '');
+                      setLeftoverByPrint(numericValue);
+                    }}
+                    placeholder="Enter Leftover"
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <View style={styles.detailsRowContainer}>
+                  <Text style={styles.boldText}>WIP</Text>
+                  <TextInput
+                    style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                    value={wipByPrint}
+                    onChangeText={text => {
+                      const numericValue = text.replace(/[^0-9.]/g, '');
+                      setWipByPrint(numericValue);
+                    }}
+                    placeholder="Enter WIP"
+                    keyboardType="numeric"
+                  />
                 </View>
               </View>
 
@@ -638,7 +714,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: 20,
   },
- dropdownContainer: {
+  dropdownContainer: {
     width: '100%',
     borderRadius: 10,
     marginTop: 20,
@@ -720,7 +796,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-   dropdownText: {
+  dropdownText: {
     fontSize: 14,
     fontFamily: 'Lato-Black',
     color: '#000',
@@ -820,5 +896,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     marginBottom: 4,
+  },
+  completionFieldsContainer: {
+    marginTop: 15,
+    marginBottom: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
   },
 });
