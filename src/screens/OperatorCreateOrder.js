@@ -163,7 +163,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
         return;
       }
 
-      const orderRef = firestore().collection('orders').doc(order.id);
+      const orderRef = firestore().collection('ordersTest').doc(order.id);
       const extraFields = {};
       extraPaperProducts.forEach((item, index) => {
         const num = index + 1;
@@ -214,7 +214,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
       Alert.alert('Missing Data', 'Please fill all material usage fields');
       return;
     }
-      const orderRef = firestore().collection('orders').doc(order.id);
+      const orderRef = firestore().collection('ordersTest').doc(order.id);
 
       await orderRef.update({
         jobPaper,

@@ -69,7 +69,7 @@ const OperatorHomeScreen = ({route, navigation}) => {
     };
 
     const unsubscribePending = firestore()
-      .collection('orders')
+      .collection('ordersTest')
       .where('assignedTo', '==', currentUser.uid)
       .where('jobStatus', '==', 'Printing')
       .orderBy('createdAt', 'desc')
@@ -82,7 +82,7 @@ const OperatorHomeScreen = ({route, navigation}) => {
       });
 
     const unsubscribeCompleted = firestore()
-      .collection('orders')
+      .collection('ordersTest')
       .where('printingStatus', '==', 'completed')
       .where('completedByPrinting', '==', currentUser.uid)
       .orderBy('updatedByPrintingAt', 'desc')

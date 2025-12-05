@@ -19,7 +19,7 @@ const NotificationScreen = () => {
   useEffect(() => {
     fetchUserRole();
     const unsubscribe = firestore()
-      .collection('orders')
+      .collection('ordersTest')
       .orderBy('createdAt', 'desc') // ✅ Sort newest first
       .onSnapshot(
         snapshot => {
@@ -134,7 +134,7 @@ const NotificationScreen = () => {
 
   const handleAccept = async jobId => {
     try {
-      await firestore().collection('orders').doc(jobId).update({
+      await firestore().collection('ordersTest').doc(jobId).update({
         accept: true,
       });
       console.log(`Job ${jobId} accepted.`);

@@ -66,7 +66,7 @@ const PunchingHomeScreen = ({navigation}) => {
     };
 
     const unsubscribePending = firestore()
-      .collection('orders')
+      .collection('ordersTest')
       .where('assignedTo', '==', currentUser.uid)
       .where('jobStatus', '==', 'Punching')
       .orderBy('createdAt', 'desc')
@@ -79,7 +79,7 @@ const PunchingHomeScreen = ({navigation}) => {
       });
 
     const unsubscribeCompleted = firestore()
-      .collection('orders')
+      .collection('ordersTest')
       .where('punchingStatus', '==', 'completed')
       .where('completedByPunching', '==', currentUser.uid)
       .orderBy('updatedByPunchingAt', 'desc')

@@ -104,7 +104,7 @@ const AdminCreateOrder = ({navigation}) => {
 
   const fetchOrderDetails = useCallback(async () => {
     try {
-      const doc = await firestore().collection('orders').doc(id).get();
+      const doc = await firestore().collection('ordersTest').doc(id).get();
       if (doc.exists) {
         const data = doc.data();
         // ✅ Text Inputs
@@ -151,7 +151,7 @@ const AdminCreateOrder = ({navigation}) => {
       const prefix = `${monthPrefix}.${yearSuffix}`; // e.g. Nov.25
 
       const snapshot = await firestore()
-        .collection('orders')
+        .collection('ordersTest')
         .where('jobCardNo', '>=', `${prefix}-`)
         .where('jobCardNo', '<=', `${prefix}-\uf8ff`) // ensures prefix match
         .get();
@@ -241,7 +241,7 @@ const AdminCreateOrder = ({navigation}) => {
 
       if (isEdit && id) {
         // ✅ Update existing order (keep old jobStatus)
-        await firestore().collection('orders').doc(id).update(orderData);
+        await firestore().collection('ordersTest').doc(id).update(orderData);
 
         // ✅ Update materialRequest if it exists, or create new one
         const materialRequestSnapshot = await firestore()
@@ -271,7 +271,7 @@ const AdminCreateOrder = ({navigation}) => {
       } else {
         // ✅ Create new order
         const exists = await firestore()
-          .collection('orders')
+          .collection('ordersTest')
           .where('jobCardNo', '==', jobCardNo)
           .get();
 
@@ -298,7 +298,7 @@ const AdminCreateOrder = ({navigation}) => {
         //   .add(materialRequestData);
 
         const orderRef = await firestore()
-          .collection('orders')
+          .collection('ordersTest')
           .add({
             ...orderData,
             jobStatus,
@@ -326,7 +326,7 @@ const AdminCreateOrder = ({navigation}) => {
   const searchJobNames = async text => {
     try {
       const snapshot = await firestore()
-        .collection('orders')
+        .collection('ordersTest')
         .where('jobName', '>=', text[0].toUpperCase())
         .where('jobName', '<=', text[0].toUpperCase() + '\uf8ff')
         .limit(10)

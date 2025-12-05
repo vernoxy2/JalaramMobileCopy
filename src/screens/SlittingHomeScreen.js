@@ -66,7 +66,7 @@ const SlittingHomeScreen = ({navigation}) => {
     };
 
     const unsubscribePending = firestore()
-      .collection('orders')
+      .collection('ordersTest')
       .where('assignedTo', '==', currentUser.uid)
       .where('jobStatus', '==', 'Slitting')
       .orderBy('createdAt', 'desc')
@@ -79,7 +79,7 @@ const SlittingHomeScreen = ({navigation}) => {
       });
 
     const unsubscribeCompleted = firestore()
-      .collection('orders')
+      .collection('ordersTest')
       .where('slittingStatus', '==', 'completed')
       .where('completedBySlitting', '==', currentUser.uid)
       .orderBy('updatedBySlittingAt', 'desc')

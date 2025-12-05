@@ -28,6 +28,11 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
     order.isSlittingStart || false,
   );
 
+  const [usedBySlitting, setUsedBySlitting] = useState('');
+  const [wasteBySlitting, setWasteBySlitting] = useState('');
+  const [leftoverBySlitting, setLeftoverBySlitting] = useState('');
+  const [wipBySlitting, setWipBySlitting] = useState('');
+
   const formatTimestamp = timestamp => {
     if (!timestamp) return 'Not started yet';
     return format(timestamp.toDate(), 'dd MMM yyyy, hh:mm a'); // Convert Firestore Timestamp to JS Date and format
@@ -42,6 +47,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
       const A = parseFloat(input.A) || 0;
       const B = parseFloat(input.B) || 0;
       const C = parseFloat(input.C) || 0;
+
       sumA += A;
       sumB += B;
       sumC += C;
@@ -76,17 +82,26 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
-      await firestore().collection('orders').doc(order.id).update({
-        jobStatus: 'Completed',
-        slittingStatus: 'completed',
-        assignedTo: 'adminUID', // Replace with actual admin's UID
-        endTime: firestore.FieldValue.serverTimestamp(),
-        updatedBySlittingAt: firestore.FieldValue.serverTimestamp(),
-        slittingData: inputs,
-        completedBySlitting: currentUser.uid,
-        isSlittingStart: false,
-        upsLabel: upsLabel,
-      });
+      await firestore()
+        .collection('ordersTest')
+        .doc(order.id)
+        .update({
+          jobStatus: 'Completed',
+          slittingStatus: 'completed',
+          assignedTo: 'adminUID', // Replace with actual admin's UID
+          endTime: firestore.FieldValue.serverTimestamp(),
+          updatedBySlittingAt: firestore.FieldValue.serverTimestamp(),
+          slittingData: inputs,
+          completedBySlitting: currentUser.uid,
+          isSlittingStart: false,
+          upsLabel: upsLabel,
+          usedBySlitting: usedBySlitting ? parseFloat(usedBySlitting) : 0,
+          wasteBySlitting: wasteBySlitting ? parseFloat(wasteBySlitting) : 0,
+          leftoverBySlitting: leftoverBySlitting
+            ? parseFloat(leftoverBySlitting)
+            : 0,
+          wipBySlitting: wipBySlitting ? parseFloat(wipBySlitting) : 0,
+        });
       Alert.alert('Success', 'Job completed ');
       navigation.goBack();
     } catch (error) {
@@ -103,7 +118,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
-      await firestore().collection('orders').doc(order.id).update({
+      await firestore().collection('ordersTest').doc(order.id).update({
         jobStatus: 'Slitting',
         slittingStatus: 'started',
         // assignedTo: currentUser.uid,
@@ -342,6 +357,72 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
                 />
               </View>
             </View>
+            {/* NEW SECTION: Job Completion Fields */}
+            <View style={styles.completionFieldsContainer}>
+              <Text
+                style={[
+                  styles.boldText,
+                  {marginBottom: 10, fontSize: 16, width: '100%'},
+                ]}>
+                Job Completion Details
+              </Text>
+
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Used</Text>
+                <TextInput
+                  style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                  value={usedBySlitting}
+                  onChangeText={text => {
+                    const numericValue = text.replace(/[^0-9.]/g, '');
+                    setUsedBySlitting(numericValue);
+                  }}
+                  placeholder="Enter Used"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Waste</Text>
+                <TextInput
+                  style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                  value={wasteBySlitting}
+                  onChangeText={text => {
+                    const numericValue = text.replace(/[^0-9.]/g, '');
+                    setWasteBySlitting(numericValue);
+                  }}
+                  placeholder="Enter Waste"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Leftover (LO)</Text>
+                <TextInput
+                  style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                  value={leftoverBySlitting}
+                  onChangeText={text => {
+                    const numericValue = text.replace(/[^0-9.]/g, '');
+                    setLeftoverBySlitting(numericValue);
+                  }}
+                  placeholder="Enter Leftover"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>WIP</Text>
+                <TextInput
+                  style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                  value={wipBySlitting}
+                  onChangeText={text => {
+                    const numericValue = text.replace(/[^0-9.]/g, '');
+                    setWipBySlitting(numericValue);
+                  }}
+                  placeholder="Enter WIP"
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
 
             <View style={styles.buttonContainer}>
               <CustomButton
@@ -455,6 +536,36 @@ const styles = StyleSheet.create({
   homeSubContainer: {
     paddingHorizontal: 20,
     paddingVertical: 20,
+  },
+  completionFieldsContainer: {
+    marginTop: 15,
+    marginBottom: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  detailsRowContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    width: '100%',
+  },
+  enableDropdown: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    padding: 10,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    height: 40,
+    width: '80%',
+  },
+  boldText: {
+    fontSize: 14,
+    fontFamily: 'Lato-Black',
+    color: '#000',
+    width: '20%',
   },
 });
 

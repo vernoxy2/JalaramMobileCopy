@@ -47,7 +47,7 @@ const MaterialRequestPrinting = ({navigation}) => {
   const fetchOrderDetails = useCallback(async () => {
     try {
       setLoading(true);
-      const doc = await firestore().collection('orders').doc(id).get();
+      const doc = await firestore().collection('ordersTest').doc(id).get();
 
       if (doc.exists) {
         const data = doc.data();
@@ -116,7 +116,7 @@ const MaterialRequestPrinting = ({navigation}) => {
       await firestore().collection('materialRequest').add(materialRequestData);
 
       // Optionally update the order's material request status
-      await firestore().collection('orders').doc(id).update({
+      await firestore().collection('ordersTest').doc(id).update({
         materialRequestStatus: 'Pending',
         jobPaper,
         lastMaterialRequestDate: firestore.FieldValue.serverTimestamp(),

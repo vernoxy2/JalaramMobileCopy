@@ -66,7 +66,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
-      const jobRef = firestore().collection('orders').doc(order.id);
+      const jobRef = firestore().collection('ordersTest').doc(order.id);
 
       await jobRef.update({
         jobStatus: 'Slitting',
@@ -151,7 +151,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
-      const jobRef = firestore().collection('orders').doc(order.id);
+      const jobRef = firestore().collection('ordersTest').doc(order.id);
 
       // 2. FIND LAST EXISTING INDEX
       let maxIndex = 0;
@@ -682,27 +682,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
-    completionFieldsContainer: {
+  completionFieldsContainer: {
     marginTop: 15,
     marginBottom: 15,
     paddingTop: 15,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
   },
-    detailsRowContainer: {
+  detailsRowContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 20,
     width: '100%',
   },
-    boldText: {
+  boldText: {
     fontSize: 14,
     fontFamily: 'Lato-Black',
     color: '#000',
     width: '20%',
   },
-    enableDropdown: {
+  enableDropdown: {
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 10,

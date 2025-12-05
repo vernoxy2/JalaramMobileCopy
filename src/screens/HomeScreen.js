@@ -56,7 +56,7 @@ const HomeScreen = ({navigation}) => {
 
   useEffect(() => {
     const unsubscribe = firestore()
-      .collection('orders')
+      .collection('ordersTest')
       .orderBy('createdAt', 'desc') // ✅ Sort newest first
       .onSnapshot(
         snapshot => {
