@@ -18,7 +18,10 @@ import CustomDropdown from '../components/CustomDropdown';
 import {upsLabels} from '../constant/constant';
 
 const SlittingJobDetailsScreen = ({route, navigation}) => {
-  const {order} = route.params;
+  const order = React.useMemo(
+    () => route?.params?.order || {},
+    [route?.params?.order],
+  );
 
   const [inputs, setInputs] = useState([{A: '', B: '', C: ''}]);
   const [totalA, setTotalA] = useState(0);
@@ -28,16 +31,89 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
     order.isSlittingStart || false,
   );
 
-  const [usedBySlitting, setUsedBySlitting] = useState('');
-  const [wasteBySlitting, setWasteBySlitting] = useState('');
-  const [leftoverBySlitting, setLeftoverBySlitting] = useState('');
-  const [wipBySlitting, setWipBySlitting] = useState('');
+  // NEW: Material usage data for each paper product
+  const [paperProductsList, setPaperProductsList] = useState([]);
+  const [materialUsageData, setMaterialUsageData] = useState([]);
 
   const formatTimestamp = timestamp => {
     if (!timestamp) return 'Not started yet';
-    return format(timestamp.toDate(), 'dd MMM yyyy, hh:mm a'); // Convert Firestore Timestamp to JS Date and format
+    return format(timestamp.toDate(), 'dd MMM yyyy, hh:mm a');
   };
   const [upsLabel, setUpsLabel] = useState('');
+
+  // Load paper products and material usage data from order
+  useEffect(() => {
+    if (!order) return;
+
+    // Extract all paper products from order
+    const papers = [];
+
+    // Add main paper product
+    if (order.paperProductCode && order.paperProductNo) {
+      papers.push({
+        code: order.paperProductCode,
+        number: order.paperProductNo,
+        index: 0,
+      });
+    }
+
+    // Add extra paper products (paperProductCode1-10, paperProductNo1-10)
+    for (let i = 1; i <= 10; i++) {
+      const codeKey = `paperProductCode${i}`;
+      const numberKey = `paperProductNo${i}`;
+
+      if (order[codeKey] && order[numberKey]) {
+        papers.push({
+          code: order[codeKey],
+          number: order[numberKey],
+          index: i,
+        });
+      }
+    }
+
+    setPaperProductsList(papers);
+
+    // Initialize material usage data for each paper product
+    const initialUsageData = papers.map((paper, index) => {
+      // Find existing tracking data for this paper product
+      const existingData =
+        order.materialUsageTracking?.find(
+          item => item.paperProductNo === paper.number,
+        ) || {};
+
+      return {
+        paperProductCode: paper.code,
+        paperProductNo: paper.number,
+        printing: existingData.printing || null, // Already completed
+        punching: existingData.punching || null, // Already completed
+        slitting: {
+          used: existingData.slitting?.used?.toString() || '',
+          waste: existingData.slitting?.waste?.toString() || '',
+          leftover: existingData.slitting?.leftover?.toString() || '',
+          wip: existingData.slitting?.wip?.toString() || '',
+        },
+      };
+    });
+
+    setMaterialUsageData(initialUsageData);
+  }, [order]);
+
+  // Update material usage for specific paper product
+  const updateMaterialUsage = (index, field, value) => {
+    setMaterialUsageData(prev =>
+      prev.map((item, idx) =>
+        idx === index
+          ? {
+              ...item,
+              slitting: {
+                ...item.slitting,
+                [field]: value,
+              },
+            }
+          : item,
+      ),
+    );
+  };
 
   useEffect(() => {
     let sumA = 0,
@@ -82,30 +158,62 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
-      await firestore()
-        .collection('ordersTest')
-        .doc(order.id)
-        .update({
-          jobStatus: 'Completed',
-          slittingStatus: 'completed',
-          assignedTo: 'adminUID', // Replace with actual admin's UID
-          endTime: firestore.FieldValue.serverTimestamp(),
-          updatedBySlittingAt: firestore.FieldValue.serverTimestamp(),
-          slittingData: inputs,
-          completedBySlitting: currentUser.uid,
-          isSlittingStart: false,
-          upsLabel: upsLabel,
-          usedBySlitting: usedBySlitting ? parseFloat(usedBySlitting) : 0,
-          wasteBySlitting: wasteBySlitting ? parseFloat(wasteBySlitting) : 0,
-          leftoverBySlitting: leftoverBySlitting
-            ? parseFloat(leftoverBySlitting)
-            : 0,
-          wipBySlitting: wipBySlitting ? parseFloat(wipBySlitting) : 0,
-        });
-      Alert.alert('Success', 'Job completed ');
+      // Validate that all material usage fields are filled
+      const hasEmptyFields = materialUsageData.some(
+        item =>
+          !item.slitting.used ||
+          !item.slitting.waste ||
+          !item.slitting.leftover ||
+          !item.slitting.wip,
+      );
+
+      if (hasEmptyFields) {
+        Alert.alert(
+          'Missing Data',
+          'Please fill all material usage fields for each paper product',
+        );
+        return;
+      }
+
+      // Update materialUsageTracking array with slitting data
+      const updatedMaterialTracking = materialUsageData.map(item => {
+        const codeValue = item.paperProductCode?.label || item.paperProductCode;
+
+        return {
+          paperProductCode: codeValue,
+          paperProductNo: item.paperProductNo,
+          printing: item.printing, // Keep existing printing data
+          punching: item.punching, // Keep existing punching data
+          slitting: {
+            used: parseFloat(item.slitting.used) || 0,
+            waste: parseFloat(item.slitting.waste) || 0,
+            leftover: parseFloat(item.slitting.leftover) || 0,
+            wip: parseFloat(item.slitting.wip) || 0,
+            completedAt: new Date(),
+            completedBy: currentUser.uid,
+          },
+        };
+      });
+
+      await firestore().collection('ordersTest').doc(order.id).update({
+        jobStatus: 'Completed',
+        slittingStatus: 'completed',
+        assignedTo: 'adminUID',
+        endTime: firestore.FieldValue.serverTimestamp(),
+        updatedBySlittingAt: firestore.FieldValue.serverTimestamp(),
+        slittingData: inputs,
+        completedBySlitting: currentUser.uid,
+        isSlittingStart: false,
+        upsLabel: upsLabel,
+        materialUsageTracking: updatedMaterialTracking,
+      });
+
+      Alert.alert('Success', 'Job completed');
       navigation.goBack();
     } catch (error) {
       console.error('Error completing job:', error);
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
       Alert.alert('Error', 'Failed to complete job');
     }
   };
@@ -121,7 +229,6 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
       await firestore().collection('ordersTest').doc(order.id).update({
         jobStatus: 'Slitting',
         slittingStatus: 'started',
-        // assignedTo: currentUser.uid,
         startBySlittingAt: firestore.FieldValue.serverTimestamp(),
         isSlittingStart: true,
         updatedBySlittingAt: firestore.FieldValue.serverTimestamp(),
@@ -185,15 +292,6 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
 
             <Text style={styles.label}>Job Paper:</Text>
             <Text style={styles.value}>{order.jobPaper.label}</Text>
-
-            {/* <View style={styles.readOnlyField}>
-              <Text style={styles.label}>Paper Product Code:</Text>
-              <Text style={styles.value}>
-                {typeof order.paperProductCode === 'object'
-                  ? order.paperProductCode.label
-                  : order.paperProductCode}
-              </Text>
-            </View> */}
 
             {/* Base Paper Product */}
             <View style={styles.readOnlyField}>
@@ -269,8 +367,6 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
 
             <Text style={styles.label}>Running Mtrs</Text>
             <Text style={styles.value}>{order.runningMtr}</Text>
-
-            {/* Add more job fields as needed */}
           </ScrollView>
           <View style={styles.buttonContainer}>
             <CustomButton
@@ -357,71 +453,87 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
                 />
               </View>
             </View>
-            {/* NEW SECTION: Job Completion Fields */}
+
+            {/* Material Usage for Each Paper Product - SLITTING PHASE */}
             <View style={styles.completionFieldsContainer}>
               <Text
                 style={[
                   styles.boldText,
                   {marginBottom: 10, fontSize: 16, width: '100%'},
                 ]}>
-                Job Completion Details
+                Job Completion Details - Slitting Phase
               </Text>
 
-              <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>Used</Text>
-                <TextInput
-                  style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
-                  value={usedBySlitting}
-                  onChangeText={text => {
-                    const numericValue = text.replace(/[^0-9.]/g, '');
-                    setUsedBySlitting(numericValue);
-                  }}
-                  placeholder="Enter Used"
-                  keyboardType="numeric"
-                />
-              </View>
+              {materialUsageData.map((paperItem, idx) => (
+                <View key={idx} style={styles.paperProductSection}>
+                  <Text style={styles.paperProductTitle}>
+                    Paper Product:{' '}
+                    {paperItem.paperProductCode?.label ||
+                      paperItem.paperProductCode}{' '}
+                    - {paperItem.paperProductNo}
+                  </Text>
 
-              <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>Waste</Text>
-                <TextInput
-                  style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
-                  value={wasteBySlitting}
-                  onChangeText={text => {
-                    const numericValue = text.replace(/[^0-9.]/g, '');
-                    setWasteBySlitting(numericValue);
-                  }}
-                  placeholder="Enter Waste"
-                  keyboardType="numeric"
-                />
-              </View>
+                  <View style={styles.detailsRowContainer}>
+                    <Text style={styles.boldText}>Used</Text>
+                    <TextInput
+                      style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                      value={paperItem.slitting.used}
+                      onChangeText={text => {
+                        const numericValue = text.replace(/[^0-9.]/g, '');
+                        updateMaterialUsage(idx, 'used', numericValue);
+                      }}
+                      placeholder="Enter Used"
+                      keyboardType="numeric"
+                    />
+                  </View>
 
-              <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>Leftover (LO)</Text>
-                <TextInput
-                  style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
-                  value={leftoverBySlitting}
-                  onChangeText={text => {
-                    const numericValue = text.replace(/[^0-9.]/g, '');
-                    setLeftoverBySlitting(numericValue);
-                  }}
-                  placeholder="Enter Leftover"
-                  keyboardType="numeric"
-                />
-              </View>
+                  <View style={styles.detailsRowContainer}>
+                    <Text style={styles.boldText}>Waste</Text>
+                    <TextInput
+                      style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                      value={paperItem.slitting.waste}
+                      onChangeText={text => {
+                        const numericValue = text.replace(/[^0-9.]/g, '');
+                        updateMaterialUsage(idx, 'waste', numericValue);
+                      }}
+                      placeholder="Enter Waste"
+                      keyboardType="numeric"
+                    />
+                  </View>
 
-              <View style={styles.detailsRowContainer}>
-                <Text style={styles.boldText}>WIP</Text>
-                <TextInput
-                  style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
-                  value={wipBySlitting}
-                  onChangeText={text => {
-                    const numericValue = text.replace(/[^0-9.]/g, '');
-                    setWipBySlitting(numericValue);
-                  }}
-                  placeholder="Enter WIP"
-                  keyboardType="numeric"
-                />
-              </View>
+                  <View style={styles.detailsRowContainer}>
+                    <Text style={styles.boldText}>Leftover (LO)</Text>
+                    <TextInput
+                      style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                      value={paperItem.slitting.leftover}
+                      onChangeText={text => {
+                        const numericValue = text.replace(/[^0-9.]/g, '');
+                        updateMaterialUsage(idx, 'leftover', numericValue);
+                      }}
+                      placeholder="Enter Leftover"
+                      keyboardType="numeric"
+                    />
+                  </View>
+
+                  <View style={styles.detailsRowContainer}>
+                    <Text style={styles.boldText}>WIP</Text>
+                    <TextInput
+                      style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                      value={paperItem.slitting.wip}
+                      onChangeText={text => {
+                        const numericValue = text.replace(/[^0-9.]/g, '');
+                        updateMaterialUsage(idx, 'wip', numericValue);
+                      }}
+                      placeholder="Enter WIP"
+                      keyboardType="numeric"
+                    />
+                  </View>
+
+                  {idx < materialUsageData.length - 1 && (
+                    <View style={styles.divider} />
+                  )}
+                </View>
+              ))}
             </View>
 
             <View style={styles.buttonContainer}>
@@ -459,7 +571,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Lato-Regular',
   },
   buttonContainer: {
-    // padding: 20,
     marginTop: 10,
     borderTopWidth: 1,
     borderColor: '#ddd',
@@ -504,7 +615,6 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 15,
     fontWeight: '700',
-
     width: '27%',
   },
   totalText: {
@@ -527,10 +637,8 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 10,
     marginTop: 20,
-
     height: 40,
     justifyContent: 'space-between',
-
     paddingHorizontal: 20,
   },
   homeSubContainer: {
@@ -566,6 +674,25 @@ const styles = StyleSheet.create({
     fontFamily: 'Lato-Black',
     color: '#000',
     width: '20%',
+  },
+  readOnlyField: {
+    marginTop: 20,
+  },
+  paperProductSection: {
+    marginBottom: 20,
+  },
+  paperProductTitle: {
+    fontSize: 15,
+    fontFamily: 'Lato-Bold',
+    color: '#3668B1',
+    marginBottom: 10,
+    marginTop: 10,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#ddd',
+    marginTop: 20,
+    marginBottom: 10,
   },
 });
 

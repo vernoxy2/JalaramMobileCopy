@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef} from 'react';
+import React, {useEffect, useState, useRef, useCallback} from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import CustomHeader from '../components/CustomHeader';
 import SearchBar from '../components/SearchBar';
 import CustomDropdown from '../components/CustomDropdown';
 import {Dimensions} from 'react-native';
+import {useFocusEffect} from '@react-navigation/native';
 
 const SlittingHomeScreen = ({navigation}) => {
   const [orders, setOrders] = useState([]);
@@ -52,50 +53,61 @@ const SlittingHomeScreen = ({navigation}) => {
     return () => subscription?.remove();
   }, []);
 
-  useEffect(() => {
-    const currentUser = auth().currentUser;
-    if (!currentUser) return;
+  useFocusEffect(
+    useCallback(() => {
+      const currentUser = auth().currentUser;
+      if (!currentUser) return;
 
-    const updateCombinedJobs = () => {
-      const combined = [...pendingJobsRef.current, ...completedJobsRef.current];
-      const unique = Array.from(
-        new Map(combined.map(job => [job.id, job])).values(),
-      );
-      setOrders(unique);
-      setLoading(false);
-    };
+      const updateCombinedJobs = () => {
+        const combined = [
+          ...pendingJobsRef.current,
+          ...completedJobsRef.current,
+        ];
 
-    const unsubscribePending = firestore()
-      .collection('ordersTest')
-      .where('assignedTo', '==', currentUser.uid)
-      .where('jobStatus', '==', 'Slitting')
-      .orderBy('createdAt', 'desc')
-      .onSnapshot(snapshot => {
-        pendingJobsRef.current = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        updateCombinedJobs();
-      });
+        const unique = Array.from(
+          new Map(combined.map(job => [job.id, job])).values(),
+        );
 
-    const unsubscribeCompleted = firestore()
-      .collection('ordersTest')
-      .where('slittingStatus', '==', 'completed')
-      .where('completedBySlitting', '==', currentUser.uid)
-      .orderBy('updatedBySlittingAt', 'desc')
-      .onSnapshot(snapshot => {
-        completedJobsRef.current = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        updateCombinedJobs();
-      });
+        setOrders(unique);
+        setLoading(false);
+      };
 
-    return () => {
-      unsubscribePending();
-      unsubscribeCompleted();
-    };
-  }, []);
+      // PENDING JOBS
+      const unsubscribePending = firestore()
+        .collection('ordersTest')
+        .where('assignedTo', '==', currentUser.uid)
+        .where('jobStatus', '==', 'Slitting')
+        .orderBy('createdAt', 'desc')
+        .onSnapshot(snapshot => {
+          if (!snapshot || !snapshot.docs) return;
+          pendingJobsRef.current = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          updateCombinedJobs();
+        });
+
+      // COMPLETED JOBS
+      const unsubscribeCompleted = firestore()
+        .collection('ordersTest')
+        .where('slittingStatus', '==', 'completed')
+        .where('completedBySlitting', '==', currentUser.uid)
+        .orderBy('updatedBySlittingAt', 'desc')
+        .onSnapshot(snapshot => {
+          if (!snapshot || !snapshot.docs) return;
+          completedJobsRef.current = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          updateCombinedJobs();
+        });
+
+      return () => {
+        unsubscribePending();
+        unsubscribeCompleted();
+      };
+    }, []),
+  );
 
   const getFilteredJobs = () => {
     let filtered = orders;

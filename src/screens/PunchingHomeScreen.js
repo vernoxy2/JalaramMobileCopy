@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef} from 'react';
+import React, {useEffect, useState, useRef, useCallback} from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import SearchBar from '../components/SearchBar';
 import auth from '@react-native-firebase/auth';
 import CustomDropdown from '../components/CustomDropdown';
 import {Dimensions} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 const PunchingHomeScreen = ({navigation}) => {
   const [orders, setOrders] = useState([]);
@@ -52,50 +53,77 @@ const PunchingHomeScreen = ({navigation}) => {
     return () => subscription?.remove();
   }, []);
 
-  useEffect(() => {
+useFocusEffect(
+  useCallback(() => {
     const currentUser = auth().currentUser;
     if (!currentUser) return;
 
     const updateCombinedJobs = () => {
-      const combined = [...pendingJobsRef.current, ...completedJobsRef.current];
+      const combined = [
+        ...pendingJobsRef.current,
+        ...completedJobsRef.current,
+      ];
+
       const unique = Array.from(
         new Map(combined.map(job => [job.id, job])).values(),
       );
+
       setOrders(unique);
       setLoading(false);
     };
 
+    // 🔵 PENDING JOBS SNAPSHOT
     const unsubscribePending = firestore()
       .collection('ordersTest')
       .where('assignedTo', '==', currentUser.uid)
       .where('jobStatus', '==', 'Punching')
       .orderBy('createdAt', 'desc')
-      .onSnapshot(snapshot => {
-        pendingJobsRef.current = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        updateCombinedJobs();
-      });
+      .onSnapshot(
+        snapshot => {
+          if (!snapshot || !snapshot.docs) return;
 
+          pendingJobsRef.current = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+
+          updateCombinedJobs();
+        },
+        error => {
+          console.error('Snapshot error (Pending):', error);
+        },
+      );
+
+    // 🔵 COMPLETED JOBS SNAPSHOT
     const unsubscribeCompleted = firestore()
       .collection('ordersTest')
       .where('punchingStatus', '==', 'completed')
       .where('completedByPunching', '==', currentUser.uid)
       .orderBy('updatedByPunchingAt', 'desc')
-      .onSnapshot(snapshot => {
-        completedJobsRef.current = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        updateCombinedJobs();
-      });
+      .onSnapshot(
+        snapshot => {
+          if (!snapshot || !snapshot.docs) return;
 
+          completedJobsRef.current = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+
+          updateCombinedJobs();
+        },
+        error => {
+          console.error('Snapshot error (Completed):', error);
+        },
+      );
+
+    // 🔴 Cleanup when screen unfocuses
     return () => {
       unsubscribePending();
       unsubscribeCompleted();
     };
-  }, []);
+  }, [])
+);
+
 
   // Filter function remains mostly same, just maybe add handling for completed flag
   const getFilteredJobs = () => {

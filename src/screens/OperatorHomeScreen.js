@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef} from 'react';
+import React, {useEffect, useState, useRef, useCallback} from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import SearchBar from '../components/SearchBar';
 import auth from '@react-native-firebase/auth';
 import CustomDropdown from '../components/CustomDropdown';
 import {Dimensions} from 'react-native';
+import {useFocusEffect} from '@react-navigation/native';
 
 const OperatorHomeScreen = ({route, navigation}) => {
   const role = route?.params?.role || 'Operator';
@@ -55,56 +56,114 @@ const OperatorHomeScreen = ({route, navigation}) => {
   const completedJobsRef = useRef([]);
 
   // Fetch orders assigned to Printing Operator
-  useEffect(() => {
-    const currentUser = auth().currentUser;
-    if (!currentUser) return;
+  // useEffect(() => {
+  //   const currentUser = auth().currentUser;
+  //   if (!currentUser) return;
 
-    const updateCombinedJobs = () => {
-      const combined = [...pendingJobsRef.current, ...completedJobsRef.current];
-      const unique = Array.from(
-        new Map(combined.map(job => [job.id, job])).values(),
-      );
-      setOrders(unique);
-      setLoading(false);
-    };
+  //   const updateCombinedJobs = () => {
+  //     const combined = [...pendingJobsRef.current, ...completedJobsRef.current];
+  //     const unique = Array.from(
+  //       new Map(combined.map(job => [job.id, job])).values(),
+  //     );
+  //     setOrders(unique);
+  //     setLoading(false);
+  //   };
+  //   const unsubscribePending = firestore()
+  //     .collection('ordersTest')
+  //     .where('assignedTo', '==', currentUser?.uid)
+  //     .where('jobStatus', '==', 'Printing')
+  //     .orderBy('createdAt', 'desc')
+  //     .onSnapshot(
+  //       snapshot => {
+  //         if (!snapshot) return;
 
-    const unsubscribePending = firestore()
-      .collection('ordersTest')
-      .where('assignedTo', '==', currentUser.uid)
-      .where('jobStatus', '==', 'Printing')
-      .orderBy('createdAt', 'desc')
-      .onSnapshot(snapshot => {
-        pendingJobsRef.current = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        updateCombinedJobs();
-      });
+  //         pendingJobsRef.current = snapshot.docs.map(doc => ({
+  //           id: doc.id,
+  //           ...doc.data(),
+  //         }));
+  //         updateCombinedJobs();
+  //       },
+  //       error => {
+  //         console.error('Snapshot error:', error);
+  //       },
+  //     );
 
-    const unsubscribeCompleted = firestore()
-      .collection('ordersTest')
-      .where('printingStatus', '==', 'completed')
-      .where('completedByPrinting', '==', currentUser.uid)
-      .orderBy('updatedByPrintingAt', 'desc')
-      .onSnapshot(
-        snapshot => {
-          if (!snapshot || !snapshot.docs) return;
+  //   const unsubscribeCompleted = firestore()
+  //     .collection('ordersTest')
+  //     .where('printingStatus', '==', 'completed')
+  //     .where('completedByPrinting', '==', currentUser.uid)
+  //     .orderBy('updatedByPrintingAt', 'desc')
+  //     .onSnapshot(
+  //       snapshot => {
+  //         if (!snapshot || !snapshot.docs) return;
+  //         completedJobsRef.current = snapshot.docs.map(doc => ({
+  //           id: doc.id,
+  //           ...doc.data(),
+  //         }));
+  //         updateCombinedJobs();
+  //       },
+  //       error => {
+  //         console.error('Firestore snapshot error (Pending):', error);
+  //       },
+  //     );
+
+  //   return () => {
+  //     unsubscribePending();
+  //     unsubscribeCompleted();
+  //   };
+  // }, []);
+  useFocusEffect(
+    useCallback(() => {
+      const currentUser = auth().currentUser;
+      if (!currentUser) return;
+
+      const updateCombinedJobs = () => {
+        const combined = [
+          ...pendingJobsRef.current,
+          ...completedJobsRef.current,
+        ];
+        const unique = Array.from(
+          new Map(combined.map(job => [job.id, job])).values(),
+        );
+        setOrders(unique);
+        setLoading(false);
+      };
+
+      const unsubscribePending = firestore()
+        .collection('ordersTest')
+        .where('assignedTo', '==', currentUser?.uid)
+        .where('jobStatus', '==', 'Printing')
+        .orderBy('createdAt', 'desc')
+        .onSnapshot(snapshot => {
+           if (!snapshot || !snapshot.docs) return;
+          pendingJobsRef.current = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          updateCombinedJobs();
+        });
+
+      const unsubscribeCompleted = firestore()
+        .collection('ordersTest')
+        .where('printingStatus', '==', 'completed')
+        .where('completedByPrinting', '==', currentUser.uid)
+        .orderBy('updatedByPrintingAt', 'desc')
+        .onSnapshot(snapshot => {
+                if (!snapshot || !snapshot.docs) return;
           completedJobsRef.current = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
           }));
           updateCombinedJobs();
-        },
-        error => {
-          console.error('Firestore snapshot error (Pending):', error);
-        },
-      );
+        });
 
-    return () => {
-      unsubscribePending();
-      unsubscribeCompleted();
-    };
-  }, []);
+      // Cleanup when screen unfocuses
+      return () => {
+        unsubscribePending();
+        unsubscribeCompleted();
+      };
+    }, []),
+  );
 
   const getFilteredJobs = () => {
     let filtered = orders;

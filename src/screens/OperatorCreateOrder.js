@@ -1,4 +1,4 @@
-import React, {useState, useEffect, use} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -7,38 +7,24 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Pressable,
+  Alert,
 } from 'react-native';
 import CustomHeader from '../components/CustomHeader';
 import CustomDropdown from '../components/CustomDropdown';
-import {
-  around,
-  blocks,
-  colorAnilox,
-  options,
-  paperProductCodeData,
-  printingPlateSize,
-  slitting,
-  teethSize,
-  upsAcross,
-  windingDirection,
-} from '../constant/constant';
+import {colorAnilox, paperProductCodeData} from '../constant/constant';
 import CustomColorDropdown from '../components/CustomColorDropdown';
 import CustomButton from '../components/CustomButton';
-import firestore, {or} from '@react-native-firebase/firestore';
-import CustomLabelTextInput from '../components/CustomLabelTextInput';
+import firestore from '@react-native-firebase/firestore';
 import CustomTextInput from '../components/CustomTextInput';
 import auth from '@react-native-firebase/auth';
-import {Alert} from 'react-native';
 
 const OperatorCreateOrder = ({navigation, route}) => {
-  // const order = route?.params?.order || {};
   const order = React.useMemo(
     () => route?.params?.order || {},
     [route?.params?.order],
   );
+
   const [jobStarted, setJobStarted] = useState(order.jobStarted || false);
-  const [selectedColor, setSelectedColor] = useState(null);
   const [size, setSize] = useState(order.jobSize || '');
   const [jobPaper, setJobPaper] = useState(order.jobPaper || '');
   const [paperProductCode, setPaperProductCode] = useState(
@@ -53,7 +39,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
     order.windingDirection || '',
   );
   const [tooling, setTooling] = useState(order.tooling || '');
-  const [slittingValue, setSlittingValue] = useState('');
   const [checkboxState, setCheckboxState] = useState({
     box1: order.printingColors?.includes('Uv') || false,
     box2: order.printingColors?.includes('Water') || false,
@@ -76,10 +61,10 @@ const OperatorCreateOrder = ({navigation, route}) => {
   const [acrossGap, setAcrossGap] = useState(order.acrossGap || '');
   const [aroundGap, setAroundGap] = useState(order.aroundGap || '');
   const [extraPaperProducts, setExtraPaperProducts] = useState([]);
-  const [usedByPrint, setUsedByPrint] = useState('');
-  const [wasteByPrint, setWasteByPrint] = useState('');
-  const [leftoverByPrint, setLeftoverByPrint] = useState('');
-  const [wipByPrint, setWipByPrint] = useState('');
+
+  // NEW STRUCTURED DATA: Material usage organized by paper product
+  const [paperProductsList, setPaperProductsList] = useState([]);
+  const [materialUsageData, setMaterialUsageData] = useState([]);
 
   const printingColors = [];
   if (checkboxState.box1) printingColors.push('Uv');
@@ -87,9 +72,8 @@ const OperatorCreateOrder = ({navigation, route}) => {
   if (checkboxState.box3) printingColors.push('Special');
 
   useEffect(() => {
-    // Check if `order` is available, if not return
     if (!order) return;
-    // Directly use the `order` values to set form state
+
     setSize(order.jobSize || '');
     setJobPaper(order.jobPaper || '');
     setPaperProductCode(order.paperProductCode || '');
@@ -112,7 +96,61 @@ const OperatorCreateOrder = ({navigation, route}) => {
     setJobCardNo(order.jobCardNo || '');
     setJobName(order.jobName || '');
     setJobQty(order.jobQty || '');
-  }, [order]); // Only trigger this when `order` changes
+
+    // Extract all paper products from order
+    const papers = [];
+
+    // Add main paper product
+    if (order.paperProductCode && order.paperProductNo) {
+      papers.push({
+        code: order.paperProductCode,
+        number: order.paperProductNo,
+        index: 0,
+      });
+    }
+
+    // Add extra paper products (paperProductCode1-10, paperProductNo1-10)
+    for (let i = 1; i <= 10; i++) {
+      const codeKey = `paperProductCode${i}`;
+      const numberKey = `paperProductNo${i}`;
+
+      if (order[codeKey] && order[numberKey]) {
+        papers.push({
+          code: order[codeKey],
+          number: order[numberKey],
+          index: i,
+        });
+      }
+    }
+
+    setPaperProductsList(papers);
+
+    // Initialize material usage data for each paper product
+    // Load existing data if available from materialUsageTracking array
+    const initialUsageData = papers.map((paper, index) => {
+      // Find existing tracking data for this paper product
+      const existingData =
+        order.materialUsageTracking?.find(
+          item => item.paperProductNo === paper.number,
+        ) || {};
+
+      return {
+        paperProductCode: paper.code,
+        paperProductNo: paper.number,
+        printing: {
+          used: existingData.printing?.used?.toString() || '',
+          waste: existingData.printing?.waste?.toString() || '',
+          leftover: existingData.printing?.leftover?.toString() || '',
+          wip: existingData.printing?.wip?.toString() || '',
+        },
+        // These will be filled in next phases
+        punching: existingData.punching || null,
+        slitting: existingData.slitting || null,
+      };
+    });
+
+    setMaterialUsageData(initialUsageData);
+  }, [order]);
 
   const [colorAniloxValues, setColorAniloxValues] = useState({
     C: '',
@@ -140,8 +178,21 @@ const OperatorCreateOrder = ({navigation, route}) => {
     }));
   };
 
-  const handleSelect = item => {
-    console.log('Selected:', item);
+  // Update material usage for specific paper product and phase
+  const updateMaterialUsage = (index, field, value) => {
+    setMaterialUsageData(prev =>
+      prev.map((item, idx) =>
+        idx === index
+          ? {
+              ...item,
+              printing: {
+                ...item.printing,
+                [field]: value,
+              },
+            }
+          : item,
+      ),
+    );
   };
 
   const startJobHandler = async () => {
@@ -186,11 +237,8 @@ const OperatorCreateOrder = ({navigation, route}) => {
         teethSize: teethSizeValue,
         blocks: blocksValue,
         windingDirection: windingDirectionValue,
-        slitting: slittingValue,
-        // printingColors,
         varnish: checkboxState.box4 ? 'Uv' : '',
         checkedApproved: checkboxState.box5,
-        // colorAniloxValues,
       });
 
       setJobStarted(true);
@@ -209,12 +257,51 @@ const OperatorCreateOrder = ({navigation, route}) => {
         Alert.alert('Error', 'User not authenticated');
         return;
       }
-      // Validate material fields
-    if (!usedByPrint || !wasteByPrint || !leftoverByPrint || !wipByPrint) {
-      Alert.alert('Missing Data', 'Please fill all material usage fields');
-      return;
-    }
+
+      // Validate that all material usage fields are filled
+      const hasEmptyFields = materialUsageData.some(
+        item =>
+          !item.printing.used ||
+          !item.printing.waste ||
+          !item.printing.leftover ||
+          !item.printing.wip,
+      );
+
+      if (hasEmptyFields) {
+        Alert.alert(
+          'Missing Data',
+          'Please fill all material usage fields for each paper product',
+        );
+        return;
+      }
+
       const orderRef = firestore().collection('ordersTest').doc(order.id);
+
+      // FIX: Use new Date() instead of serverTimestamp() inside arrays
+      const materialUsageTracking = materialUsageData.map(item => {
+        const codeValue = item.paperProductCode?.label || item.paperProductCode;
+
+        return {
+          paperProductCode: codeValue,
+          paperProductNo: item.paperProductNo,
+          printing: {
+            used: parseFloat(item.printing.used) || 0,
+            waste: parseFloat(item.printing.waste) || 0,
+            leftover: parseFloat(item.printing.leftover) || 0,
+            wip: parseFloat(item.printing.wip) || 0,
+            completedAt: new Date(), // ✅ Changed from serverTimestamp()
+            completedBy: currentUser.uid,
+          },
+          punching: null,
+          slitting: null,
+        };
+      });
+
+      console.log('Submitting data:', {
+        materialUsageTracking,
+        printingColors,
+        colorAniloxValues,
+      });
 
       await orderRef.update({
         jobPaper,
@@ -222,7 +309,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
         jobStatus: 'Punching',
         assignedTo: 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2',
         printingStatus: 'completed',
-        updatedByPrintingAt: firestore.FieldValue.serverTimestamp(),
+        updatedByPrintingAt: firestore.FieldValue.serverTimestamp(), // ✅ This is fine at root level
         completedByPrinting: currentUser.uid,
         colorAniloxValues,
         tooling,
@@ -231,18 +318,18 @@ const OperatorCreateOrder = ({navigation, route}) => {
         sp2Color,
         sp3Color,
         sp4Color,
-        usedByPrint,
-        wasteByPrint,
-        leftoverByPrint,
-        wipByPrint,
+        materialUsageTracking,
       });
+
       alert('Job successfully updated and reassigned!');
       setTimeout(() => {
         navigation.goBack();
       }, 500);
     } catch (err) {
-      console.error('Error updating order:', err);
-      alert('Failed to update order');
+      console.error('Error updating order - Full error:', err);
+      console.error('Error message:', err.message);
+      console.error('Error code:', err.code);
+      Alert.alert('Error', `Failed to update order: ${err.message}`);
     }
   };
 
@@ -268,6 +355,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
       prev.map(item => (item.id === id ? {...item, [field]: value} : item)),
     );
   };
+
   const removeExtraPaperProduct = id => {
     setExtraPaperProducts(prev => prev.filter(item => item.id !== id));
   };
@@ -400,7 +488,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
                 style={{width: '100%'}}
               />
 
-              {/* Extra paper product pairs */}
               {extraPaperProducts.map((item, index) => (
                 <View key={item.id}>
                   <CustomDropdown
@@ -422,7 +509,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
                     }
                     style={{width: '100%'}}
                   />
-                  {/* REMOVE button */}
                   <TouchableOpacity
                     onPress={() => removeExtraPaperProduct(item.id)}
                     style={{marginTop: 6, alignSelf: 'flex-end'}}>
@@ -558,20 +644,12 @@ const OperatorCreateOrder = ({navigation, route}) => {
                 </View>
               </View>
 
-              {/* <CustomTextInput
-                placeholder={'Running Mtrs'}
-                style={styles.input}
-                value={runningMtrValue}
-                onChangeText={setRunningMtrValue}
-              /> */}
               <View style={styles.detailsRowContainer}>
                 <Text style={styles.boldText}>Running Mtrs</Text>
                 <TextInput
                   style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
                   value={runningMtrValue}
-                  // onChangeText={setRunningMtrValue}
                   onChangeText={text => {
-                    // Allow only digits (0–9)
                     const numericValue = text.replace(/[^0-9]/g, '');
                     setRunningMtrValue(numericValue);
                   }}
@@ -614,72 +692,103 @@ const OperatorCreateOrder = ({navigation, route}) => {
                         <Text style={styles.checkboxText}>{label}</Text>
                       </TouchableOpacity>
                     );
-                    
                   })}
                 </View>
               </View>
-              {/* NEW SECTION: Job Completion Fields */}
+
+              {/* Material Usage for Each Paper Product - PRINTING PHASE */}
               <View style={styles.completionFieldsContainer}>
                 <Text
-                  style={[styles.boldText, {marginBottom: 10, fontSize: 16, width: '100%'}]}>
-                  Job Completion Details
+                  style={[
+                    styles.boldText,
+                    {marginBottom: 10, fontSize: 16, width: '100%'},
+                  ]}>
+                  Job Completion Details - Printing Phase
                 </Text>
 
-                <View style={styles.detailsRowContainer}>
-                  <Text style={styles.boldText}>Used</Text>
-                  <TextInput
-                    style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
-                    value={usedByPrint}
-                    onChangeText={text => {
-                      const numericValue = text.replace(/[^0-9.]/g, '');
-                      setUsedByPrint(numericValue);
-                    }}
-                    placeholder="Enter Used"
-                    keyboardType="numeric"
-                  />
-                </View>
+                {materialUsageData.map((paperItem, idx) => (
+                  <View key={idx} style={styles.paperProductSection}>
+                    <Text style={styles.paperProductTitle}>
+                      Paper Product:{' '}
+                      {paperItem.paperProductCode?.label ||
+                        paperItem.paperProductCode}{' '}
+                      - {paperItem.paperProductNo}
+                    </Text>
 
-                <View style={styles.detailsRowContainer}>
-                  <Text style={styles.boldText}>Waste</Text>
-                  <TextInput
-                    style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
-                    value={wasteByPrint}
-                    onChangeText={text => {
-                      const numericValue = text.replace(/[^0-9.]/g, '');
-                      setWasteByPrint(numericValue);
-                    }}
-                    placeholder="Enter Waste"
-                    keyboardType="numeric"
-                  />
-                </View>
+                    <View style={styles.detailsRowContainer}>
+                      <Text style={styles.boldText}>Used</Text>
+                      <TextInput
+                        style={[
+                          styles.enableDropdown,
+                          {backgroundColor: '#fff'},
+                        ]}
+                        value={paperItem.printing.used}
+                        onChangeText={text => {
+                          const numericValue = text.replace(/[^0-9.]/g, '');
+                          updateMaterialUsage(idx, 'used', numericValue);
+                        }}
+                        placeholder="Enter Used"
+                        keyboardType="numeric"
+                      />
+                    </View>
 
-                <View style={styles.detailsRowContainer}>
-                  <Text style={styles.boldText}>Leftover (LO)</Text>
-                  <TextInput
-                    style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
-                    value={leftoverByPrint}
-                    onChangeText={text => {
-                      const numericValue = text.replace(/[^0-9.]/g, '');
-                      setLeftoverByPrint(numericValue);
-                    }}
-                    placeholder="Enter Leftover"
-                    keyboardType="numeric"
-                  />
-                </View>
+                    <View style={styles.detailsRowContainer}>
+                      <Text style={styles.boldText}>Waste</Text>
+                      <TextInput
+                        style={[
+                          styles.enableDropdown,
+                          {backgroundColor: '#fff'},
+                        ]}
+                        value={paperItem.printing.waste}
+                        onChangeText={text => {
+                          const numericValue = text.replace(/[^0-9.]/g, '');
+                          updateMaterialUsage(idx, 'waste', numericValue);
+                        }}
+                        placeholder="Enter Waste"
+                        keyboardType="numeric"
+                      />
+                    </View>
 
-                <View style={styles.detailsRowContainer}>
-                  <Text style={styles.boldText}>WIP</Text>
-                  <TextInput
-                    style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
-                    value={wipByPrint}
-                    onChangeText={text => {
-                      const numericValue = text.replace(/[^0-9.]/g, '');
-                      setWipByPrint(numericValue);
-                    }}
-                    placeholder="Enter WIP"
-                    keyboardType="numeric"
-                  />
-                </View>
+                    <View style={styles.detailsRowContainer}>
+                      <Text style={styles.boldText}>Leftover (LO)</Text>
+                      <TextInput
+                        style={[
+                          styles.enableDropdown,
+                          {backgroundColor: '#fff'},
+                        ]}
+                        value={paperItem.printing.leftover}
+                        onChangeText={text => {
+                          const numericValue = text.replace(/[^0-9.]/g, '');
+                          updateMaterialUsage(idx, 'leftover', numericValue);
+                        }}
+                        placeholder="Enter Leftover"
+                        keyboardType="numeric"
+                      />
+                    </View>
+
+                    <View style={styles.detailsRowContainer}>
+                      <Text style={styles.boldText}>WIP</Text>
+                      <TextInput
+                        style={[
+                          styles.enableDropdown,
+                          {backgroundColor: '#fff'},
+                        ]}
+                        value={paperItem.printing.wip}
+                        onChangeText={text => {
+                          const numericValue = text.replace(/[^0-9.]/g, '');
+                          updateMaterialUsage(idx, 'wip', numericValue);
+                        }}
+                        placeholder="Enter WIP"
+                        keyboardType="numeric"
+                      />
+                    </View>
+
+                    {/* Divider between paper products */}
+                    {idx < materialUsageData.length - 1 && (
+                      <View style={styles.divider} />
+                    )}
+                  </View>
+                ))}
               </View>
 
               {!isCompleted && (
@@ -737,7 +846,6 @@ const styles = StyleSheet.create({
     height: 40,
     width: '80%',
   },
-
   detailsRowContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -745,24 +853,12 @@ const styles = StyleSheet.create({
     marginTop: 20,
     width: '100%',
   },
-  sizeInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
-    padding: 10,
-    width: '80%',
-    fontSize: 14,
-    fontWeight: 'medium',
-    color: '#000',
-  },
-
   boldText: {
     fontSize: 14,
     fontFamily: 'Lato-Black',
     color: '#000',
     width: '20%',
   },
-
   container: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -772,12 +868,6 @@ const styles = StyleSheet.create({
   },
   printingContainer: {
     width: '70%',
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  varnishContainer: {
-    width: '25%',
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -816,21 +906,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Lato-Regular',
     color: '#000',
-  },
-  checkboxLabel: {
-    fontSize: 10,
-  },
-  checkedApprovedTxt: {
-    fontSize: 20,
-    fontFamily: 'Lato-Black',
-    color: '#000',
-    width: '100%',
-  },
-  checkedApprovedContainer: {
-    display: 'flex',
-    flexDirection: 'row',
-    width: '100%',
-    marginTop: 20,
   },
   colorAniloxMainContainer: {
     width: '100%',
@@ -879,29 +954,27 @@ const styles = StyleSheet.create({
     width: '50%',
     color: '#000',
   },
-
-  selectedColorsContainer: {
-    marginTop: 20,
-    backgroundColor: '#f9f9f9',
-    padding: 15,
-    borderRadius: 10,
-  },
-  selectedColorsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#000',
-  },
-  selectedColor: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 4,
-  },
   completionFieldsContainer: {
     marginTop: 15,
     marginBottom: 15,
     paddingTop: 15,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+  },
+  paperProductSection: {
+    marginBottom: 20,
+  },
+  paperProductTitle: {
+    fontSize: 15,
+    fontFamily: 'Lato-Bold',
+    color: '#3668B1',
+    marginBottom: 10,
+    marginTop: 10,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#ddd',
+    marginTop: 20,
+    marginBottom: 10,
   },
 });

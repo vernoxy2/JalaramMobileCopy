@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,11 @@ import auth from '@react-native-firebase/auth';
 import CustomTextInput from '../components/CustomTextInput';
 
 const PunchingJobDetailsScreen = ({route, navigation}) => {
-  const {order} = route.params;
+  const order = React.useMemo(
+    () => route?.params?.order || {},
+    [route?.params?.order],
+  );
+
   const isCompleted = order.punchingStatus === 'completed';
   const [extraPaperProducts, setExtraPaperProducts] = useState([]);
   const [paperProduct, setPaperProduct] = useState(
@@ -46,10 +50,84 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
   const [isPunchingStart, setIsPunchingStart] = useState(
     order.isPunchingStart || false,
   );
-  const [usedByPunch, setUsedByPunch] = useState('');
-  const [wasteByPunch, setWasteByPunch] = useState('');
-  const [leftoverByPunch, setLeftoverByPunch] = useState('');
-  const [wipByPunch, setWipByPunch] = useState('');
+
+  // NEW: Material usage data for each paper product
+  const [paperProductsList, setPaperProductsList] = useState([]);
+  const [materialUsageData, setMaterialUsageData] = useState([]);
+
+  // Load paper products and material usage data from order
+  useEffect(() => {
+    if (!order) return;
+
+    // Extract all paper products from order
+    const papers = [];
+
+    // Add main paper product
+    if (order.paperProductCode && order.paperProductNo) {
+      papers.push({
+        code: order.paperProductCode,
+        number: order.paperProductNo,
+        index: 0,
+      });
+    }
+
+    // Add extra paper products (paperProductCode1-10, paperProductNo1-10)
+    for (let i = 1; i <= 10; i++) {
+      const codeKey = `paperProductCode${i}`;
+      const numberKey = `paperProductNo${i}`;
+
+      if (order[codeKey] && order[numberKey]) {
+        papers.push({
+          code: order[codeKey],
+          number: order[numberKey],
+          index: i,
+        });
+      }
+    }
+
+    setPaperProductsList(papers);
+
+    // Initialize material usage data for each paper product
+    const initialUsageData = papers.map((paper, index) => {
+      // Find existing tracking data for this paper product
+      const existingData =
+        order.materialUsageTracking?.find(
+          item => item.paperProductNo === paper.number,
+        ) || {};
+
+      return {
+        paperProductCode: paper.code,
+        paperProductNo: paper.number,
+        printing: existingData.printing || null, // Already completed
+        punching: {
+          used: existingData.punching?.used?.toString() || '',
+          waste: existingData.punching?.waste?.toString() || '',
+          leftover: existingData.punching?.leftover?.toString() || '',
+          wip: existingData.punching?.wip?.toString() || '',
+        },
+        slitting: existingData.slitting || null, // Will be filled later
+      };
+    });
+
+    setMaterialUsageData(initialUsageData);
+  }, [order]);
+
+  // Update material usage for specific paper product
+  const updateMaterialUsage = (index, field, value) => {
+    setMaterialUsageData(prev =>
+      prev.map((item, idx) =>
+        idx === index
+          ? {
+              ...item,
+              punching: {
+                ...item.punching,
+                [field]: value,
+              },
+            }
+          : item,
+      ),
+    );
+  };
 
   const extraFields = {};
   extraPaperProducts.forEach((item, index) => {
@@ -66,69 +144,65 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
+      // Validate that all material usage fields are filled
+      const hasEmptyFields = materialUsageData.some(
+        item =>
+          !item.punching.used ||
+          !item.punching.waste ||
+          !item.punching.leftover ||
+          !item.punching.wip,
+      );
+
+      if (hasEmptyFields) {
+        Alert.alert(
+          'Missing Data',
+          'Please fill all material usage fields for each paper product',
+        );
+        return;
+      }
+
       const jobRef = firestore().collection('ordersTest').doc(order.id);
+
+      // Update materialUsageTracking array with punching data
+      const updatedMaterialTracking = materialUsageData.map(item => {
+        const codeValue = item.paperProductCode?.label || item.paperProductCode;
+
+        return {
+          paperProductCode: codeValue,
+          paperProductNo: item.paperProductNo,
+          printing: item.printing, // Keep existing printing data
+          punching: {
+            used: parseFloat(item.punching.used) || 0,
+            waste: parseFloat(item.punching.waste) || 0,
+            leftover: parseFloat(item.punching.leftover) || 0,
+            wip: parseFloat(item.punching.wip) || 0,
+            completedAt: new Date(),
+            completedBy: currentUser.uid,
+          },
+          slitting: null, // Will be filled in slitting phase
+        };
+      });
 
       await jobRef.update({
         jobStatus: 'Slitting',
         punchingStatus: 'completed',
         paperCode: paperCodeValue || '',
         updatedByPunchingAt: firestore.FieldValue.serverTimestamp(),
-        assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33', // ✅ now it's OK to hand off to slitting operator
+        assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33',
         completedByPunching: currentUser.uid,
-        usedByPunch: usedByPunch ? parseFloat(usedByPunch) : 0,
-        wasteByPunch: wasteByPunch ? parseFloat(wasteByPunch) : 0,
-        leftoverByPunch: leftoverByPunch ? parseFloat(leftoverByPunch) : 0,
-        wipByPunch: wipByPunch ? parseFloat(wipByPunch) : 0,
+        materialUsageTracking: updatedMaterialTracking,
         ...extraFields,
       });
 
       Alert.alert('Success', 'Punching marked as completed');
-
       navigation.goBack();
     } catch (error) {
       console.error('Error completing punching:', error);
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
       Alert.alert('Error', 'Failed to complete punching');
     }
   };
-
-  // const handlePunchingStart = async () => {
-  //   try {
-  //     const currentUser = auth().currentUser;
-  //     if (!currentUser) {
-  //       Alert.alert('Error', 'User not authenticated');
-  //       return;
-  //     }
-
-  //     const jobRef = firestore().collection('orders').doc(order.id);
-  //     const extraFields = {};
-
-  //     extraPaperProducts.forEach((item, index) => {
-  //       const num = (paperProductCode.length > 0? paperProductCode.length : 0)+ (existingPaperProducts.length>0 ? existingPaperProducts.length:0) +index;
-  //       extraFields[`paperProductCode${num}`] = item.code;
-  //       extraFields[`paperProductNo${num}`] = item.number;
-  //     });
-
-  //     await jobRef.update({
-  //       paperProductCode: paperProduct,
-  //       paperProductNo: paperProductNo || order.paperProductNo || '',
-  //       ...extraFields,
-  //       runningMtr: runningMtrValue ? parseFloat(runningMtrValue) : null,
-  //       startByPunching: currentUser.uid,
-  //       punchingStartAt: firestore.FieldValue.serverTimestamp(),
-  //       isPunchingStart: true,
-  //       punchingStatus: 'started',
-  //       jobStatus: 'Punching', // ✅ make sure it's still Punching
-  //     });
-  //     setIsPunchingStart(true);
-  //     Alert.alert('Success', 'Punching started');
-  //     navigation.navigate('PunchingHomeScreen');
-
-  //     // navigation.goBack();
-  //   } catch (error) {
-  //     console.error('Error punching start:', error);
-  //     Alert.alert('Error', 'Failed to start punching');
-  //   }
-  // };
 
   const handlePunchingStart = async () => {
     try {
@@ -138,7 +212,6 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
-      // ✋ 1. VALIDATION — stop if any extra row is empty
       const hasEmptyRow = extraPaperProducts.some(
         item => item.code === '' || item.number === '',
       );
@@ -153,7 +226,6 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
 
       const jobRef = firestore().collection('ordersTest').doc(order.id);
 
-      // 2. FIND LAST EXISTING INDEX
       let maxIndex = 0;
       Object.keys(order).forEach(key => {
         const match = key.match(/^paperProductCode(\d+)$/);
@@ -163,16 +235,13 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         }
       });
 
-      // 3. CREATE EXTRA FIELDS ONLY FOR FILLED ROWS
       const extraFields = {};
       extraPaperProducts.forEach((item, idx) => {
         const newIndex = maxIndex + idx + 1;
-
         extraFields[`paperProductCode${newIndex}`] = item.code;
         extraFields[`paperProductNo${newIndex}`] = item.number;
       });
 
-      // 4. UPDATE FIRESTORE
       await jobRef.update({
         paperProductCode: paperProduct,
         paperProductNo: paperProductNo || order.paperProductNo || '',
@@ -190,46 +259,15 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
       navigation.navigate('PunchingHomeScreen');
     } catch (error) {
       console.error('Error punching start:', error);
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
       Alert.alert('Error', 'Failed to start punching');
     }
   };
 
-  // const getExistingPaperProducts = (order) => {
-  //   const result = [];
-
-  //   // 🔥 Handle the MAIN pair (no index)
-  //   if (order.paperProductCode || order.paperProductNo) {
-  //     result.push({
-  //       code: order.paperProductCode?.value || order.paperProductCode || '',
-  //       number: order.paperProductNo || '',
-  //       index: 0, // index 0 = main
-  //     });
-  //   }
-
-  //   // 🔥 Handle dynamic extra pairs 1 → 10
-  //   for (let i = 1; i <= 10; i++) {
-  //     const codeKey = `paperProductCode${i}`;
-  //     const noKey = `paperProductNo${i}`;
-
-  //     if (order[codeKey] || order[noKey]) {
-  //       result.push({
-  //         code: order[codeKey]?.value || order[codeKey] || '',
-  //         number: order[noKey] || '',
-  //         index: i,
-  //       });
-  //     }
-  //   }
-
-  //   return result;
-  // };
-
   const getExistingPaperProducts = order => {
     const result = [];
 
-    // 🚫 ❌ DO NOT include MAIN "paperProductCode" here
-    // the main code + number is already displayed separately
-
-    // ✔ Include ONLY dynamic fields
     for (let i = 1; i <= 50; i++) {
       const codeKey = `paperProductCode${i}`;
       const noKey = `paperProductNo${i}`;
@@ -255,6 +293,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
       prev.map(item => (item.id === id ? {...item, [field]: value} : item)),
     );
   };
+
   const addExtraPaperProduct = () => {
     if (extraPaperProducts.length >= 10) {
       Alert.alert('Limit Reached', 'You can add only up to 10 extra products');
@@ -277,7 +316,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
       ...prev,
       {
         id: Date.now(),
-        index: nextIndex, // ⭐ store actual index here
+        index: nextIndex,
         code: '',
         number: '',
       },
@@ -298,38 +337,6 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
       {!isPunchingStart ? (
         <>
           <ScrollView contentContainerStyle={styles.content}>
-            {/* {order.paperProductCode ? (
-              <View style={styles.readOnlyField}>
-                <Text style={styles.label}>Paper Product Code:</Text>
-                <Text style={styles.value}>
-                  {typeof order.paperProductCode === 'object'
-                    ? order.paperProductCode.label
-                    : order.paperProductCode}
-                </Text>
-              </View>
-            ) : (
-              <CustomDropdown
-                placeholder={'Select Paper Product Code'}
-                data={paperProductCode}
-                style={styles.dropdownContainer}
-                selectedText={styles.dropdownText}
-                onSelect={item => setPaperProduct(item)}
-                showIcon={true}
-              />
-            )}
-
-            <Text style={styles.label}>Paper Product No</Text>
-            {order.paperProductNo ? (
-              <Text style={styles.value}>{order.paperProductNo}</Text>
-            ) : (
-              <TextInput
-                style={styles.input}
-                value={paperProductNo}
-                onChangeText={setPaperProductNo}
-                placeholder="Enter Paper Product No"
-              />
-            )} */}
-
             {order.paperProductCode ? (
               <View style={styles.readOnlyField}>
                 <Text style={styles.label}>Paper Product Code:</Text>
@@ -362,13 +369,8 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
               />
             )}
 
-            {/* SHOW EXISTING EXTRA PAPER PRODUCT PAIRS HERE */}
             {existingPaperProducts.length > 0 && (
               <View>
-                {/* <Text style={[styles.label, {fontWeight: 'bold' }]}>
-                  Additional Paper Products:
-                </Text> */}
-
                 {existingPaperProducts.map((item, index) => (
                   <View key={index} style={{marginVertical: 8}}>
                     <Text style={styles.label}>Paper Product Code:</Text>
@@ -384,7 +386,6 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
                 ))}
               </View>
             )}
-            {/* ============================================= */}
 
             {extraPaperProducts.map((item, index) => (
               <View key={item.id}>
@@ -407,7 +408,6 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
                   }
                   style={{width: '100%'}}
                 />
-                {/* REMOVE button */}
                 <TouchableOpacity
                   onPress={() => removeExtraPaperProduct(item.id)}
                   style={{marginTop: 6, alignSelf: 'flex-end'}}>
@@ -422,6 +422,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
                 + Add Paper Product
               </Text>
             </TouchableOpacity>
+
             <Text style={styles.label}>Job Card No:</Text>
             <Text style={styles.value}>{order.jobCardNo}</Text>
 
@@ -436,9 +437,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
 
             <Text style={styles.label}>Job Date:</Text>
             <Text style={styles.value}>
-              <Text style={styles.value}>
-                {order.jobDate ? order.jobDate.toDate().toDateString() : 'N/A'}
-              </Text>
+              {order.jobDate ? order.jobDate.toDate().toDateString() : 'N/A'}
             </Text>
 
             <Text style={styles.label}>Job Status:</Text>
@@ -486,7 +485,6 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
                 style={styles.input}
                 value={runningMtrValue}
                 onChangeText={text => {
-                  // Allow only digits (0–9)
                   const numericValue = text.replace(/[^0-9]/g, '');
                   setRunningMtrValue(numericValue);
                 }}
@@ -506,7 +504,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
           )}
         </>
       ) : (
-        <View style={styles.homeSubContainer}>
+        <ScrollView contentContainerStyle={styles.homeSubContainer}>
           <Text style={styles.label}>Job Card No:</Text>
           <Text style={styles.value}>{order.jobCardNo}</Text>
 
@@ -528,76 +526,91 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
                   value={paperCodeValue}
                   onChangeText={setPaperCodeValue}
                   placeholder="Enter Paper Code"
-                  // keyboardType="numeric"
                 />
               )}
             </View>
           ) : null}
-          {/* NEW SECTION: Job Completion Fields */}
+
+          {/* Material Usage for Each Paper Product - PUNCHING PHASE */}
           <View style={styles.completionFieldsContainer}>
             <Text
               style={[
                 styles.boldText,
                 {marginBottom: 10, fontSize: 16, width: '100%'},
               ]}>
-              Job Completion Details
+              Job Completion Details - Punching Phase
             </Text>
 
-            <View style={styles.detailsRowContainer}>
-              <Text style={styles.boldText}>Used</Text>
-              <TextInput
-                style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
-                value={usedByPunch}
-                onChangeText={text => {
-                  const numericValue = text.replace(/[^0-9.]/g, '');
-                  setUsedByPunch(numericValue);
-                }}
-                placeholder="Enter Used"
-                keyboardType="numeric"
-              />
-            </View>
+            {materialUsageData.map((paperItem, idx) => (
+              <View key={idx} style={styles.paperProductSection}>
+                <Text style={styles.paperProductTitle}>
+                  Paper Product:{' '}
+                  {paperItem.paperProductCode?.label ||
+                    paperItem.paperProductCode}{' '}
+                  - {paperItem.paperProductNo}
+                </Text>
 
-            <View style={styles.detailsRowContainer}>
-              <Text style={styles.boldText}>Waste</Text>
-              <TextInput
-                style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
-                value={wasteByPunch}
-                onChangeText={text => {
-                  const numericValue = text.replace(/[^0-9.]/g, '');
-                  setWasteByPunch(numericValue);
-                }}
-                placeholder="Enter Waste"
-                keyboardType="numeric"
-              />
-            </View>
+                <View style={styles.detailsRowContainer}>
+                  <Text style={styles.boldText}>Used</Text>
+                  <TextInput
+                    style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                    value={paperItem.punching.used}
+                    onChangeText={text => {
+                      const numericValue = text.replace(/[^0-9.]/g, '');
+                      updateMaterialUsage(idx, 'used', numericValue);
+                    }}
+                    placeholder="Enter Used"
+                    keyboardType="numeric"
+                  />
+                </View>
 
-            <View style={styles.detailsRowContainer}>
-              <Text style={styles.boldText}>Leftover (LO)</Text>
-              <TextInput
-                style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
-                value={leftoverByPunch}
-                onChangeText={text => {
-                  const numericValue = text.replace(/[^0-9.]/g, '');
-                  setLeftoverByPunch(numericValue);
-                }}
-                placeholder="Enter Leftover"
-                keyboardType="numeric"
-              />
-            </View>
+                <View style={styles.detailsRowContainer}>
+                  <Text style={styles.boldText}>Waste</Text>
+                  <TextInput
+                    style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                    value={paperItem.punching.waste}
+                    onChangeText={text => {
+                      const numericValue = text.replace(/[^0-9.]/g, '');
+                      updateMaterialUsage(idx, 'waste', numericValue);
+                    }}
+                    placeholder="Enter Waste"
+                    keyboardType="numeric"
+                  />
+                </View>
 
-            <View style={styles.detailsRowContainer}>
-              <Text style={styles.boldText}>WIP</Text>
-              <TextInput
-                style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
-                value={wipByPunch}
-                onChangeText={text => {
-                  const numericValue = text.replace(/[^0-9.]/g, '');
-                  setWipByPunch(numericValue);
-                }}
-                placeholder="Enter WIP"
-                keyboardType="numeric"
-              />
-            </View>
+                <View style={styles.detailsRowContainer}>
+                  <Text style={styles.boldText}>Leftover (LO)</Text>
+                  <TextInput
+                    style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                    value={paperItem.punching.leftover}
+                    onChangeText={text => {
+                      const numericValue = text.replace(/[^0-9.]/g, '');
+                      updateMaterialUsage(idx, 'leftover', numericValue);
+                    }}
+                    placeholder="Enter Leftover"
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <View style={styles.detailsRowContainer}>
+                  <Text style={styles.boldText}>WIP</Text>
+                  <TextInput
+                    style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
+                    value={paperItem.punching.wip}
+                    onChangeText={text => {
+                      const numericValue = text.replace(/[^0-9.]/g, '');
+                      updateMaterialUsage(idx, 'wip', numericValue);
+                    }}
+                    placeholder="Enter WIP"
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                {idx < materialUsageData.length - 1 && (
+                  <View style={styles.divider} />
+                )}
+              </View>
+            ))}
           </View>
 
           {!isCompleted && (
@@ -620,7 +633,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
               />
             </View>
           )}
-        </View>
+        </ScrollView>
       )}
     </View>
   );
@@ -711,5 +724,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 40,
     width: '80%',
+  },
+  paperProductSection: {
+    marginBottom: 20,
+  },
+  paperProductTitle: {
+    fontSize: 15,
+    fontFamily: 'Lato-Bold',
+    color: '#3668B1',
+    marginBottom: 10,
+    marginTop: 10,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#ddd',
+    marginTop: 20,
+    marginBottom: 10,
   },
 });
