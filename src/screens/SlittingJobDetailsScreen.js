@@ -149,6 +149,204 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
 
     setInputs(updatedInputs);
   };
+  // const handleComplete = async () => {
+  //   try {
+  //     const currentUser = auth().currentUser;
+  //     if (!currentUser) {
+  //       Alert.alert('Error', 'User not authenticated');
+  //       return;
+  //     }
+
+  //     // Validate that all material usage fields are filled
+  //     const hasEmptyFields = materialUsageData.some(
+  //       item =>
+  //         !item.slitting.used ||
+  //         !item.slitting.waste ||
+  //         !item.slitting.leftover ||
+  //         !item.slitting.wip,
+  //     );
+
+  //     if (hasEmptyFields) {
+  //       Alert.alert(
+  //         'Missing Data',
+  //         'Please fill all material usage fields for each paper product',
+  //       );
+  //       return;
+  //     }
+
+  //     // ========================================================
+  //     // ✅ CREATE LO AND WIP MATERIALS + TRANSACTIONS
+  //     // ========================================================
+
+  //     const updatedMaterialTracking = [];
+
+  //     for (const item of materialUsageData) {
+  //       const codeValue = item.paperProductCode?.label || item.paperProductCode;
+  //       const paperProductNo = item.paperProductNo;
+
+  //       const usedQty = parseFloat(item.slitting.used) || 0;
+  //       const wasteQty = parseFloat(item.slitting.waste) || 0;
+  //       const loQty = parseFloat(item.slitting.leftover) || 0;
+  //       const wipQty = parseFloat(item.slitting.wip) || 0;
+
+  //       // ✅ STEP 1: Create LO Material (if leftover > 0)
+  //       let loMaterialId = null;
+  //       let loPaperCode = null;
+
+  //       if (loQty > 0) {
+  //         loPaperCode = `LO-${order.jobCardNo}-SL`;
+
+  //         const loMaterialData = {
+  //           paperCode: loPaperCode,
+  //           paperProductCode: codeValue,
+  //           jobPaper: order.jobPaper?.value || order.jobPaper,
+  //           paperSize: order.paperSize || 0,
+  //           runningMeter: loQty,
+  //           roll: 1,
+  //           totalRunningMeter: loQty,
+  //           availableRunningMeter: loQty,
+  //           materialCategory: 'LO',
+  //           isActive: true,
+
+  //           // Source tracking
+  //           sourceJobCardNo: order.jobCardNo,
+  //           sourcePaperCode: codeValue,
+  //           sourceStage: 'slitting',
+
+  //           date: new Date(),
+  //           createdAt: firestore.FieldValue.serverTimestamp(),
+  //           updatedAt: firestore.FieldValue.serverTimestamp(),
+  //           createdBy: currentUser.uid,
+  //         };
+
+  //         const loRef = await firestore()
+  //           .collection('materials')
+  //           .add(loMaterialData);
+  //         loMaterialId = loRef.id;
+
+  //         console.log('✅ LO Material Created:', loPaperCode, loMaterialId);
+  //       }
+
+  //       // ✅ STEP 2: Create WIP Material (if wip > 0)
+  //       let wipMaterialId = null;
+  //       let wipPaperCode = null;
+
+  //       if (wipQty > 0) {
+  //         wipPaperCode = `WIP-${order.jobCardNo}-SL`;
+
+  //         const wipMaterialData = {
+  //           paperCode: wipPaperCode,
+  //           paperProductCode: codeValue,
+  //           jobPaper: order.jobPaper?.value || order.jobPaper,
+  //           paperSize: order.paperSize || 0,
+  //           runningMeter: wipQty,
+  //           roll: 1,
+  //           totalRunningMeter: wipQty,
+  //           availableRunningMeter: wipQty,
+  //           materialCategory: 'WIP',
+  //           isActive: true,
+
+  //           // Source tracking
+  //           sourceJobCardNo: order.jobCardNo,
+  //           sourcePaperCode: codeValue,
+  //           sourceStage: 'slitting',
+
+  //           date: new Date(),
+  //           createdAt: firestore.FieldValue.serverTimestamp(),
+  //           updatedAt: firestore.FieldValue.serverTimestamp(),
+  //           createdBy: currentUser.uid,
+  //         };
+
+  //         const wipRef = await firestore()
+  //           .collection('materials')
+  //           .add(wipMaterialData);
+  //         wipMaterialId = wipRef.id;
+
+  //         console.log('✅ WIP Material Created:', wipPaperCode, wipMaterialId);
+  //       }
+
+  //       // ✅ STEP 3: Create Transaction Record
+  //       const newPaperCodes = [];
+  //       if (loPaperCode) newPaperCodes.push(loPaperCode);
+  //       if (wipPaperCode) newPaperCodes.push(wipPaperCode);
+
+  //       const transactionData = {
+  //         transactionType: 'consumption',
+  //         transactionDate: firestore.FieldValue.serverTimestamp(),
+  //         jobCardNo: order.jobCardNo,
+  //         orderRef: order.id,
+  //         stage: 'slitting',
+
+  //         // Material details
+  //         paperCode: codeValue,
+  //         paperProductCode: codeValue,
+  //         paperProductNo: paperProductNo,
+  //         materialCategory: 'WIP', // Assuming WIP from punching was consumed
+
+  //         // Quantities
+  //         usedQty: usedQty,
+  //         wasteQty: wasteQty,
+  //         loQty: loQty,
+  //         wipQty: wipQty,
+
+  //         // New materials created
+  //         newPaperCode: newPaperCodes.join(', ') || null,
+  //         loMaterialId: loMaterialId,
+  //         wipMaterialId: wipMaterialId,
+
+  //         createdBy: currentUser.uid,
+  //         remarks: `Slitting stage completed for job ${order.jobCardNo}`,
+  //       };
+
+  //       await firestore()
+  //         .collection('materialTransactions')
+  //         .add(transactionData);
+
+  //       console.log('✅ Transaction Created for:', codeValue);
+
+  //       // ✅ STEP 4: Add to updatedMaterialTracking (keep existing structure)
+  //       updatedMaterialTracking.push({
+  //         paperProductCode: codeValue,
+  //         paperProductNo: paperProductNo,
+  //         printing: item.printing, // Keep existing printing data
+  //         punching: item.punching, // Keep existing punching data
+  //         slitting: {
+  //           used: usedQty,
+  //           waste: wasteQty,
+  //           leftover: loQty,
+  //           wip: wipQty,
+  //           completedAt: new Date(),
+  //           completedBy: currentUser.uid,
+  //         },
+  //       });
+  //     }
+
+  //     // ========================================================
+  //     // ✅ UPDATE ORDER DOCUMENT
+  //     // ========================================================
+
+  //     await firestore().collection('ordersTest').doc(order.id).update({
+  //       jobStatus: 'Completed',
+  //       slittingStatus: 'completed',
+  //       assignedTo: 'adminUID',
+  //       endTime: firestore.FieldValue.serverTimestamp(),
+  //       updatedBySlittingAt: firestore.FieldValue.serverTimestamp(),
+  //       slittingData: inputs,
+  //       completedBySlitting: currentUser.uid,
+  //       isSlittingStart: false,
+  //       upsLabel: upsLabel,
+  //       materialUsageTracking: updatedMaterialTracking,
+  //     });
+
+  //     Alert.alert('Success', 'Job completed! LO and WIP materials created.');
+  //     navigation.goBack();
+  //   } catch (error) {
+  //     console.error('Error completing job:', error);
+  //     console.error('Error message:', error.message);
+  //     console.error('Error code:', error.code);
+  //     Alert.alert('Error', `Failed to complete job: ${error.message}`);
+  //   }
+  // };
 
   const handleComplete = async () => {
     try {
@@ -175,25 +373,156 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
-      // Update materialUsageTracking array with slitting data
-      const updatedMaterialTracking = materialUsageData.map(item => {
-        const codeValue = item.paperProductCode?.label || item.paperProductCode;
+      // ========================================================
+      // ✅ CREATE LO AND WIP MATERIALS + TRANSACTIONS
+      // ========================================================
 
-        return {
+      const updatedMaterialTracking = [];
+
+      for (const item of materialUsageData) {
+        const codeValue = item.paperProductCode?.label || item.paperProductCode;
+        const paperProductNo = item.paperProductNo;
+
+        const usedQty = parseFloat(item.slitting.used) || 0;
+        const wasteQty = parseFloat(item.slitting.waste) || 0;
+        const loQty = parseFloat(item.slitting.leftover) || 0;
+        const wipQty = parseFloat(item.slitting.wip) || 0;
+
+        // ✅ STEP 1: Create LO Material (if leftover > 0)
+        let loMaterialId = null;
+        let loPaperCode = null;
+
+        if (loQty > 0) {
+          loPaperCode = `LO-${order.jobCardNo}-SL`;
+
+          const loMaterialData = {
+            paperCode: loPaperCode,
+            paperProductCode: codeValue,
+            jobPaper: order.jobPaper?.value || order.jobPaper,
+            paperSize: order.paperSize || 0,
+            runningMeter: loQty,
+            roll: 1,
+            totalRunningMeter: loQty,
+            availableRunningMeter: loQty,
+            materialCategory: 'LO',
+            isActive: true,
+
+            // Source tracking
+            sourceJobCardNo: order.jobCardNo,
+            sourcePaperCode: codeValue,
+            sourceStage: 'slitting',
+
+            date: new Date(),
+            createdAt: firestore.FieldValue.serverTimestamp(),
+            updatedAt: firestore.FieldValue.serverTimestamp(),
+            createdBy: currentUser.uid,
+          };
+
+          const loRef = await firestore()
+            .collection('materials')
+            .add(loMaterialData);
+          loMaterialId = loRef.id;
+
+          console.log('✅ LO Material Created:', loPaperCode, loMaterialId);
+        }
+
+        // ✅ STEP 2: Create WIP Material (if wip > 0)
+        let wipMaterialId = null;
+        let wipPaperCode = null;
+
+        if (wipQty > 0) {
+          wipPaperCode = `WIP-${order.jobCardNo}-SL`;
+
+          const wipMaterialData = {
+            paperCode: wipPaperCode,
+            paperProductCode: codeValue,
+            jobPaper: order.jobPaper?.value || order.jobPaper,
+            paperSize: order.paperSize || 0,
+            runningMeter: wipQty,
+            roll: 1,
+            totalRunningMeter: wipQty,
+            availableRunningMeter: wipQty,
+            materialCategory: 'WIP',
+            isActive: true,
+
+            // Source tracking
+            sourceJobCardNo: order.jobCardNo,
+            sourcePaperCode: codeValue,
+            sourceStage: 'slitting',
+
+            date: new Date(),
+            createdAt: firestore.FieldValue.serverTimestamp(),
+            updatedAt: firestore.FieldValue.serverTimestamp(),
+            createdBy: currentUser.uid,
+          };
+
+          const wipRef = await firestore()
+            .collection('materials')
+            .add(wipMaterialData);
+          wipMaterialId = wipRef.id;
+
+          console.log('✅ WIP Material Created:', wipPaperCode, wipMaterialId);
+        }
+
+        // ✅ STEP 3: Create Transaction Record
+        const newPaperCodes = [];
+        if (loPaperCode) newPaperCodes.push(loPaperCode);
+        if (wipPaperCode) newPaperCodes.push(wipPaperCode);
+
+        const transactionData = {
+          transactionType: 'consumption',
+          transactionDate: firestore.FieldValue.serverTimestamp(),
+          jobCardNo: order.jobCardNo,
+          orderRef: order.id,
+          stage: 'slitting',
+
+          // Material details
+          paperCode: codeValue,
           paperProductCode: codeValue,
-          paperProductNo: item.paperProductNo,
+          paperProductNo: paperProductNo,
+          materialCategory: 'WIP', // Assuming WIP from punching was consumed
+
+          // Quantities
+          usedQty: usedQty,
+          wasteQty: wasteQty,
+          loQty: loQty,
+          wipQty: wipQty,
+
+          // New materials created
+          newPaperCode: newPaperCodes.join(', ') || null,
+          loMaterialId: loMaterialId,
+          wipMaterialId: wipMaterialId,
+
+          createdBy: currentUser.uid,
+          remarks: `Slitting stage completed for job ${order.jobCardNo}`,
+        };
+
+        await firestore()
+          .collection('materialTransactions')
+          .add(transactionData);
+
+        console.log('✅ Transaction Created for:', codeValue);
+
+        // ✅ STEP 4: Add to updatedMaterialTracking (keep existing structure)
+        updatedMaterialTracking.push({
+          paperProductCode: codeValue,
+          paperProductNo: paperProductNo,
           printing: item.printing, // Keep existing printing data
           punching: item.punching, // Keep existing punching data
           slitting: {
-            used: parseFloat(item.slitting.used) || 0,
-            waste: parseFloat(item.slitting.waste) || 0,
-            leftover: parseFloat(item.slitting.leftover) || 0,
-            wip: parseFloat(item.slitting.wip) || 0,
+            used: usedQty,
+            waste: wasteQty,
+            leftover: loQty,
+            wip: wipQty,
             completedAt: new Date(),
             completedBy: currentUser.uid,
           },
-        };
-      });
+        });
+      }
+
+      // ========================================================
+      // ✅ UPDATE ORDER DOCUMENT
+      // ========================================================
 
       await firestore().collection('ordersTest').doc(order.id).update({
         jobStatus: 'Completed',
@@ -208,16 +537,15 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
         materialUsageTracking: updatedMaterialTracking,
       });
 
-      Alert.alert('Success', 'Job completed');
+      Alert.alert('Success', 'Job completed! LO and WIP materials created.');
       navigation.goBack();
     } catch (error) {
       console.error('Error completing job:', error);
       console.error('Error message:', error.message);
       console.error('Error code:', error.code);
-      Alert.alert('Error', 'Failed to complete job');
+      Alert.alert('Error', `Failed to complete job: ${error.message}`);
     }
   };
-
   const handleSlittingStart = async () => {
     try {
       const currentUser = auth().currentUser;

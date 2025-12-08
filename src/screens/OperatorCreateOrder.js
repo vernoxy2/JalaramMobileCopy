@@ -250,6 +250,89 @@ const OperatorCreateOrder = ({navigation, route}) => {
     }
   };
 
+  // const handleSubmit = async () => {
+  //   try {
+  //     const currentUser = auth().currentUser;
+  //     if (!currentUser) {
+  //       Alert.alert('Error', 'User not authenticated');
+  //       return;
+  //     }
+
+  //     // Validate that all material usage fields are filled
+  //     const hasEmptyFields = materialUsageData.some(
+  //       item =>
+  //         !item.printing.used ||
+  //         !item.printing.waste ||
+  //         !item.printing.leftover ||
+  //         !item.printing.wip,
+  //     );
+
+  //     if (hasEmptyFields) {
+  //       Alert.alert(
+  //         'Missing Data',
+  //         'Please fill all material usage fields for each paper product',
+  //       );
+  //       return;
+  //     }
+
+  //     const orderRef = firestore().collection('ordersTest').doc(order.id);
+
+  //     // FIX: Use new Date() instead of serverTimestamp() inside arrays
+  //     const materialUsageTracking = materialUsageData.map(item => {
+  //       const codeValue = item.paperProductCode?.label || item.paperProductCode;
+
+  //       return {
+  //         paperProductCode: codeValue,
+  //         paperProductNo: item.paperProductNo,
+  //         printing: {
+  //           used: parseFloat(item.printing.used) || 0,
+  //           waste: parseFloat(item.printing.waste) || 0,
+  //           leftover: parseFloat(item.printing.leftover) || 0,
+  //           wip: parseFloat(item.printing.wip) || 0,
+  //           completedAt: new Date(), // ✅ Changed from serverTimestamp()
+  //           completedBy: currentUser.uid,
+  //         },
+  //         punching: null,
+  //         slitting: null,
+  //       };
+  //     });
+
+  //     console.log('Submitting data:', {
+  //       materialUsageTracking,
+  //       printingColors,
+  //       colorAniloxValues,
+  //     });
+
+  //     await orderRef.update({
+  //       jobPaper,
+  //       runningMtr: runningMtrValue,
+  //       jobStatus: 'Punching',
+  //       assignedTo: 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2',
+  //       printingStatus: 'completed',
+  //       updatedByPrintingAt: firestore.FieldValue.serverTimestamp(), // ✅ This is fine at root level
+  //       completedByPrinting: currentUser.uid,
+  //       colorAniloxValues,
+  //       tooling,
+  //       printingColors,
+  //       sp1Color,
+  //       sp2Color,
+  //       sp3Color,
+  //       sp4Color,
+  //       materialUsageTracking,
+  //     });
+
+  //     alert('Job successfully updated and reassigned!');
+  //     setTimeout(() => {
+  //       navigation.goBack();
+  //     }, 500);
+  //   } catch (err) {
+  //     console.error('Error updating order - Full error:', err);
+  //     console.error('Error message:', err.message);
+  //     console.error('Error code:', err.code);
+  //     Alert.alert('Error', `Failed to update order: ${err.message}`);
+  //   }
+  // };
+
   const handleSubmit = async () => {
     try {
       const currentUser = auth().currentUser;
@@ -277,25 +360,156 @@ const OperatorCreateOrder = ({navigation, route}) => {
 
       const orderRef = firestore().collection('ordersTest').doc(order.id);
 
-      // FIX: Use new Date() instead of serverTimestamp() inside arrays
-      const materialUsageTracking = materialUsageData.map(item => {
-        const codeValue = item.paperProductCode?.label || item.paperProductCode;
+      // ========================================================
+      // ✅ NEW: CREATE LO AND WIP MATERIALS + TRANSACTIONS
+      // ========================================================
 
-        return {
+      const materialUsageTracking = [];
+
+      for (const item of materialUsageData) {
+        const codeValue = item.paperProductCode?.label || item.paperProductCode;
+        const paperProductNo = item.paperProductNo;
+
+        const usedQty = parseFloat(item.printing.used) || 0;
+        const wasteQty = parseFloat(item.printing.waste) || 0;
+        const loQty = parseFloat(item.printing.leftover) || 0;
+        const wipQty = parseFloat(item.printing.wip) || 0;
+
+        // ✅ STEP 1: Create LO Material (if leftover > 0)
+        let loMaterialId = null;
+        let loPaperCode = null;
+
+        if (loQty > 0) {
+          loPaperCode = `LO-${order.jobCardNo}-PR`;
+
+          const loMaterialData = {
+            paperCode: loPaperCode,
+            paperProductCode: codeValue,
+            jobPaper: order.jobPaper?.value || order.jobPaper,
+            paperSize: order.paperSize || 0,
+            runningMeter: loQty,
+            roll: 1,
+            totalRunningMeter: loQty,
+            availableRunningMeter: loQty,
+            materialCategory: 'LO',
+            isActive: true,
+
+            // Source tracking
+            sourceJobCardNo: order.jobCardNo,
+            sourcePaperCode: codeValue,
+            sourceStage: 'printing',
+
+            date: new Date(),
+            createdAt: firestore.FieldValue.serverTimestamp(),
+            updatedAt: firestore.FieldValue.serverTimestamp(),
+            createdBy: currentUser.uid,
+          };
+
+          const loRef = await firestore()
+            .collection('materials')
+            .add(loMaterialData);
+          loMaterialId = loRef.id;
+
+          console.log('✅ LO Material Created:', loPaperCode, loMaterialId);
+        }
+
+        // ✅ STEP 2: Create WIP Material (if wip > 0)
+        let wipMaterialId = null;
+        let wipPaperCode = null;
+
+        if (wipQty > 0) {
+          wipPaperCode = `WIP-${order.jobCardNo}-PR`;
+
+          const wipMaterialData = {
+            paperCode: wipPaperCode,
+            paperProductCode: codeValue,
+            jobPaper: order.jobPaper?.value || order.jobPaper,
+            paperSize: order.paperSize || 0,
+            runningMeter: wipQty,
+            roll: 1,
+            totalRunningMeter: wipQty,
+            availableRunningMeter: wipQty,
+            materialCategory: 'WIP',
+            isActive: true,
+
+            // Source tracking
+            sourceJobCardNo: order.jobCardNo,
+            sourcePaperCode: codeValue,
+            sourceStage: 'printing',
+
+            date: new Date(),
+            createdAt: firestore.FieldValue.serverTimestamp(),
+            updatedAt: firestore.FieldValue.serverTimestamp(),
+            createdBy: currentUser.uid,
+          };
+
+          const wipRef = await firestore()
+            .collection('materials')
+            .add(wipMaterialData);
+          wipMaterialId = wipRef.id;
+
+          console.log('✅ WIP Material Created:', wipPaperCode, wipMaterialId);
+        }
+
+        // ✅ STEP 3: Create Transaction Record
+        const newPaperCodes = [];
+        if (loPaperCode) newPaperCodes.push(loPaperCode);
+        if (wipPaperCode) newPaperCodes.push(wipPaperCode);
+
+        const transactionData = {
+          transactionType: 'consumption',
+          transactionDate: firestore.FieldValue.serverTimestamp(),
+          jobCardNo: order.jobCardNo,
+          orderRef: order.id,
+          stage: 'printing',
+
+          // Material details
+          paperCode: codeValue,
           paperProductCode: codeValue,
-          paperProductNo: item.paperProductNo,
+          paperProductNo: paperProductNo,
+          materialCategory: 'RAW', // Assuming RAW was consumed
+
+          // Quantities
+          usedQty: usedQty,
+          wasteQty: wasteQty,
+          loQty: loQty,
+          wipQty: wipQty,
+
+          // New materials created
+          newPaperCode: newPaperCodes.join(', ') || null,
+          loMaterialId: loMaterialId,
+          wipMaterialId: wipMaterialId,
+
+          createdBy: currentUser.uid,
+          remarks: `Printing stage completed for job ${order.jobCardNo}`,
+        };
+
+        await firestore()
+          .collection('materialTransactions')
+          .add(transactionData);
+
+        console.log('✅ Transaction Created for:', codeValue);
+
+        // ✅ STEP 4: Add to materialUsageTracking (keep existing structure)
+        materialUsageTracking.push({
+          paperProductCode: codeValue,
+          paperProductNo: paperProductNo,
           printing: {
-            used: parseFloat(item.printing.used) || 0,
-            waste: parseFloat(item.printing.waste) || 0,
-            leftover: parseFloat(item.printing.leftover) || 0,
-            wip: parseFloat(item.printing.wip) || 0,
-            completedAt: new Date(), // ✅ Changed from serverTimestamp()
+            used: usedQty,
+            waste: wasteQty,
+            leftover: loQty,
+            wip: wipQty,
+            completedAt: new Date(),
             completedBy: currentUser.uid,
           },
           punching: null,
           slitting: null,
-        };
-      });
+        });
+      }
+
+      // ========================================================
+      // ✅ UPDATE ORDER DOCUMENT
+      // ========================================================
 
       console.log('Submitting data:', {
         materialUsageTracking,
@@ -309,7 +523,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
         jobStatus: 'Punching',
         assignedTo: 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2',
         printingStatus: 'completed',
-        updatedByPrintingAt: firestore.FieldValue.serverTimestamp(), // ✅ This is fine at root level
+        updatedByPrintingAt: firestore.FieldValue.serverTimestamp(),
         completedByPrinting: currentUser.uid,
         colorAniloxValues,
         tooling,
@@ -321,7 +535,11 @@ const OperatorCreateOrder = ({navigation, route}) => {
         materialUsageTracking,
       });
 
-      alert('Job successfully updated and reassigned!');
+      Alert.alert(
+        'Success',
+        'Job successfully completed! LO and WIP materials created.',
+      );
+
       setTimeout(() => {
         navigation.goBack();
       }, 500);
@@ -332,7 +550,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
       Alert.alert('Error', `Failed to update order: ${err.message}`);
     }
   };
-
   const addExtraPaperProduct = () => {
     if (extraPaperProducts.length >= 10) {
       Alert.alert('Limit Reached', 'You can add only up to 10 extra products');
