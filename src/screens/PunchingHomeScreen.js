@@ -218,14 +218,14 @@ useFocusEffect(
       <Text
         style={[
           styles.statusCell,
-          item.materialAllotStatus === 'alloted' ||
-          item.materialAllotStatus === 'Alloted'
+          item.materialAllotStatus === 'allocated' ||
+          item.materialAllotStatus === 'Allocated'
             ? styles.completedStatus
             : styles.pendingStatus,
         ]}>
-        {item.materialAllotStatus === 'alloted' ||
-        item.materialAllotStatus === 'Alloted'
-          ? 'Alloted'
+        {item.materialAllotStatus === 'allocated' ||
+        item.materialAllotStatus === 'Allocated'
+          ? 'Allocated'
           : 'Pending'}
       </Text>
       <Text

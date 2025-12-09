@@ -27,9 +27,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
   const [jobStarted, setJobStarted] = useState(order.jobStarted || false);
   const [size, setSize] = useState(order.jobSize || '');
   const [jobPaper, setJobPaper] = useState(order.jobPaper || '');
-  const [paperProductCode, setPaperProductCode] = useState(
-    order.paperProductCode || '',
-  );
   const [plateSize, setPlateSize] = useState(order.printingPlateSize || '');
   const [upsAcrossValue, setUpsAcrossValue] = useState(order.upsAcross || '');
   const [aroundValue, setAroundValue] = useState(order.around || '');
@@ -47,7 +44,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
     box5: order.checkedApproved || false,
   });
 
-  const [paperProductNo, setPaperProductNo] = useState('');
   const [runningMtrValue, setRunningMtrValue] = useState('');
   const isCompleted = order.printingStatus === 'completed';
   const [jobCardNo, setJobCardNo] = useState(order.jobCardNo || '');
@@ -60,10 +56,11 @@ const OperatorCreateOrder = ({navigation, route}) => {
   const [jobQty, setJobQty] = useState(order.jobQty || '');
   const [acrossGap, setAcrossGap] = useState(order.acrossGap || '');
   const [aroundGap, setAroundGap] = useState(order.aroundGap || '');
-  const [extraPaperProducts, setExtraPaperProducts] = useState([]);
+
+  // ✅ NEW: Store allocated materials from admin
+  const [allocatedMaterials, setAllocatedMaterials] = useState([]);
 
   // NEW STRUCTURED DATA: Material usage organized by paper product
-  const [paperProductsList, setPaperProductsList] = useState([]);
   const [materialUsageData, setMaterialUsageData] = useState([]);
 
   const printingColors = [];
@@ -75,8 +72,8 @@ const OperatorCreateOrder = ({navigation, route}) => {
     if (!order) return;
 
     setSize(order.jobSize || '');
+
     setJobPaper(order.jobPaper || '');
-    setPaperProductCode(order.paperProductCode || '');
     setPlateSize(order.printingPlateSize || '');
     setUpsAcrossValue(order.upsAcross || '');
     setAroundValue(order.around || '');
@@ -97,53 +94,59 @@ const OperatorCreateOrder = ({navigation, route}) => {
     setJobName(order.jobName || '');
     setJobQty(order.jobQty || '');
 
-    // Extract all paper products from order
-    const papers = [];
+    // ✅ NEW: Extract allocated materials from order
+    const materials = [];
 
-    // Add main paper product
-    if (order.paperProductCode && order.paperProductNo) {
-      papers.push({
+    // Check for main paper product
+    if (order.paperProductCode) {
+      materials.push({
         code: order.paperProductCode,
-        number: order.paperProductNo,
+        number: order.paperProductNo || '',
+        allocatedQty: order.allocatedQty || 0,
+        materialCategory: order.materialCategory || 'RAW',
         index: 0,
       });
     }
 
-    // Add extra paper products (paperProductCode1-10, paperProductNo1-10)
+    // Check for additional paper products (paperProductCode1-10)
     for (let i = 1; i <= 10; i++) {
       const codeKey = `paperProductCode${i}`;
       const numberKey = `paperProductNo${i}`;
+      const qtyKey = `allocatedQty${i}`;
+      const categoryKey = `materialCategory${i}`;
 
-      if (order[codeKey] && order[numberKey]) {
-        papers.push({
+      if (order[codeKey]) {
+        materials.push({
           code: order[codeKey],
-          number: order[numberKey],
+          number: order[numberKey] || '',
+          allocatedQty: order[qtyKey] || 0,
+          materialCategory: order[categoryKey] || 'RAW',
           index: i,
         });
       }
     }
 
-    setPaperProductsList(papers);
+    setAllocatedMaterials(materials);
 
-    // Initialize material usage data for each paper product
-    // Load existing data if available from materialUsageTracking array
-    const initialUsageData = papers.map((paper, index) => {
+    // Initialize material usage data for each allocated material
+    const initialUsageData = materials.map(material => {
       // Find existing tracking data for this paper product
       const existingData =
         order.materialUsageTracking?.find(
-          item => item.paperProductNo === paper.number,
+          item => item.paperProductNo === material.number,
         ) || {};
 
       return {
-        paperProductCode: paper.code,
-        paperProductNo: paper.number,
+        paperProductCode: material.code,
+        paperProductNo: material.number,
+        allocatedQty: material.allocatedQty,
+        materialCategory: material.materialCategory,
         printing: {
           used: existingData.printing?.used?.toString() || '',
           waste: existingData.printing?.waste?.toString() || '',
           leftover: existingData.printing?.leftover?.toString() || '',
           wip: existingData.printing?.wip?.toString() || '',
         },
-        // These will be filled in next phases
         punching: existingData.punching || null,
         slitting: existingData.slitting || null,
       };
@@ -202,25 +205,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
       if (checkboxState.box2) printingColors.push('Water');
       if (checkboxState.box3) printingColors.push('Special');
 
-      const hasEmptyRow = extraPaperProducts.some(
-        item => item.code === '' || item.number === '',
-      );
-
-      if (hasEmptyRow) {
-        Alert.alert(
-          'Incomplete Entry',
-          'Please fill all extra Paper Product fields or remove empty rows.',
-        );
-        return;
-      }
-
       const orderRef = firestore().collection('ordersTest').doc(order.id);
-      const extraFields = {};
-      extraPaperProducts.forEach((item, index) => {
-        const num = index + 1;
-        extraFields[`paperProductCode${num}`] = item.code;
-        extraFields[`paperProductNo${num}`] = item.number;
-      });
 
       await orderRef.update({
         jobStarted: true,
@@ -228,9 +213,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
         updatedAt: firestore.FieldValue.serverTimestamp(),
         jobSize: size,
         jobPaper,
-        paperProductCode: paperProductCode,
-        paperProductNo,
-        ...extraFields,
         printingPlateSize: plateSize,
         upsAcross: upsAcrossValue,
         around: aroundValue,
@@ -249,89 +231,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
       alert('Failed to start job');
     }
   };
-
-  // const handleSubmit = async () => {
-  //   try {
-  //     const currentUser = auth().currentUser;
-  //     if (!currentUser) {
-  //       Alert.alert('Error', 'User not authenticated');
-  //       return;
-  //     }
-
-  //     // Validate that all material usage fields are filled
-  //     const hasEmptyFields = materialUsageData.some(
-  //       item =>
-  //         !item.printing.used ||
-  //         !item.printing.waste ||
-  //         !item.printing.leftover ||
-  //         !item.printing.wip,
-  //     );
-
-  //     if (hasEmptyFields) {
-  //       Alert.alert(
-  //         'Missing Data',
-  //         'Please fill all material usage fields for each paper product',
-  //       );
-  //       return;
-  //     }
-
-  //     const orderRef = firestore().collection('ordersTest').doc(order.id);
-
-  //     // FIX: Use new Date() instead of serverTimestamp() inside arrays
-  //     const materialUsageTracking = materialUsageData.map(item => {
-  //       const codeValue = item.paperProductCode?.label || item.paperProductCode;
-
-  //       return {
-  //         paperProductCode: codeValue,
-  //         paperProductNo: item.paperProductNo,
-  //         printing: {
-  //           used: parseFloat(item.printing.used) || 0,
-  //           waste: parseFloat(item.printing.waste) || 0,
-  //           leftover: parseFloat(item.printing.leftover) || 0,
-  //           wip: parseFloat(item.printing.wip) || 0,
-  //           completedAt: new Date(), // ✅ Changed from serverTimestamp()
-  //           completedBy: currentUser.uid,
-  //         },
-  //         punching: null,
-  //         slitting: null,
-  //       };
-  //     });
-
-  //     console.log('Submitting data:', {
-  //       materialUsageTracking,
-  //       printingColors,
-  //       colorAniloxValues,
-  //     });
-
-  //     await orderRef.update({
-  //       jobPaper,
-  //       runningMtr: runningMtrValue,
-  //       jobStatus: 'Punching',
-  //       assignedTo: 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2',
-  //       printingStatus: 'completed',
-  //       updatedByPrintingAt: firestore.FieldValue.serverTimestamp(), // ✅ This is fine at root level
-  //       completedByPrinting: currentUser.uid,
-  //       colorAniloxValues,
-  //       tooling,
-  //       printingColors,
-  //       sp1Color,
-  //       sp2Color,
-  //       sp3Color,
-  //       sp4Color,
-  //       materialUsageTracking,
-  //     });
-
-  //     alert('Job successfully updated and reassigned!');
-  //     setTimeout(() => {
-  //       navigation.goBack();
-  //     }, 500);
-  //   } catch (err) {
-  //     console.error('Error updating order - Full error:', err);
-  //     console.error('Error message:', err.message);
-  //     console.error('Error code:', err.code);
-  //     Alert.alert('Error', `Failed to update order: ${err.message}`);
-  //   }
-  // };
 
   const handleSubmit = async () => {
     try {
@@ -359,10 +258,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
       }
 
       const orderRef = firestore().collection('ordersTest').doc(order.id);
-
-      // ========================================================
-      // ✅ NEW: CREATE LO AND WIP MATERIALS + TRANSACTIONS
-      // ========================================================
 
       const materialUsageTracking = [];
 
@@ -467,7 +362,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
           paperCode: codeValue,
           paperProductCode: codeValue,
           paperProductNo: paperProductNo,
-          materialCategory: 'RAW', // Assuming RAW was consumed
+          materialCategory: 'RAW',
 
           // Quantities
           usedQty: usedQty,
@@ -490,7 +385,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
 
         console.log('✅ Transaction Created for:', codeValue);
 
-        // ✅ STEP 4: Add to materialUsageTracking (keep existing structure)
+        // ✅ STEP 4: Add to materialUsageTracking
         materialUsageTracking.push({
           paperProductCode: codeValue,
           paperProductNo: paperProductNo,
@@ -507,10 +402,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
         });
       }
 
-      // ========================================================
       // ✅ UPDATE ORDER DOCUMENT
-      // ========================================================
-
       console.log('Submitting data:', {
         materialUsageTracking,
         printingColors,
@@ -549,32 +441,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
       console.error('Error code:', err.code);
       Alert.alert('Error', `Failed to update order: ${err.message}`);
     }
-  };
-  const addExtraPaperProduct = () => {
-    if (extraPaperProducts.length >= 10) {
-      Alert.alert('Limit Reached', 'You can add only up to 10 extra products');
-      return;
-    }
-
-    setExtraPaperProducts(prev => [
-      ...prev,
-      {
-        id: Date.now(),
-        index: prev.length + 1,
-        code: '',
-        number: '',
-      },
-    ]);
-  };
-
-  const updateExtraPaperProduct = (id, field, value) => {
-    setExtraPaperProducts(prev =>
-      prev.map(item => (item.id === id ? {...item, [field]: value} : item)),
-    );
-  };
-
-  const removeExtraPaperProduct = id => {
-    setExtraPaperProducts(prev => prev.filter(item => item.id !== id));
   };
 
   return (
@@ -689,57 +555,44 @@ const OperatorCreateOrder = ({navigation, route}) => {
                 </View>
               </View>
 
-              <CustomDropdown
-                placeholder={'Paper Product Code'}
-                data={paperProductCodeData}
-                style={styles.dropdownContainer}
-                selectedText={styles.dropdownText}
-                onSelect={item => setPaperProductCode(item)}
-                showIcon={true}
-              />
+              {/* ✅ NEW: Display Allocated Materials (READ-ONLY) */}
+              <View style={styles.allocatedMaterialsContainer}>
+                <Text style={styles.sectionTitle}>Allocated Materials:</Text>
+                {allocatedMaterials.length === 0 ? (
+                  <Text style={styles.noMaterialText}>
+                    No materials allocated yet. Please contact admin.
+                  </Text>
+                ) : (
+                  allocatedMaterials.map((material, index) => (
+                    <View key={index} style={styles.materialCard}>
+                      <Text style={styles.materialLabel}>
+                        Paper Product Code:
+                      </Text>
+                      <Text style={styles.materialValue}>
+                        {material.code?.label || material.code}
+                      </Text>
 
-              <CustomTextInput
-                placeholder="Paper Product No"
-                value={paperProductNo}
-                onChangeText={setPaperProductNo}
-                style={{width: '100%'}}
-              />
+                      <Text style={styles.materialLabel}>
+                        Paper Product No:
+                      </Text>
+                      <Text style={styles.materialValue}>
+                        {material.number}
+                      </Text>
 
-              {extraPaperProducts.map((item, index) => (
-                <View key={item.id}>
-                  <CustomDropdown
-                    placeholder={`Paper Product Code`}
-                    data={paperProductCodeData}
-                    style={styles.dropdownContainer}
-                    selectedText={styles.dropdownText}
-                    onSelect={val =>
-                      updateExtraPaperProduct(item.id, 'code', val)
-                    }
-                    showIcon={true}
-                  />
+                      <Text style={styles.materialLabel}>Allocated Qty:</Text>
+                      <Text style={styles.materialValue}>
+                        {material.allocatedQty}m
+                      </Text>
 
-                  <CustomTextInput
-                    placeholder={`Paper Product No`}
-                    value={item.number}
-                    onChangeText={text =>
-                      updateExtraPaperProduct(item.id, 'number', text)
-                    }
-                    style={{width: '100%'}}
-                  />
-                  <TouchableOpacity
-                    onPress={() => removeExtraPaperProduct(item.id)}
-                    style={{marginTop: 6, alignSelf: 'flex-end'}}>
-                    <Text style={{color: 'red'}}>Remove</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <TouchableOpacity
-                style={{marginVertical: 10}}
-                onPress={addExtraPaperProduct}>
-                <Text style={{color: '#3668B1', fontSize: 16}}>
-                  + Add Extra Paper Product
-                </Text>
-              </TouchableOpacity>
+                      <Text style={styles.materialLabel}>Category:</Text>
+                      <Text style={styles.materialValue}>
+                        {material.materialCategory}
+                      </Text>
+                    </View>
+                  ))
+                )}
+              </View>
+
               <View style={styles.btnContainer}>
                 <CustomButton
                   title={'Start Job'}
@@ -931,6 +784,10 @@ const OperatorCreateOrder = ({navigation, route}) => {
                         paperItem.paperProductCode}{' '}
                       - {paperItem.paperProductNo}
                     </Text>
+                    <Text style={styles.allocatedQtyText}>
+                      Allocated: {paperItem.allocatedQty}m (
+                      {paperItem.materialCategory})
+                    </Text>
 
                     <View style={styles.detailsRowContainer}>
                       <Text style={styles.boldText}>Used</Text>
@@ -948,7 +805,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
                         keyboardType="numeric"
                       />
                     </View>
-
                     <View style={styles.detailsRowContainer}>
                       <Text style={styles.boldText}>Waste</Text>
                       <TextInput
@@ -1185,13 +1041,60 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Lato-Bold',
     color: '#3668B1',
-    marginBottom: 10,
+    marginBottom: 5,
     marginTop: 10,
+  },
+  allocatedQtyText: {
+    fontSize: 13,
+    fontFamily: 'Lato-Regular',
+    color: '#666',
+    marginBottom: 10,
   },
   divider: {
     height: 1,
     backgroundColor: '#ddd',
     marginTop: 20,
     marginBottom: 10,
+  },
+  // ✅ NEW STYLES FOR ALLOCATED MATERIALS SECTION
+  allocatedMaterialsContainer: {
+    marginTop: 30,
+    padding: 15,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Lato-Bold',
+    color: '#000',
+    marginBottom: 15,
+  },
+  noMaterialText: {
+    fontSize: 14,
+    fontFamily: 'Lato-Regular',
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  materialCard: {
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  materialLabel: {
+    fontSize: 12,
+    fontFamily: 'Lato-Bold',
+    color: '#666',
+    marginTop: 5,
+  },
+  materialValue: {
+    fontSize: 14,
+    fontFamily: 'Lato-Regular',
+    color: '#000',
+    marginBottom: 5,
   },
 });

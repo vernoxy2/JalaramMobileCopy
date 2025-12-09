@@ -55,107 +55,252 @@ const OperatorHomeScreen = ({route, navigation}) => {
   const pendingJobsRef = useRef([]);
   const completedJobsRef = useRef([]);
 
-  // Fetch orders assigned to Printing Operator
-  // useEffect(() => {
-  //   const currentUser = auth().currentUser;
-  //   if (!currentUser) return;
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     const currentUser = auth().currentUser;
+  //     if (!currentUser) {
+  //       console.log('❌ No current user found');
+  //       setLoading(false);
+  //       return;
+  //     }
 
-  //   const updateCombinedJobs = () => {
-  //     const combined = [...pendingJobsRef.current, ...completedJobsRef.current];
-  //     const unique = Array.from(
-  //       new Map(combined.map(job => [job.id, job])).values(),
-  //     );
-  //     setOrders(unique);
-  //     setLoading(false);
-  //   };
-  //   const unsubscribePending = firestore()
-  //     .collection('ordersTest')
-  //     .where('assignedTo', '==', currentUser?.uid)
-  //     .where('jobStatus', '==', 'Printing')
-  //     .orderBy('createdAt', 'desc')
-  //     .onSnapshot(
-  //       snapshot => {
-  //         if (!snapshot) return;
+  //     console.log('✅ Current User UID:', currentUser.uid);
 
-  //         pendingJobsRef.current = snapshot.docs.map(doc => ({
-  //           id: doc.id,
-  //           ...doc.data(),
-  //         }));
-  //         updateCombinedJobs();
-  //       },
-  //       error => {
-  //         console.error('Snapshot error:', error);
-  //       },
-  //     );
+  //     // const updateCombinedJobs = () => {
+  //     //   const combined = [
+  //     //     ...pendingJobsRef.current,
+  //     //     ...completedJobsRef.current,
+  //     //   ];
+  //     //   const unique = Array.from(
+  //     //     new Map(combined.map(job => [job.id, job])).values(),
+  //     //   );
+  //     //   console.log('📊 Total unique jobs:', unique.length);
+  //     //   setOrders(unique);
+  //     //   setLoading(false);
+  //     // };
 
-  //   const unsubscribeCompleted = firestore()
-  //     .collection('ordersTest')
-  //     .where('printingStatus', '==', 'completed')
-  //     .where('completedByPrinting', '==', currentUser.uid)
-  //     .orderBy('updatedByPrintingAt', 'desc')
-  //     .onSnapshot(
-  //       snapshot => {
-  //         if (!snapshot || !snapshot.docs) return;
-  //         completedJobsRef.current = snapshot.docs.map(doc => ({
-  //           id: doc.id,
-  //           ...doc.data(),
-  //         }));
-  //         updateCombinedJobs();
-  //       },
-  //       error => {
-  //         console.error('Firestore snapshot error (Pending):', error);
-  //       },
-  //     );
+  //     const updateCombinedJobs = () => {
+  //       const mergedMap = new Map();
 
-  //   return () => {
-  //     unsubscribePending();
-  //     unsubscribeCompleted();
-  //   };
-  // }, []);
+  //       // Completed first so it overwrites older pending data
+  //       const combined = [
+  //         ...completedJobsRef.current,
+  //         ...pendingJobsRef.current,
+  //       ];
+
+  //       combined.forEach(job => {
+  //         const existing = mergedMap.get(job.id);
+
+  //         const jobUpdated =
+  //           job.updatedByPrintingAt?._seconds || job.updatedAt?._seconds || 0;
+
+  //         const existingUpdated =
+  //           existing?.updatedByPrintingAt?._seconds ||
+  //           existing?.updatedAt?._seconds ||
+  //           0;
+
+  //         if (!existing || jobUpdated >= existingUpdated) {
+  //           mergedMap.set(job.id, job);
+  //         }
+  //       });
+
+  //       setOrders(Array.from(mergedMap.values()));
+  //       setLoading(false);
+  //     };
+
+  //     const unsubscribePending = firestore()
+  //       .collection('ordersTest')
+  //       .where('assignedTo', '==', currentUser?.uid)
+  //       .where('jobStatus', '==', 'Printing')
+  //       .orderBy('createdAt', 'desc')
+  //       .onSnapshot(
+  //         snapshot => {
+  //           if (!snapshot || !snapshot.docs) {
+  //             console.log('⚠️ No pending snapshot');
+  //             return;
+  //           }
+
+  //           console.log('📥 Pending jobs received:', snapshot.docs.length);
+
+  //           pendingJobsRef.current = snapshot.docs.map(doc => {
+  //             const data = doc.data();
+  //             console.log('📄 Job:', doc.id, {
+  //               jobCardNo: data.jobCardNo,
+  //               assignedTo: data.assignedTo,
+  //               jobStatus: data.jobStatus,
+  //               printingStatus: data.printingStatus,
+  //               materialAllotStatus: data.materialAllotStatus,
+  //             });
+  //             return {
+  //               id: doc.id,
+  //               ...data,
+  //             };
+  //           });
+  //           updateCombinedJobs();
+  //         },
+  //         error => {
+  //           console.error('❌ Pending jobs error:', error);
+  //         },
+  //       );
+
+  //     const unsubscribeCompleted = firestore()
+  //       .collection('ordersTest')
+  //       .where('printingStatus', '==', 'completed')
+  //       .where('completedByPrinting', '==', currentUser.uid)
+  //       .orderBy('updatedByPrintingAt', 'desc')
+  //       .onSnapshot(
+  //         snapshot => {
+  //           if (!snapshot || !snapshot.docs) {
+  //             console.log('⚠️ No completed snapshot');
+  //             return;
+  //           }
+
+  //           console.log('✅ Completed jobs received:', snapshot.docs.length);
+
+  //           completedJobsRef.current = snapshot.docs.map(doc => ({
+  //             id: doc.id,
+  //             ...doc.data(),
+  //           }));
+  //           updateCombinedJobs();
+  //         },
+  //         error => {
+  //           console.error('❌ Completed jobs error:', error);
+  //         },
+  //       );
+
+  //     // Cleanup when screen unfocuses
+  //     return () => {
+  //       unsubscribePending();
+  //       unsubscribeCompleted();
+  //     };
+  //   }, []),
+  // );
+
+  // Replace the entire useFocusEffect hook in your OperatorHomeScreen component
+
   useFocusEffect(
     useCallback(() => {
       const currentUser = auth().currentUser;
-      if (!currentUser) return;
+      if (!currentUser) {
+        console.log('❌ No current user found');
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ Current User UID:', currentUser.uid);
 
       const updateCombinedJobs = () => {
+        const mergedMap = new Map();
+
+        // Completed first so it overwrites older pending data
         const combined = [
-          ...pendingJobsRef.current,
           ...completedJobsRef.current,
+          ...pendingJobsRef.current,
         ];
-        const unique = Array.from(
-          new Map(combined.map(job => [job.id, job])).values(),
-        );
-        setOrders(unique);
+
+        combined.forEach(job => {
+          const existing = mergedMap.get(job.id);
+
+          const jobUpdated =
+            job.updatedByPrintingAt?._seconds || job.updatedAt?._seconds || 0;
+
+          const existingUpdated =
+            existing?.updatedByPrintingAt?._seconds ||
+            existing?.updatedAt?._seconds ||
+            0;
+
+          if (!existing || jobUpdated >= existingUpdated) {
+            mergedMap.set(job.id, job);
+          }
+        });
+
+        setOrders(Array.from(mergedMap.values()));
         setLoading(false);
       };
 
+      // ✅ FIXED: Removed .orderBy() to avoid index requirement
       const unsubscribePending = firestore()
         .collection('ordersTest')
         .where('assignedTo', '==', currentUser?.uid)
         .where('jobStatus', '==', 'Printing')
-        .orderBy('createdAt', 'desc')
-        .onSnapshot(snapshot => {
-           if (!snapshot || !snapshot.docs) return;
-          pendingJobsRef.current = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          updateCombinedJobs();
-        });
+        .onSnapshot(
+          snapshot => {
+            if (!snapshot || !snapshot.docs) {
+              console.log('⚠️ No pending snapshot');
+              pendingJobsRef.current = [];
+              updateCombinedJobs();
+              return;
+            }
 
+            console.log('📥 Pending jobs received:', snapshot.docs.length);
+
+            // Map and sort in memory
+            pendingJobsRef.current = snapshot.docs
+              .map(doc => {
+                const data = doc.data();
+                console.log('📄 Job:', doc.id, {
+                  jobCardNo: data.jobCardNo,
+                  assignedTo: data.assignedTo,
+                  jobStatus: data.jobStatus,
+                  printingStatus: data.printingStatus,
+                  materialAllotStatus: data.materialAllotStatus,
+                });
+                return {
+                  id: doc.id,
+                  ...data,
+                };
+              })
+              .sort((a, b) => {
+                // Sort by createdAt descending (newest first)
+                const aTime = a.createdAt?._seconds || 0;
+                const bTime = b.createdAt?._seconds || 0;
+                return bTime - aTime;
+              });
+
+            updateCombinedJobs();
+          },
+          error => {
+            console.error('❌ Pending jobs error:', error);
+            setLoading(false);
+          },
+        );
+
+      // ✅ FIXED: Removed .orderBy() to avoid index requirement
       const unsubscribeCompleted = firestore()
         .collection('ordersTest')
         .where('printingStatus', '==', 'completed')
         .where('completedByPrinting', '==', currentUser.uid)
-        .orderBy('updatedByPrintingAt', 'desc')
-        .onSnapshot(snapshot => {
-                if (!snapshot || !snapshot.docs) return;
-          completedJobsRef.current = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          updateCombinedJobs();
-        });
+        .onSnapshot(
+          snapshot => {
+            if (!snapshot || !snapshot.docs) {
+              console.log('⚠️ No completed snapshot');
+              completedJobsRef.current = [];
+              updateCombinedJobs();
+              return;
+            }
+
+            console.log('✅ Completed jobs received:', snapshot.docs.length);
+
+            // Map and sort in memory
+            completedJobsRef.current = snapshot.docs
+              .map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+              }))
+              .sort((a, b) => {
+                // Sort by updatedByPrintingAt descending (newest first)
+                const aTime = a.updatedByPrintingAt?._seconds || 0;
+                const bTime = b.updatedByPrintingAt?._seconds || 0;
+                return bTime - aTime;
+              });
+
+            updateCombinedJobs();
+          },
+          error => {
+            console.error('❌ Completed jobs error:', error);
+            setLoading(false);
+          },
+        );
 
       // Cleanup when screen unfocuses
       return () => {
@@ -164,17 +309,26 @@ const OperatorHomeScreen = ({route, navigation}) => {
       };
     }, []),
   );
-
   const getFilteredJobs = () => {
     let filtered = orders;
 
-    // 🧹 Exclude completed jobs from all results
-    filtered = filtered.filter(job => job.printingStatus !== 'completed');
+    console.log('🔍 Filtering jobs - Total:', filtered.length);
+
+    // ✅ FIXED: Only exclude completed jobs when filter is NOT 'completedJobs'
+    if (filter !== 'completedJobs') {
+      filtered = filtered.filter(job => job.printingStatus !== 'completed');
+      console.log('After completed filter:', filtered.length);
+    }
 
     if (filter === 'pendingJobs') {
-      filtered = filtered.filter(job => job.jobStatus === 'Printing');
+      filtered = filtered.filter(
+        job =>
+          job.jobStatus === 'Printing' && job.printingStatus !== 'completed',
+      );
+      console.log('Pending jobs only:', filtered.length);
     } else if (filter === 'completedJobs') {
       filtered = filtered.filter(job => job.printingStatus === 'completed');
+      console.log('Completed jobs only:', filtered.length);
     }
 
     if (searchQuery.trim()) {
@@ -204,7 +358,9 @@ const OperatorHomeScreen = ({route, navigation}) => {
 
         return jobCardMatch || customerNameMatch || jobNameMatch || dateMatch;
       });
+      console.log('After search filter:', filtered.length);
     }
+
     if (printingStatusFilter !== 'all') {
       filtered = filtered.filter(job => {
         const status = job.printingStatus
@@ -212,6 +368,7 @@ const OperatorHomeScreen = ({route, navigation}) => {
           : 'pending';
         return status === printingStatusFilter.toLowerCase();
       });
+      console.log('After status filter:', filtered.length);
     }
 
     return filtered;
@@ -229,71 +386,87 @@ const OperatorHomeScreen = ({route, navigation}) => {
     </View>
   );
 
-  const renderItem = ({item}) => (
-    <Pressable
-      onPress={() => navigation.navigate('OperatorCreateOrder', {order: item})}
-      style={styles.row}>
-      <Text style={styles.cell}>{item.jobCardNo}</Text>
-      <Text style={styles.cell}>{item.jobName}</Text>
-      <Text style={styles.cell}>{item.customerName}</Text>
-      <Text style={styles.cell}>
-        {item.jobDate
-          ? item.jobDate.toDate
-            ? item.jobDate.toDate().toDateString()
-            : new Date(item.jobDate._seconds * 1000).toDateString()
-          : ''}
-      </Text>
-      <Text
-        style={[
-          styles.statusCell,
-          item.materialAllotStatus === 'alloted' ||
-          item.materialAllotStatus === 'Alloted'
-            ? styles.completedStatus
-            : styles.pendingStatus,
-        ]}>
-        {item.materialAllotStatus === 'alloted' ||
-        item.materialAllotStatus === 'Alloted'
-          ? 'Alloted'
-          : 'Pending'}
-      </Text>
-      <Text
-        style={[
-          styles.statusCell,
-          item.printingStatus === 'completed'
-            ? styles.completedStatus
-            : item.printingStatus === 'started'
-            ? styles.jobStartedStatus
-            : styles.pendingStatus,
-        ]}>
-        {item.printingStatus === 'completed'
-          ? 'Completed'
-          : item.printingStatus === 'started'
-          ? 'Started'
-          : 'Pending'}
-      </Text>
-      <View
-        style={[
-          styles.cell,
-          {width: 80, alignItems: 'center', justifyContent: 'center'},
-        ]}>
-        {item.jobStatus?.toLowerCase() !== 'completed' && (
-          <Pressable
-            pointerEvents="box-only"
-            onStartShouldSetResponder={() => true}
-            onPress={e => {
-              e.stopPropagation();
-              navigation.navigate('MaterialRequestPrinting', {
-                id: item.id,
-                isEdit: true,
-              });
-            }}
-            style={styles.editButton}>
-            <Text style={styles.editText}>Request Material</Text>
-          </Pressable>
-        )}
-      </View>
-    </Pressable>
-  );
+  const renderItem = ({item}) => {
+    const materialStatus = (item.materialAllotStatus || '')
+      .toString()
+      .trim()
+      .toLowerCase();
+
+    const isAllocated = ['allocated', 'allotted', 'alloted'].includes(
+      materialStatus,
+    );
+
+    console.log(item);
+
+    const printingStatus = (item.printingStatus || '')
+      .toString()
+      .trim()
+      .toLowerCase();
+
+    return (
+      <Pressable
+        onPress={() =>
+          navigation.navigate('OperatorCreateOrder', {order: item})
+        }
+        style={styles.row}>
+        <Text style={styles.cell}>{item.jobCardNo}</Text>
+        <Text style={styles.cell}>{item.jobName}</Text>
+        <Text style={styles.cell}>{item.customerName}</Text>
+
+        <Text style={styles.cell}>
+          {item.jobDate
+            ? item.jobDate.toDate
+              ? item.jobDate.toDate().toDateString()
+              : new Date(item.jobDate._seconds * 1000).toDateString()
+            : ''}
+        </Text>
+
+        {/* Material Status */}
+        <Text
+          style={[
+            styles.statusCell,
+            isAllocated ? styles.completedStatus : styles.pendingStatus,
+          ]}>
+          {isAllocated ? 'Allocated' : 'Pending'}
+        </Text>
+
+        {/* Printing Status */}
+        <Text
+          style={[
+            styles.statusCell,
+            printingStatus === 'completed'
+              ? styles.completedStatus
+              : printingStatus === 'started'
+              ? styles.jobStartedStatus
+              : styles.pendingStatus,
+          ]}>
+          {printingStatus === 'completed'
+            ? 'Completed'
+            : printingStatus === 'started'
+            ? 'Started'
+            : 'Pending'}
+        </Text>
+
+        {/* Request Button */}
+        <View style={[styles.cell, {width: 80, alignItems: 'center'}]}>
+          {item.jobStatus?.toLowerCase() !== 'completed' && (
+            <Pressable
+              pointerEvents="box-only"
+              onPress={e => {
+                e.stopPropagation();
+                navigation.navigate('MaterialRequestPrinting', {
+                  id: item.id,
+                  isEdit: true,
+                });
+              }}
+              style={styles.editButton}>
+              <Text style={styles.editText}>Request Material</Text>
+            </Pressable>
+          )}
+        </View>
+      </Pressable>
+    );
+  };
 
   return (
     <View style={styles.homeMainContainer}>
@@ -339,7 +512,7 @@ const OperatorHomeScreen = ({route, navigation}) => {
               <ActivityIndicator size="large" color="#0000ff" />
             ) : getFilteredJobs().length > 0 ? (
               <View
-                key={screenInfo.width} // ✅ re-renders when width changes
+                key={screenInfo.width}
                 style={[
                   styles.tableContainer,
                   {
@@ -356,7 +529,7 @@ const OperatorHomeScreen = ({route, navigation}) => {
                   contentContainerStyle={{
                     justifyContent: isTablet ? 'center' : 'flex-start',
                     width: isTablet ? '100%' : 'auto',
-                    minWidth: screenInfo.width, // 👈 ensures content always fills full screen width
+                    minWidth: screenInfo.width,
                   }}>
                   <View
                     style={[
@@ -377,9 +550,7 @@ const OperatorHomeScreen = ({route, navigation}) => {
                       nestedScrollEnabled={true}
                       persistentScrollbar={true}
                       extraData={screenInfo}
-                      // onContentSizeChange={(w, h) => setListHeight(h)}
                       onContentSizeChange={(w, h) => {
-                        // Only update if height difference > 5px
                         setListHeight(prev =>
                           Math.abs(prev - h) > 5 ? h : prev,
                         );
@@ -417,9 +588,6 @@ const OperatorHomeScreen = ({route, navigation}) => {
 };
 
 export default OperatorHomeScreen;
-
-// const screen = Dimensions.get('window');
-// const isTablet = screen.width > 768; // Adjust breakpoint if needed
 
 const styles = StyleSheet.create({
   homeMainContainer: {
@@ -462,7 +630,6 @@ const styles = StyleSheet.create({
     elevation: 5,
     backgroundColor: '#fff',
     alignSelf: 'center',
-    // width: isTablet ? '90%' : '100%',
   },
   tableContainer1: {
     maxHeight: '100%',
