@@ -24,24 +24,6 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
   );
 
   const isCompleted = order.punchingStatus === 'completed';
-  const [extraPaperProducts, setExtraPaperProducts] = useState([]);
-  const [paperProduct, setPaperProduct] = useState(
-    order.paperProductCode || '',
-  );
-
-  const [paperProductNo, setPaperProductNo] = useState(
-    typeof order.paperProductNo === 'string' ||
-      typeof order.paperProductNo === 'number'
-      ? String(order.paperProductNo)
-      : '',
-  );
-
-  const [runningMtrValue, setRunningMtrValue] = useState(
-    typeof order.runningMtr === 'string' || typeof order.runningMtr === 'number'
-      ? String(order.runningMtr)
-      : '',
-  );
-
   const [paperCodeValue, setPaperCodeValue] = useState(
     typeof order.paperCode === 'string' || typeof order.paperCode === 'number'
       ? String(order.paperCode)
@@ -51,61 +33,84 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
     order.isPunchingStart || false,
   );
 
-  // NEW: Material usage data for each paper product
-  const [paperProductsList, setPaperProductsList] = useState([]);
+  // ✅ Store allocated materials from admin (from printing stage)
+  const [allocatedMaterials, setAllocatedMaterials] = useState([]);
+
+  // Material usage data for each paper product
   const [materialUsageData, setMaterialUsageData] = useState([]);
 
-  // Load paper products and material usage data from order
+  // Helper function to safely extract label from object or return string
+  const getDisplayValue = (value) => {
+    if (!value) return '-';
+    if (typeof value === 'string' || typeof value === 'number') return String(value);
+    if (typeof value === 'object') {
+      if (value.label) return value.label;
+      if (value.value) return value.value;
+      // If object has neither label nor value, return N/A instead of [object Object]
+      return '-';
+    }
+    return '-';
+  };
+
+  // Load allocated materials and material usage data from order
   useEffect(() => {
     if (!order) return;
 
-    // Extract all paper products from order
-    const papers = [];
+    // ✅ Extract allocated materials from order (same as OperatorCreateOrder)
+    const materials = [];
 
-    // Add main paper product
-    if (order.paperProductCode && order.paperProductNo) {
-      papers.push({
+    // Check for main paper product
+    if (order.paperProductCode) {
+      materials.push({
         code: order.paperProductCode,
-        number: order.paperProductNo,
+        number: order.paperProductNo || '',
+        allocatedQty: order.allocatedQty || 0,
+        materialCategory: order.materialCategory || 'RAW',
         index: 0,
       });
     }
 
-    // Add extra paper products (paperProductCode1-10, paperProductNo1-10)
+    // Check for additional paper products (paperProductCode1-10)
     for (let i = 1; i <= 10; i++) {
       const codeKey = `paperProductCode${i}`;
       const numberKey = `paperProductNo${i}`;
+      const qtyKey = `allocatedQty${i}`;
+      const categoryKey = `materialCategory${i}`;
 
-      if (order[codeKey] && order[numberKey]) {
-        papers.push({
+      if (order[codeKey]) {
+        materials.push({
           code: order[codeKey],
-          number: order[numberKey],
+          number: order[numberKey] || '',
+          allocatedQty: order[qtyKey] || 0,
+          materialCategory: order[categoryKey] || 'RAW',
           index: i,
         });
       }
     }
 
-    setPaperProductsList(papers);
+    setAllocatedMaterials(materials);
 
-    // Initialize material usage data for each paper product
-    const initialUsageData = papers.map((paper, index) => {
+    // Initialize material usage data for each allocated material
+    const initialUsageData = materials.map(material => {
       // Find existing tracking data for this paper product
       const existingData =
         order.materialUsageTracking?.find(
-          item => item.paperProductNo === paper.number,
+          item => item.paperProductNo === material.number,
         ) || {};
 
       return {
-        paperProductCode: paper.code,
-        paperProductNo: paper.number,
-        printing: existingData.printing || null, // Already completed
+        paperProductCode: material.code,
+        paperProductNo: material.number,
+        allocatedQty: material.allocatedQty,
+        materialCategory: material.materialCategory,
+        printing: existingData.printing || null, // Already completed in printing stage
         punching: {
           used: existingData.punching?.used?.toString() || '',
           waste: existingData.punching?.waste?.toString() || '',
           leftover: existingData.punching?.leftover?.toString() || '',
           wip: existingData.punching?.wip?.toString() || '',
         },
-        slitting: existingData.slitting || null, // Will be filled later
+        slitting: existingData.slitting || null, // Will be filled in slitting stage
       };
     });
 
@@ -128,81 +133,6 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
       ),
     );
   };
-
-  const extraFields = {};
-  extraPaperProducts.forEach((item, index) => {
-    const num = index + 1;
-    extraFields[`paperProductCode${num}`] = item.code;
-    extraFields[`paperProductNo${num}`] = item.number;
-  });
-
-  // const handlePunchingComplete = async () => {
-  //   try {
-  //     const currentUser = auth().currentUser;
-  //     if (!currentUser) {
-  //       Alert.alert('Error', 'User not authenticated');
-  //       return;
-  //     }
-
-  //     // Validate that all material usage fields are filled
-  //     const hasEmptyFields = materialUsageData.some(
-  //       item =>
-  //         !item.punching.used ||
-  //         !item.punching.waste ||
-  //         !item.punching.leftover ||
-  //         !item.punching.wip,
-  //     );
-
-  //     if (hasEmptyFields) {
-  //       Alert.alert(
-  //         'Missing Data',
-  //         'Please fill all material usage fields for each paper product',
-  //       );
-  //       return;
-  //     }
-
-  //     const jobRef = firestore().collection('ordersTest').doc(order.id);
-
-  //     // Update materialUsageTracking array with punching data
-  //     const updatedMaterialTracking = materialUsageData.map(item => {
-  //       const codeValue = item.paperProductCode?.label || item.paperProductCode;
-
-  //       return {
-  //         paperProductCode: codeValue,
-  //         paperProductNo: item.paperProductNo,
-  //         printing: item.printing, // Keep existing printing data
-  //         punching: {
-  //           used: parseFloat(item.punching.used) || 0,
-  //           waste: parseFloat(item.punching.waste) || 0,
-  //           leftover: parseFloat(item.punching.leftover) || 0,
-  //           wip: parseFloat(item.punching.wip) || 0,
-  //           completedAt: new Date(),
-  //           completedBy: currentUser.uid,
-  //         },
-  //         slitting: null, // Will be filled in slitting phase
-  //       };
-  //     });
-
-  //     await jobRef.update({
-  //       jobStatus: 'Slitting',
-  //       punchingStatus: 'completed',
-  //       paperCode: paperCodeValue || '',
-  //       updatedByPunchingAt: firestore.FieldValue.serverTimestamp(),
-  //       assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33',
-  //       completedByPunching: currentUser.uid,
-  //       materialUsageTracking: updatedMaterialTracking,
-  //       ...extraFields,
-  //     });
-
-  //     Alert.alert('Success', 'Punching marked as completed');
-  //     navigation.goBack();
-  //   } catch (error) {
-  //     console.error('Error completing punching:', error);
-  //     console.error('Error message:', error.message);
-  //     console.error('Error code:', error.code);
-  //     Alert.alert('Error', 'Failed to complete punching');
-  //   }
-  // };
 
   const handlePunchingComplete = async () => {
     try {
@@ -229,14 +159,22 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
-      const jobRef = firestore().collection('ordersTest').doc(order.id);
+      // Validate paper code for non-printing jobs
+      if (order.jobType !== 'Printing') {
+        if (!paperCodeValue?.trim() && !order.paperCode) {
+          Alert.alert(
+            'Missing Field',
+            'Please enter the Paper Code before completing punching.',
+          );
+          return;
+        }
+      }
 
-      // ========================================================
-      // ✅ CREATE LO AND WIP MATERIALS + TRANSACTIONS
-      // ========================================================
+      const orderRef = firestore().collection('ordersTest').doc(order.id);
 
-      const updatedMaterialTracking = [];
+      const materialUsageTracking = [];
 
+      // ✅ CREATE LO AND WIP MATERIALS + TRANSACTIONS (same as OperatorCreateOrder)
       for (const item of materialUsageData) {
         const codeValue = item.paperProductCode?.label || item.paperProductCode;
         const paperProductNo = item.paperProductNo;
@@ -361,8 +299,8 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
 
         console.log('✅ Transaction Created for:', codeValue);
 
-        // ✅ STEP 4: Add to updatedMaterialTracking (keep existing structure)
-        updatedMaterialTracking.push({
+        // ✅ STEP 4: Add to materialUsageTracking
+        materialUsageTracking.push({
           paperProductCode: codeValue,
           paperProductNo: paperProductNo,
           printing: item.printing, // Keep existing printing data
@@ -374,37 +312,41 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
             completedAt: new Date(),
             completedBy: currentUser.uid,
           },
-          slitting: null, // Will be filled in slitting phase
+          slitting: null, // Will be filled in slitting stage
         });
       }
 
-      // ========================================================
       // ✅ UPDATE ORDER DOCUMENT
-      // ========================================================
+      console.log('Submitting punching data:', {
+        materialUsageTracking,
+      });
 
-      await jobRef.update({
+      await orderRef.update({
         jobStatus: 'Slitting',
         punchingStatus: 'completed',
-        paperCode: paperCodeValue || '',
+        paperCode: paperCodeValue || order.paperCode || '',
         updatedByPunchingAt: firestore.FieldValue.serverTimestamp(),
         assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33',
         completedByPunching: currentUser.uid,
-        materialUsageTracking: updatedMaterialTracking,
-        ...extraFields,
+        materialUsageTracking: materialUsageTracking,
       });
 
       Alert.alert(
         'Success',
         'Punching completed! LO and WIP materials created.',
       );
-      navigation.goBack();
+
+      setTimeout(() => {
+        navigation.goBack();
+      }, 500);
     } catch (error) {
-      console.error('Error completing punching:', error);
+      console.error('Error completing punching - Full error:', error);
       console.error('Error message:', error.message);
       console.error('Error code:', error.code);
       Alert.alert('Error', `Failed to complete punching: ${error.message}`);
     }
   };
+
   const handlePunchingStart = async () => {
     try {
       const currentUser = auth().currentUser;
@@ -413,41 +355,9 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
-      const hasEmptyRow = extraPaperProducts.some(
-        item => item.code === '' || item.number === '',
-      );
-
-      if (hasEmptyRow) {
-        Alert.alert(
-          'Incomplete Entry',
-          'Please fill all extra Paper Product fields or remove empty rows.',
-        );
-        return;
-      }
-
       const jobRef = firestore().collection('ordersTest').doc(order.id);
 
-      let maxIndex = 0;
-      Object.keys(order).forEach(key => {
-        const match = key.match(/^paperProductCode(\d+)$/);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxIndex) maxIndex = num;
-        }
-      });
-
-      const extraFields = {};
-      extraPaperProducts.forEach((item, idx) => {
-        const newIndex = maxIndex + idx + 1;
-        extraFields[`paperProductCode${newIndex}`] = item.code;
-        extraFields[`paperProductNo${newIndex}`] = item.number;
-      });
-
       await jobRef.update({
-        paperProductCode: paperProduct,
-        paperProductNo: paperProductNo || order.paperProductNo || '',
-        ...extraFields,
-        runningMtr: runningMtrValue ? parseFloat(runningMtrValue) : null,
         startByPunching: currentUser.uid,
         punchingStartAt: firestore.FieldValue.serverTimestamp(),
         isPunchingStart: true,
@@ -456,75 +366,15 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
       });
 
       setIsPunchingStart(true);
-      Alert.alert('Success', 'Punching started');
-      navigation.navigate('PunchingHomeScreen');
+      Alert.alert('Success', 'Punching started successfully');
+      navigation.goBack();
     } catch (error) {
-      console.error('Error punching start:', error);
+      console.error('Error starting punching:', error);
       console.error('Error message:', error.message);
       console.error('Error code:', error.code);
       Alert.alert('Error', 'Failed to start punching');
     }
   };
-
-  const getExistingPaperProducts = order => {
-    const result = [];
-
-    for (let i = 1; i <= 50; i++) {
-      const codeKey = `paperProductCode${i}`;
-      const noKey = `paperProductNo${i}`;
-
-      if (order[codeKey] || order[noKey]) {
-        result.push({
-          code: order[codeKey]?.value || order[codeKey] || '',
-          number: order[noKey] || '',
-          index: i,
-        });
-      }
-    }
-
-    return result;
-  };
-
-  const removeExtraPaperProduct = id => {
-    setExtraPaperProducts(prev => prev.filter(p => p.id !== id));
-  };
-
-  const updateExtraPaperProduct = (id, field, value) => {
-    setExtraPaperProducts(prev =>
-      prev.map(item => (item.id === id ? {...item, [field]: value} : item)),
-    );
-  };
-
-  const addExtraPaperProduct = () => {
-    if (extraPaperProducts.length >= 10) {
-      Alert.alert('Limit Reached', 'You can add only up to 10 extra products');
-      return;
-    }
-
-    const lastExistingIndex =
-      existingPaperProducts.length > 0
-        ? existingPaperProducts[existingPaperProducts.length - 1].index
-        : 0;
-
-    const lastExtraIndex =
-      extraPaperProducts.length > 0
-        ? extraPaperProducts[extraPaperProducts.length - 1].index
-        : lastExistingIndex;
-
-    const nextIndex = lastExtraIndex + 1;
-
-    setExtraPaperProducts(prev => [
-      ...prev,
-      {
-        id: Date.now(),
-        index: nextIndex,
-        code: '',
-        number: '',
-      },
-    ]);
-  };
-
-  const existingPaperProducts = getExistingPaperProducts(order);
 
   return (
     <View style={styles.container}>
@@ -532,98 +382,12 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         showHeadingSection1Container
         showBackBtn
         showHeadingTextContainer
-        headingTitle="Job Details"
+        headingTitle="Punching Job Card"
       />
 
       {!isPunchingStart ? (
         <>
           <ScrollView contentContainerStyle={styles.content}>
-            {order.paperProductCode ? (
-              <View style={styles.readOnlyField}>
-                <Text style={styles.label}>Paper Product Code:</Text>
-                <Text style={styles.value}>
-                  {typeof order.paperProductCode === 'object'
-                    ? order.paperProductCode.label
-                    : order.paperProductCode}
-                </Text>
-              </View>
-            ) : (
-              <CustomDropdown
-                placeholder={'Select Paper Product Code'}
-                data={paperProductCodeData}
-                style={styles.dropdownContainer}
-                selectedText={styles.dropdownText}
-                onSelect={item => setPaperProduct(item)}
-                showIcon={true}
-              />
-            )}
-
-            <Text style={styles.label}>Paper Product No</Text>
-            {order.paperProductNo ? (
-              <Text style={styles.value}>{order.paperProductNo}</Text>
-            ) : (
-              <TextInput
-                style={styles.input}
-                value={paperProductNo}
-                onChangeText={setPaperProductNo}
-                placeholder="Enter Paper Product No"
-              />
-            )}
-
-            {existingPaperProducts.length > 0 && (
-              <View>
-                {existingPaperProducts.map((item, index) => (
-                  <View key={index} style={{marginVertical: 8}}>
-                    <Text style={styles.label}>Paper Product Code:</Text>
-                    <Text style={styles.value}>
-                      {typeof item.code === 'object'
-                        ? item.code.label
-                        : item.code}
-                    </Text>
-
-                    <Text style={styles.label}>Paper Product No:</Text>
-                    <Text style={styles.value}>{item.number}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {extraPaperProducts.map((item, index) => (
-              <View key={item.id}>
-                <CustomDropdown
-                  placeholder={`Paper Product Code`}
-                  data={paperProductCodeData}
-                  style={styles.dropdownContainer}
-                  selectedText={styles.dropdownText}
-                  onSelect={val =>
-                    updateExtraPaperProduct(item.id, 'code', val)
-                  }
-                  showIcon={true}
-                />
-
-                <CustomTextInput
-                  placeholder={`Paper Product No`}
-                  value={item.number}
-                  onChangeText={text =>
-                    updateExtraPaperProduct(item.id, 'number', text)
-                  }
-                  style={{width: '100%'}}
-                />
-                <TouchableOpacity
-                  onPress={() => removeExtraPaperProduct(item.id)}
-                  style={{marginTop: 6, alignSelf: 'flex-end'}}>
-                  <Text style={{color: 'red'}}>Remove</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-            <TouchableOpacity
-              style={{marginVertical: 10}}
-              onPress={addExtraPaperProduct}>
-              <Text style={{color: '#3668B1', fontSize: 16}}>
-                + Add Paper Product
-              </Text>
-            </TouchableOpacity>
-
             <Text style={styles.label}>Job Card No:</Text>
             <Text style={styles.value}>{order.jobCardNo}</Text>
 
@@ -638,66 +402,87 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
 
             <Text style={styles.label}>Job Date:</Text>
             <Text style={styles.value}>
-              {order.jobDate ? order.jobDate.toDate().toDateString() : 'N/A'}
+              {order.jobDate ? order.jobDate.toDate().toDateString() : '-'}
             </Text>
 
             <Text style={styles.label}>Job Status:</Text>
             <Text style={styles.value}>{order.jobStatus}</Text>
 
             <Text style={styles.label}>Job Paper:</Text>
-            <Text style={styles.value}>{order.jobPaper.label}</Text>
+            <Text style={styles.value}>{getDisplayValue(order.jobPaper)}</Text>
 
-            <Text style={styles.label}>Job Size</Text>
+            <Text style={styles.label}>Job Size:</Text>
             <Text style={styles.value}>{order.jobSize}</Text>
 
-            <Text style={styles.label}>Printing Plate Size</Text>
-            <Text style={styles.value}>{order.printingPlateSize.label}</Text>
+            <Text style={styles.label}>Printing Plate Size:</Text>
+            <Text style={styles.value}>
+              {getDisplayValue(order.printingPlateSize)}
+            </Text>
 
-            <Text style={styles.label}>Across Ups</Text>
-            <Text style={styles.value}>{order.upsAcross.label}</Text>
+            <Text style={styles.label}>Across Ups:</Text>
+            <Text style={styles.value}>{getDisplayValue(order.upsAcross)}</Text>
 
-            <Text style={styles.label}>Across Gap</Text>
+            <Text style={styles.label}>Across Gap:</Text>
             <Text style={styles.value}>{order.acrossGap}</Text>
 
-            <Text style={styles.label}>Around</Text>
-            <Text style={styles.value}>{order.around.label}</Text>
+            <Text style={styles.label}>Around:</Text>
+            <Text style={styles.value}>{getDisplayValue(order.around)}</Text>
 
-            <Text style={styles.label}>Around Gap</Text>
+            <Text style={styles.label}>Around Gap:</Text>
             <Text style={styles.value}>{order.aroundGap}</Text>
 
-            <Text style={styles.label}>Teeth Size</Text>
-            <Text style={styles.value}>{order.teethSize.label}</Text>
+            <Text style={styles.label}>Teeth Size:</Text>
+            <Text style={styles.value}>{getDisplayValue(order.teethSize)}</Text>
 
-            <Text style={styles.label}>Blocks</Text>
-            <Text style={styles.value}>{order.blocks.label}</Text>
+            <Text style={styles.label}>Blocks:</Text>
+            <Text style={styles.value}>{getDisplayValue(order.blocks)}</Text>
 
-            <Text style={styles.label}>Winding Direction</Text>
-            <Text style={styles.value}>{order.windingDirection.label}</Text>
+            <Text style={styles.label}>Winding Direction:</Text>
+            <Text style={styles.value}>
+              {getDisplayValue(order.windingDirection)}
+            </Text>
 
-            <Text style={styles.label}>Running Mtrs</Text>
-            {order.runningMtr ? (
-              <Text style={styles.value}>
-                {typeof order.runningMtr === 'object'
-                  ? JSON.stringify(order.runningMtr)
-                  : order.runningMtr}
-              </Text>
-            ) : (
-              <TextInput
-                style={styles.input}
-                value={runningMtrValue}
-                onChangeText={text => {
-                  const numericValue = text.replace(/[^0-9]/g, '');
-                  setRunningMtrValue(numericValue);
-                }}
-                placeholder="Enter Running Mtrs"
-                keyboardType="numeric"
-              />
-            )}
+            <Text style={styles.label}>Running Mtrs:</Text>
+            <Text style={styles.value}>{order.runningMtr || '-'}</Text>
+
+            {/* ✅ Display Allocated Materials (READ-ONLY) */}
+            <View style={styles.allocatedMaterialsContainer}>
+              <Text style={styles.sectionTitle}>Allocated Materials:</Text>
+              {allocatedMaterials.length === 0 ? (
+                <Text style={styles.noMaterialText}>
+                  No materials allocated yet. Please contact admin.
+                </Text>
+              ) : (
+                allocatedMaterials.map((material, index) => (
+                  <View key={index} style={styles.materialCard}>
+                    <Text style={styles.materialLabel}>
+                      Paper Product Code:
+                    </Text>
+                    <Text style={styles.materialValue}>
+                      {getDisplayValue(material.code)}
+                    </Text>
+
+                    <Text style={styles.materialLabel}>Paper Product No:</Text>
+                    <Text style={styles.materialValue}>{material.number}</Text>
+
+                    <Text style={styles.materialLabel}>Allocated Qty:</Text>
+                    <Text style={styles.materialValue}>
+                      {material.allocatedQty}m
+                    </Text>
+
+                    <Text style={styles.materialLabel}>Category:</Text>
+                    <Text style={styles.materialValue}>
+                      {material.materialCategory}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
           </ScrollView>
           {!isCompleted && (
             <View style={styles.buttonContainer}>
               <Button
-                title="Punching Start"
+                title="Start Punching"
                 onPress={handlePunchingStart}
                 color="#4CAF50"
               />
@@ -712,14 +497,12 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
           <Text style={styles.label}>Job Name:</Text>
           <Text style={styles.value}>{order.jobName}</Text>
 
-          {order.jobType !== 'Printing' ? (
+          {order.jobType !== 'Printing' && (
             <View>
-              <Text style={styles.label}>Paper Code</Text>
+              <Text style={styles.label}>Paper Code:</Text>
               {order.paperCode ? (
                 <Text style={styles.value}>
-                  {typeof order.paperCode === 'object'
-                    ? JSON.stringify(order.paperCode)
-                    : order.paperCode}
+                  {getDisplayValue(order.paperCode)}
                 </Text>
               ) : (
                 <TextInput
@@ -730,7 +513,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
                 />
               )}
             </View>
-          ) : null}
+          )}
 
           {/* Material Usage for Each Paper Product - PUNCHING PHASE */}
           <View style={styles.completionFieldsContainer}>
@@ -745,10 +528,12 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
             {materialUsageData.map((paperItem, idx) => (
               <View key={idx} style={styles.paperProductSection}>
                 <Text style={styles.paperProductTitle}>
-                  Paper Product:{' '}
-                  {paperItem.paperProductCode?.label ||
-                    paperItem.paperProductCode}{' '}
-                  - {paperItem.paperProductNo}
+                  Paper Product: {getDisplayValue(paperItem.paperProductCode)} -{' '}
+                  {paperItem.paperProductNo}
+                </Text>
+                <Text style={styles.allocatedQtyText}>
+                  Allocated: {paperItem.allocatedQty}m (
+                  {paperItem.materialCategory})
                 </Text>
 
                 <View style={styles.detailsRowContainer}>
@@ -807,6 +592,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
                   />
                 </View>
 
+                {/* Divider between paper products */}
                 {idx < materialUsageData.length - 1 && (
                   <View style={styles.divider} />
                 )}
@@ -817,19 +603,8 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
           {!isCompleted && (
             <View style={styles.buttonContainer}>
               <Button
-                title="Punching Complete"
-                onPress={() => {
-                  if (order.jobType !== 'Printing') {
-                    if (!paperCodeValue?.trim() && !order.paperCode) {
-                      Alert.alert(
-                        'Missing Field',
-                        'Please enter the Paper Code before completing punching.',
-                      );
-                      return;
-                    }
-                  }
-                  handlePunchingComplete();
-                }}
+                title="Complete Punching"
+                onPress={handlePunchingComplete}
                 color="#4CAF50"
               />
             </View>
@@ -863,25 +638,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Lato-Regular',
     marginVertical: 5,
   },
-  dropdownContainer: {
-    width: '100%',
-    borderRadius: 10,
-    marginTop: 20,
-  },
-  dropdownText: {
-    fontSize: 14,
-    fontFamily: 'Lato-Black',
-    color: '#000',
-    marginVertical: 10,
-  },
   buttonContainer: {
     padding: 20,
     borderTopWidth: 1,
     borderColor: '#ddd',
     backgroundColor: '#fff',
-  },
-  readOnlyField: {
-    marginTop: 20,
   },
   input: {
     width: '100%',
@@ -933,13 +694,58 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Lato-Bold',
     color: '#3668B1',
-    marginBottom: 10,
+    marginBottom: 5,
     marginTop: 10,
+  },
+  allocatedQtyText: {
+    fontSize: 13,
+    fontFamily: 'Lato-Regular',
+    color: '#666',
+    marginBottom: 10,
   },
   divider: {
     height: 1,
     backgroundColor: '#ddd',
     marginTop: 20,
     marginBottom: 10,
+  },
+  allocatedMaterialsContainer: {
+    marginTop: 20,
+    marginBottom: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Lato-Bold',
+    color: '#000',
+    marginBottom: 15,
+  },
+  noMaterialText: {
+    fontSize: 14,
+    fontFamily: 'Lato-Regular',
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  materialCard: {
+    backgroundColor: '#f9f9f9',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  materialLabel: {
+    fontSize: 13,
+    fontFamily: 'Lato-Bold',
+    color: '#666',
+    marginTop: 5,
+  },
+  materialValue: {
+    fontSize: 14,
+    fontFamily: 'Lato-Regular',
+    color: '#000',
+    marginBottom: 5,
   },
 });

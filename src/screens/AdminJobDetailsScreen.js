@@ -14,6 +14,43 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
   const [totalTime, setTotalTime] = useState(null);
   const [totalB, setTotalB] = useState(0);
   const [totalC, setTotalC] = useState(0);
+  const [allocatedMaterials, setAllocatedMaterials] = useState([]);
+
+  useEffect(() => {
+    // Extract allocated materials
+    const materials = [];
+
+    // Check for main paper product
+    if (order.paperProductCode) {
+      materials.push({
+        code: order.paperProductCode,
+        number: order.paperProductNo || '',
+        allocatedQty: order.allocatedQty || 0,
+        materialCategory: order.materialCategory || 'RAW',
+        index: 0,
+      });
+    }
+
+    // Check for additional paper products (paperProductCode1-10)
+    for (let i = 1; i <= 10; i++) {
+      const codeKey = `paperProductCode${i}`;
+      const numberKey = `paperProductNo${i}`;
+      const qtyKey = `allocatedQty${i}`;
+      const categoryKey = `materialCategory${i}`;
+
+      if (order[codeKey]) {
+        materials.push({
+          code: order[codeKey],
+          number: order[numberKey] || '',
+          allocatedQty: order[qtyKey] || 0,
+          materialCategory: order[categoryKey] || 'RAW',
+          index: i,
+        });
+      }
+    }
+
+    setAllocatedMaterials(materials);
+  }, [order]);
 
   useEffect(() => {
     if (order.endTime) {
@@ -47,7 +84,7 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
 
   const formatTimestamp = timestamp => {
     if (!timestamp) return 'Not started yet';
-    return format(timestamp.toDate(), 'dd MMM yyyy, hh:mm a'); // Convert Firestore Timestamp to JS Date and format
+    return format(timestamp.toDate(), 'dd MMM yyyy, hh:mm a');
   };
 
   const formatDuration = durationMs => {
@@ -56,6 +93,14 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
     const hours = Math.floor(durationMs / (1000 * 60 * 60));
 
     return `${hours}h ${minutes}m ${seconds}s`;
+  };
+
+  // Helper function to safely render object or string values
+  const safeRender = value => {
+    if (!value) return '-';
+    if (typeof value === 'object' && value.label) return value.label;
+    if (typeof value === 'string') return value;
+    return '-';
   };
 
   const requestStoragePermission = async () => {
@@ -88,31 +133,6 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
     }
   };
 
-  // const openPDFWithIntentLauncher = async filePath => {
-  //   if (Platform.OS === 'android') {
-  //     try {
-  //       await IntentLauncher.startActivity({
-  //         action: 'android.intent.action.VIEW',
-  //         data: `file://${filePath}`,
-  //         type: 'application/pdf',
-  //         flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
-  //       });
-  //       console.log('PDF opened with IntentLauncher');
-  //     } catch (err) {
-  //       console.error('IntentLauncher error:', err);
-  //       Alert.alert(
-  //         'Error Opening PDF',
-  //         'No app found to open PDF files. Please install a PDF viewer.',
-  //       );
-  //     }
-  //   } else {
-  //     Alert.alert(
-  //       'Not Supported',
-  //       'Opening PDFs via IntentLauncher is currently only supported on Android.',
-  //     );
-  //   }
-  // };
-
   const generatePDF = async () => {
     try {
       const hasPermission = await requestStoragePermission();
@@ -120,8 +140,8 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         Alert.alert('Permission Denied', 'Storage permission not granted');
         return;
       }
-      // Pre-calculate formatted values
 
+      // Pre-calculate formatted values
       const jobCreationTime = order.createdAt
         ? formatTimestamp(order.createdAt)
         : '';
@@ -175,20 +195,30 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
               .join('')
           : `<tr><td colspan="3">No data available</td></tr>`;
 
-      const extraPaperProductsHTML = getExtraPaperProducts()
+      const allocatedMaterialsHTML = allocatedMaterials
         .map(
-          (item, i) => `
-      <div class="row">
-        <div class="col">
-          <span class="label">Paper Product Code ${i + 1}:</span>
-          <span class="input">${item.code?.label || item.code || ''}</span>
+          (material, i) => `
+        <div class="row">
+          <div class="col">
+            <span class="label">Paper Product Code ${i + 1}:</span>
+            <span class="input">${safeRender(material.code)}</span>
+          </div>
+          <div class="col">
+            <span class="label">Paper Product No ${i + 1}:</span>
+            <span class="input">${material.number || ''}</span>
+          </div>
         </div>
-        <div class="col">
-          <span class="label">Paper Product No ${i + 1}:</span>
-          <span class="input">${item.number || ''}</span>
+        <div class="row">
+          <div class="col">
+            <span class="label">Allocated Qty ${i + 1}:</span>
+            <span class="input">${material.allocatedQty}m</span>
+          </div>
+          <div class="col">
+            <span class="label">Material Category ${i + 1}:</span>
+            <span class="input">${material.materialCategory}</span>
+          </div>
         </div>
-      </div>
-    `,
+      `,
         )
         .join('');
 
@@ -203,7 +233,7 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
           .row { display: flex; flex-wrap: wrap; margin-bottom: 8px; }
           .col { flex: 1; min-width: 180px; margin-right: 10px; }
           .label { font-weight: bold; }
-          .input { display: inline-block; min-width: 120px; } /* 🧹 removed underline */
+          .input { display: inline-block; min-width: 120px; }
           table { width: 100%; border-collapse: collapse; margin-top: 10px; }
           th, td { border: 1px solid #3668B1; padding: 4px 8px; text-align: center; }
           .small-table td { min-width: 40px; }
@@ -216,11 +246,11 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
               flex-wrap: nowrap;
             }
             .time-row .col {
-              flex: 0 0 auto;  /* Prevent wrapping */
+              flex: 0 0 auto;
               white-space: nowrap;
             }
             .time-row .col:last-child {
-              margin-left: auto; /* Push total time to right */
+              margin-left: auto;
             }
         </style>
 
@@ -263,9 +293,9 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
           </div>        
           <div class="row">
               <div class="col"><span class="label">Job Creation Time:</span> <span class="input">${jobCreationTime}</span></div>  
-              <div class="col"><span class="label">Teeth Size:</span> <span class="input">${
-                order.teethSize.label || order.teethSize || ''
-              }</span></div>           
+              <div class="col"><span class="label">Teeth Size:</span> <span class="input">${safeRender(
+                order.teethSize,
+              )}</span></div>           
           </div>          
             <div class="row time-row">
             <div class="col"><span class="label">Start time:</span> <span class="input">${startTimeFormatted}</span></div>
@@ -311,18 +341,7 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
                 }</span></div>
           </div>
 
-            <div class="row">
-                    <div class="col"><span class="label">Paper Product Code:</span> <span class="input">${
-                      order.paperProductCode?.label ||
-                      order.paperProductCode ||
-                      ''
-                    }</span></div>
-                    <div class="col"><span class="label">Paper Product No:</span> <span class="input">${
-                      order.paperProductNo || ''
-                    }</span>
-                    </div>
-          </div>
-          ${extraPaperProductsHTML}
+          ${allocatedMaterialsHTML}
 
            <div class="row">
               <div class="col">
@@ -388,28 +407,27 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
       </html>
     `;
 
-      // 🧹 Safe filename logic
+      // Safe filename logic
       const rawJobCardNo = order.jobCardNo || 'Unknown';
       const safeJobCardNo = rawJobCardNo
         .toString()
-        .replace(/[^a-zA-Z0-9_-]/g, '') // remove special characters
-        .slice(0, 20); // limit length to 20 chars
+        .replace(/[^a-zA-Z0-9_-]/g, '')
+        .slice(0, 20);
 
       const fileName = `Job_Details_${safeJobCardNo}`;
 
       const path = `${RNFS.DocumentDirectoryPath}/${fileName}.pdf`;
-      // const path = `${RNFS.DocumentDirectoryPath}/Job_Details_${order.jobCardNo}.pdf`;
 
       const options = {
         html: htmlContent,
         fileName: `Job_Details_${order.jobCardNo}`,
-        filePath: path, // manually specify full path
+        filePath: path,
         base64: false,
       };
 
       const file = await RNHTMLtoPDF.convert(options);
       Alert.alert('Success', `PDF saved to: ${file.filePath}`);
-      // After PDF generation
+
       const filePath = file.filePath;
 
       Share.open({
@@ -436,7 +454,7 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
-      // 🧮 Pre-calculate formatted values (your existing logic)
+      // Pre-calculate formatted values
       const jobCreationTime = order.createdAt
         ? formatTimestamp(order.createdAt)
         : '';
@@ -485,20 +503,30 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
               .join('')
           : `<tr><td colspan="3">No data available</td></tr>`;
 
-      const extraPaperProductsHTML = getExtraPaperProducts()
+      const allocatedMaterialsHTML = allocatedMaterials
         .map(
-          (item, i) => `
-      <div class="row">
-        <div class="col">
-          <span class="label">Paper Product Code ${i + 1}:</span>
-          <span class="input">${item.code?.label || item.code || ''}</span>
+          (material, i) => `
+        <div class="row">
+          <div class="col">
+            <span class="label">Paper Product Code ${i + 1}:</span>
+            <span class="input">${safeRender(material.code)}</span>
+          </div>
+          <div class="col">
+            <span class="label">Paper Product No ${i + 1}:</span>
+            <span class="input">${material.number || ''}</span>
+          </div>
         </div>
-        <div class="col">
-          <span class="label">Paper Product No ${i + 1}:</span>
-          <span class="input">${item.number || ''}</span>
+        <div class="row">
+          <div class="col">
+            <span class="label">Allocated Qty ${i + 1}:</span>
+            <span class="input">${material.allocatedQty}m</span>
+          </div>
+          <div class="col">
+            <span class="label">Material Category ${i + 1}:</span>
+            <span class="input">${material.materialCategory}</span>
+          </div>
         </div>
-      </div>
-    `,
+      `,
         )
         .join('');
 
@@ -513,7 +541,7 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
           .row { display: flex; flex-wrap: wrap; margin-bottom: 8px; }
           .col { flex: 1; min-width: 180px; margin-right: 10px; }
           .label { font-weight: bold; }
-          .input { display: inline-block; min-width: 120px; } /* 🧹 removed underline */
+          .input { display: inline-block; min-width: 120px; }
           table { width: 100%; border-collapse: collapse; margin-top: 10px; }
           th, td { border: 1px solid #3668B1; padding: 4px 8px; text-align: center; }
           .small-table td { min-width: 40px; }
@@ -526,11 +554,11 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
               flex-wrap: nowrap;
             }
             .time-row .col {
-              flex: 0 0 auto;  /* Prevent wrapping */
+              flex: 0 0 auto;
               white-space: nowrap;
             }
             .time-row .col:last-child {
-              margin-left: auto; /* Push total time to right */
+              margin-left: auto;
             }
         </style>
 
@@ -573,9 +601,9 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
           </div>        
           <div class="row">
               <div class="col"><span class="label">Job Creation Time:</span> <span class="input">${jobCreationTime}</span></div>  
-              <div class="col"><span class="label">Teeth Size:</span> <span class="input">${
-                order.teethSize.label || order.teethSize || ''
-              }</span></div>           
+              <div class="col"><span class="label">Teeth Size:</span> <span class="input">${safeRender(
+                order.teethSize,
+              )}</span></div>           
           </div>          
             <div class="row time-row">
             <div class="col"><span class="label">Start time:</span> <span class="input">${startTimeFormatted}</span></div>
@@ -621,18 +649,7 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
                 }</span></div>
           </div>
 
-            <div class="row">
-                    <div class="col"><span class="label">Paper Product Code:</span> <span class="input">${
-                      order.paperProductCode?.label ||
-                      order.paperProductCode ||
-                      ''
-                    }</span></div>
-                    <div class="col"><span class="label">Paper Product No:</span> <span class="input">${
-                      order.paperProductNo || ''
-                    }</span>
-                    </div>
-          </div>
-          ${extraPaperProductsHTML}
+          ${allocatedMaterialsHTML}
 
            <div class="row">
               <div class="col">
@@ -698,30 +715,28 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
       </html>
     `;
 
-      // 🕒 Short timestamp: "hmm" (e.g. 937 → 9:37)
+      // Short timestamp
       const now = new Date();
       const shortStamp = `${now.getHours()}${now.getMinutes()}`;
 
       const cleanCustomerName = (order.customerName || 'Customer')
         .replace(/[^a-zA-Z0-9]/g, '_')
         .substring(0, 10);
-      // 🧹 Clean job name and job card number for filename
+
       const cleanJobName = (order.jobName || 'Job')
         .replace(/[^a-zA-Z0-9]/g, '_')
-        .substring(0, 12); // limit for readability
+        .substring(0, 12);
 
       const cleanJobCardNo = (order.jobCardNo || '0000')
         .replace(/[^a-zA-Z0-9]/g, '')
         .substring(0, 8);
 
-      // 🏷️ Final short & meaningful filename
-      // const fileName = `${cleanJobName}_${cleanJobCardNo}_${shortStamp}`;
       const fileName = `JobDetails_${cleanCustomerName}_${cleanJobName}_${cleanJobCardNo}_${shortStamp}`;
 
       const privatePath = `${RNFS.DocumentDirectoryPath}/${fileName}.pdf`;
       const downloadsPath = `${RNFS.DownloadDirectoryPath}/${fileName}.pdf`;
 
-      // 🧾 Generate and copy PDF
+      // Generate and copy PDF
       const file = await RNHTMLtoPDF.convert({
         html: htmlContent,
         fileName,
@@ -737,22 +752,6 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
       console.error('PDF Generation Error:', error);
       Alert.alert('Error', 'Failed to generate or save PDF');
     }
-  };
-  const getExtraPaperProducts = () => {
-    let products = [];
-
-    Object.keys(order).forEach(key => {
-      const match = key.match(/^paperProductCode(\d+)$/);
-      if (match) {
-        const index = match[1];
-        products.push({
-          code: order[`paperProductCode${index}`],
-          number: order[`paperProductNo${index}`] || '',
-        });
-      }
-    });
-
-    return products;
   };
 
   return (
@@ -810,35 +809,8 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         </Text>
 
         <Text style={styles.label}>Job Paper:</Text>
-        <Text style={styles.value}>{order.jobPaper.label}</Text>
+        <Text style={styles.value}>{safeRender(order.jobPaper)}</Text>
 
-        <View style={styles.readOnlyField}>
-          <Text style={styles.label}>Paper Product Code:</Text>
-          <Text style={styles.value}>
-            {typeof order.paperProductCode === 'object'
-              ? order.paperProductCode.label
-              : order.paperProductCode}
-          </Text>
-        </View>
-
-        <Text style={styles.label}>Paper Product No</Text>
-        <Text style={styles.value}>{order.paperProductNo}</Text>
-
-        {getExtraPaperProducts().map((item, index) => (
-          <View key={index} style={{marginTop: 10}}>
-            <View style={styles.readOnlyField}>
-              <Text style={styles.label}>Paper Product Code {item.index}:</Text>
-              <Text style={styles.value}>
-                {typeof item.code === 'object' ? item.code.label : item.code}
-              </Text>
-            </View>
-
-            <View style={styles.readOnlyField}>
-              <Text style={styles.label}>Paper Product No {item.index}:</Text>
-              <Text style={styles.value}>{item.number}</Text>
-            </View>
-          </View>
-        ))}
         {order.jobType !== 'Printing' ? (
           <View>
             <Text style={styles.label}>Paper Code</Text>
@@ -850,31 +822,60 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         <Text style={styles.value}>{order.jobSize}</Text>
 
         <Text style={styles.label}>Printing Plate Size</Text>
-        <Text style={styles.value}>{order.printingPlateSize.label}</Text>
+        <Text style={styles.value}>{safeRender(order.printingPlateSize)}</Text>
 
         <Text style={styles.label}>Across Ups</Text>
-        <Text style={styles.value}>{order.upsAcross.label}</Text>
+        <Text style={styles.value}>{safeRender(order.upsAcross)}</Text>
 
         <Text style={styles.label}>Across Gap</Text>
         <Text style={styles.value}>{order.acrossGap}</Text>
 
         <Text style={styles.label}>Around</Text>
-        <Text style={styles.value}>{order.around.label}</Text>
+        <Text style={styles.value}>{safeRender(order.around)}</Text>
 
         <Text style={styles.label}>Around Gap</Text>
         <Text style={styles.value}>{order.aroundGap}</Text>
 
         <Text style={styles.label}>Teeth Size</Text>
-        <Text style={styles.value}>{order.teethSize.label}</Text>
+        <Text style={styles.value}>{safeRender(order.teethSize)}</Text>
 
         <Text style={styles.label}>Blocks</Text>
-        <Text style={styles.value}>{order.blocks.label}</Text>
+        <Text style={styles.value}>{safeRender(order.blocks)}</Text>
 
         <Text style={styles.label}>Winding Direction</Text>
-        <Text style={styles.value}>{order.windingDirection.label}</Text>
+        <Text style={styles.value}>{safeRender(order.windingDirection)}</Text>
 
         <Text style={styles.label}>Tooling</Text>
         <Text style={styles.value}>{order.tooling}</Text>
+
+        <Text style={styles.label}>Allocated Materials:</Text>
+        {allocatedMaterials.length === 0 ? (
+          <Text style={styles.value}>No materials allocated yet.</Text>
+        ) : (
+          allocatedMaterials.map((material, index) => (
+            <View key={index} style={styles.materialCard}>
+              <View style={styles.readOnlyField}>
+                <Text style={styles.label}>Paper Product Code:</Text>
+                <Text style={styles.value}>{safeRender(material.code)}</Text>
+              </View>
+
+              <View style={styles.readOnlyField}>
+                <Text style={styles.label}>Paper Product No:</Text>
+                <Text style={styles.value}>{material.number || '-'}</Text>
+              </View>
+
+              <View style={styles.readOnlyField}>
+                <Text style={styles.label}>Allocated Qty:</Text>
+                <Text style={styles.value}>{material.allocatedQty}m</Text>
+              </View>
+
+              <View style={styles.readOnlyField}>
+                <Text style={styles.label}>Material Category:</Text>
+                <Text style={styles.value}>{material.materialCategory}</Text>
+              </View>
+            </View>
+          ))
+        )}
 
         <Text style={styles.label}>Slitting Data:</Text>
 
@@ -928,7 +929,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   label: {
-    // fontWeight: 'bold',
     fontSize: 16,
     marginTop: 15,
     color: '#000',
@@ -946,7 +946,6 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     backgroundColor: '#fff',
   },
-
   tableHeader: {
     flexDirection: 'row',
     borderBottomWidth: 1,
@@ -989,6 +988,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     fontFamily: 'Lato-Black',
+  },
+  materialCard: {
+    backgroundColor: '#f9f9f9',
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  readOnlyField: {
+    marginBottom: 8,
   },
 });
 
