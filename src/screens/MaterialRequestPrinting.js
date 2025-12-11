@@ -58,6 +58,7 @@ const MaterialRequestPrinting = ({navigation}) => {
         setPaperSize(data.paperSize || '');
         setJobPaper(data.jobPaper || '');
         setPaperProductCode(data.paperProductCode || '');
+        setCustomerName(data.customerName || '');
 
         // Required material - user can modify this
         setAdditionalPaperRequired(data.additionalPaperRequired || '');
@@ -117,7 +118,7 @@ const MaterialRequestPrinting = ({navigation}) => {
 
       // Optionally update the order's material request status
       await firestore().collection('ordersTest').doc(id).update({
-        materialRequestStatus: 'Pending',
+        materialAllotStatus: 'Pending',
         jobPaper,
         lastMaterialRequestDate: firestore.FieldValue.serverTimestamp(),
       });

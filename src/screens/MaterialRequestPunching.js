@@ -121,7 +121,7 @@ const MaterialRequestPunching = ({navigation}) => {
 
       // Optionally update the order's material request status
       await firestore().collection('ordersTest').doc(id).update({
-        materialRequestStatus: 'Pending',
+        materialAllotStatus: 'Pending',
         jobPaper,
         lastMaterialRequestDate: firestore.FieldValue.serverTimestamp(),
       });
