@@ -179,149 +179,138 @@ const AdminCreateOrder = ({navigation}) => {
     }
   }, []);
 
-  const handleSubmit = async () => {
-    try {
-      const normalizedLabelType = selectedLabelType.trim().toLowerCase();
-      let assignedUserUID;
-      let jobStatus;
+const handleSubmit = async () => {
+  try {
+    const normalizedLabelType = selectedLabelType.trim().toLowerCase();
+    let assignedUserUID;
+    let jobStatus;
 
-      if (normalizedLabelType === 'printing') {
-        assignedUserUID = 'uqTgURHeSvONdbFs154NfPYND1f2';
-        jobStatus = 'Printing';
-      } else if (normalizedLabelType === 'plain') {
-        assignedUserUID = 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2';
-        jobStatus = 'Punching';
+    if (normalizedLabelType === 'printing') {
+      assignedUserUID = 'uqTgURHeSvONdbFs154NfPYND1f2';
+      jobStatus = 'Printing';
+    } else if (normalizedLabelType === 'plain') {
+      assignedUserUID = 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2';
+      jobStatus = 'Punching';
+    } else {
+      Alert.alert('Error', 'Please select a valid Label Type');
+      return;
+    }
+
+    const orderData = {
+      poNo,
+      jobDate: firestore.Timestamp.fromDate(jobDate),
+      customerName,
+      jobCardNo,
+      jobName,
+      jobSize,
+      jobQty,
+      jobLength,
+      jobWidth,
+      totalPaperRequired,
+      jobType: selectedLabelType,
+      assignedTo: assignedUserUID,
+      jobPaper,
+      printingPlateSize: plateSize,
+      upsAcross: upsAcrossValue,
+      around: aroundValue,
+      teethSize: teethSizeValue,
+      blocks: blocksValue,
+      windingDirection: windingDirectionValue,
+      accept,
+      acrossGap,
+      aroundGap,
+      materialAllotStatus: 'Pending',
+      materialAllocations: [],
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    };
+
+    // ✅ Material Request Data
+    const materialRequestData = {
+      jobCardNo,
+      jobName,
+      jobLength,
+      jobWidth,
+      jobPaper,
+      jobQty,
+      totalPaperRequired,
+      requiredMaterial: totalPaperRequired,
+      requestStatus: 'Pending',
+      requestType: 'Initial',
+      createdAt: firestore.FieldValue.serverTimestamp(),
+      createdBy: 'Admin',
+    };
+
+    if (isEdit && id) {
+      // ✅ Update existing order
+      await firestore().collection('ordersTest').doc(id).update(orderData);
+
+      // ✅ Update or create material request
+      const materialRequestSnapshot = await firestore()
+        .collection('materialRequest')
+        .where('jobCardNo', '==', jobCardNo)
+        .where('requestType', '==', 'Initial')
+        .get();
+
+      if (!materialRequestSnapshot.empty) {
+        // Update existing material request
+        const materialDocId = materialRequestSnapshot.docs[0].id;
+        await firestore()
+          .collection('materialRequest')
+          .doc(materialDocId)
+          .update({
+            ...materialRequestData,
+            updatedAt: firestore.FieldValue.serverTimestamp(),
+          });
       } else {
-        Alert.alert('Error', 'Please select a valid Label Type');
+        // Create new material request if it doesn't exist
+        await firestore()
+          .collection('materialRequest')
+          .add(materialRequestData);
+      }
+
+      Alert.alert('Success', 'Job updated successfully');
+    } else {
+      // ✅ Create new order
+      const exists = await firestore()
+        .collection('ordersTest')
+        .where('jobCardNo', '==', jobCardNo)
+        .get();
+
+      if (!exists.empty) {
+        Alert.alert(
+          'Duplicate Job Card No',
+          'Please generate another number',
+        );
         return;
       }
 
-      const orderData = {
-        poNo,
-        jobDate: firestore.Timestamp.fromDate(jobDate),
-        customerName,
-        jobCardNo,
-        jobName,
-        jobSize,
-        jobQty,
-        jobLength, // ✅ Added
-        jobWidth, // ✅ Added
-        totalPaperRequired, // ✅ Added
-        jobType: selectedLabelType,
-        assignedTo: assignedUserUID,
-        jobPaper,
-        printingPlateSize: plateSize,
-        upsAcross: upsAcrossValue,
-        around: aroundValue,
-        teethSize: teethSizeValue,
-        blocks: blocksValue,
-        windingDirection: windingDirectionValue,
-        accept,
-        acrossGap,
-        aroundGap,
-        materialAllotStatus: 'Pending', // ✅ Added default status
-        materialAllocations: [],
-        updatedAt: firestore.FieldValue.serverTimestamp(),
-      };
+      // ✅ Add order and get reference
+      const orderRef = await firestore()
+        .collection('ordersTest')
+        .add({
+          ...orderData,
+          jobStatus,
+          createdAt: firestore.FieldValue.serverTimestamp(),
+          createdBy: 'Admin',
+        });
 
-      // ✅ Material Request Data
-      const materialRequestData = {
-        jobCardNo,
-        jobName,
-        jobLength,
-        jobWidth,
-        jobPaper,
-        jobQty,
-        totalPaperRequired,
-        requestStatus: 'Pending', // Default status for material request
-        requestType: 'Initial',
-        createdAt: firestore.FieldValue.serverTimestamp(),
-        createdBy: 'Admin',
-      };
+      // ✅ Add material request with orderId
+      await firestore()
+        .collection('materialRequest')
+        .add({
+          ...materialRequestData,
+          orderId: orderRef.id,
+        });
 
-      if (isEdit && id) {
-        // ✅ Update existing order (keep old jobStatus)
-        await firestore().collection('ordersTest').doc(id).update(orderData);
-
-        // ✅ Update materialRequest if it exists, or create new one
-        const materialRequestSnapshot = await firestore()
-          .collection('materialRequest')
-          .where('jobCardNo', '==', jobCardNo)
-          .where('requestType', '==', 'Initial')
-          .get();
-
-        if (!materialRequestSnapshot.empty) {
-          // Update existing material request
-          const docId = materialRequestSnapshot.docs[0].id;
-          await firestore()
-            .collection('materialRequest')
-            .doc(docId)
-            .update({
-              ...materialRequestData,
-              updatedAt: firestore.FieldValue.serverTimestamp(),
-            });
-        } else {
-          // Create new material request if doesn't exist
-          await firestore()
-            .collection('materialRequest')
-            .add(materialRequestData);
-        }
-
-        Alert.alert('Success', 'Job updated successfully');
-      } else {
-        // ✅ Create new order
-        const exists = await firestore()
-          .collection('ordersTest')
-          .where('jobCardNo', '==', jobCardNo)
-          .get();
-
-        if (!exists.empty) {
-          Alert.alert(
-            'Duplicate Job Card No',
-            'Please generate another number',
-          );
-          return;
-        }
-
-        // ✅ Add to orders collection
-        // await firestore()
-        //   .collection('orders')
-        //   .add({
-        //     ...orderData,
-        //     jobStatus,
-        //     createdAt: firestore.FieldValue.serverTimestamp(),
-        //     createdBy: 'Admin',
-        //   });
-
-        // await firestore()
-        //   .collection('materialRequest')
-        //   .add(materialRequestData);
-
-        const orderRef = await firestore()
-          .collection('ordersTest')
-          .add({
-            ...orderData,
-            jobStatus,
-            createdAt: firestore.FieldValue.serverTimestamp(),
-            createdBy: 'Admin',
-          });
-
-        // Add material request with orderId
-        await firestore()
-          .collection('materialRequest')
-          .add({
-            ...materialRequestData,
-            orderId: orderRef.id,
-          });
-        Alert.alert('Success', 'Job created successfully');
-      }
-
-      navigation.goBack();
-    } catch (error) {
-      console.error('Submit Error:', error);
-      Alert.alert('Error', 'Something went wrong. Try again.');
+      Alert.alert('Success', 'Job created successfully');
     }
-  };
+
+    navigation.goBack();
+  } catch (error) {
+    console.error('Submit Error:', error);
+    Alert.alert('Error', 'Something went wrong. Try again.');
+  }
+};
 
   const searchJobNames = async text => {
     try {
