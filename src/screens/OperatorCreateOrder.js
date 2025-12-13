@@ -232,6 +232,39 @@ const OperatorCreateOrder = ({navigation, route}) => {
     }
   };
 
+  // Calculate total for a specific paper product
+  const calculateTotal = paperItem => {
+    const used = parseFloat(paperItem.printing.used) || 0;
+    const waste = parseFloat(paperItem.printing.waste) || 0;
+    const leftover = parseFloat(paperItem.printing.leftover) || 0;
+    const wip = parseFloat(paperItem.printing.wip) || 0;
+    return used + waste + leftover + wip;
+  };
+
+  // Validate all materials before submission
+  const validateMaterialQuantities = () => {
+    const errors = [];
+
+    materialUsageData.forEach((item, index) => {
+      const total = calculateTotal(item);
+      const allocated = parseFloat(item.allocatedQty) || 0;
+
+      if (Math.abs(total - allocated) > 0.01) {
+        // Using 0.01 tolerance for floating point
+        const paperCode = item.paperProductCode?.label || item.paperProductCode;
+        errors.push({
+          paperCode,
+          paperNo: item.paperProductNo,
+          total: total.toFixed(2),
+          allocated: allocated.toFixed(2),
+          difference: (total - allocated).toFixed(2),
+        });
+      }
+    });
+
+    return errors;
+  };
+
   const handleSubmit = async () => {
     try {
       const currentUser = auth().currentUser;
@@ -253,6 +286,27 @@ const OperatorCreateOrder = ({navigation, route}) => {
         Alert.alert(
           'Missing Data',
           'Please fill all material usage fields for each paper product',
+        );
+        return;
+      }
+
+      // ✅ NEW: Validate quantities match allocated materials
+      const validationErrors = validateMaterialQuantities();
+
+      if (validationErrors.length > 0) {
+        const errorMessages = validationErrors
+          .map(
+            err =>
+              `${err.paperCode} (${err.paperNo}):\n` +
+              `Total: ${err.total}m | Allocated: ${err.allocated}m\n` +
+              `Difference: ${err.difference}m`,
+          )
+          .join('\n\n');
+
+        Alert.alert(
+          'Quantity Mismatch',
+          `The sum of Used, Waste, LO, and WIP must exactly match the allocated quantity:\n\n${errorMessages}`,
+          [{text: 'OK'}],
         );
         return;
       }
@@ -790,7 +844,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
                     </Text>
 
                     <View style={styles.detailsRowContainer}>
-                      <Text style={styles.boldText}>Used</Text>
+                      <Text style={styles.boldText}>F.G.</Text>
                       <TextInput
                         style={[
                           styles.enableDropdown,
@@ -801,7 +855,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
                           const numericValue = text.replace(/[^0-9.]/g, '');
                           updateMaterialUsage(idx, 'used', numericValue);
                         }}
-                        placeholder="Enter Used"
+                        placeholder="Enter F.G."
                         keyboardType="numeric"
                       />
                     </View>

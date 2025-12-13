@@ -40,13 +40,13 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
   const [materialUsageData, setMaterialUsageData] = useState([]);
 
   // Helper function to safely extract label from object or return string
-  const getDisplayValue = (value) => {
+  const getDisplayValue = value => {
     if (!value) return '-';
-    if (typeof value === 'string' || typeof value === 'number') return String(value);
+    if (typeof value === 'string' || typeof value === 'number')
+      return String(value);
     if (typeof value === 'object') {
       if (value.label) return value.label;
       if (value.value) return value.value;
-      // If object has neither label nor value, return N/A instead of [object Object]
       return '-';
     }
     return '-';
@@ -56,7 +56,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
   useEffect(() => {
     if (!order) return;
 
-    // ✅ Extract allocated materials from order (same as OperatorCreateOrder)
+    // ✅ Extract allocated materials from order
     const materials = [];
 
     // Check for main paper product
@@ -64,7 +64,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
       materials.push({
         code: order.paperProductCode,
         number: order.paperProductNo || '',
-        allocatedQty: order.allocatedQty || 0,
+        originalAllocatedQty: order.allocatedQty || 0, // Original qty from raw material
         materialCategory: order.materialCategory || 'RAW',
         index: 0,
       });
@@ -81,7 +81,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         materials.push({
           code: order[codeKey],
           number: order[numberKey] || '',
-          allocatedQty: order[qtyKey] || 0,
+          originalAllocatedQty: order[qtyKey] || 0,
           materialCategory: order[categoryKey] || 'RAW',
           index: i,
         });
@@ -98,10 +98,14 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
           item => item.paperProductNo === material.number,
         ) || {};
 
+      // ✅ NEW LOGIC: For punching stage, the allocated qty is the "used" qty from printing stage
+      const punchingAllocatedQty = existingData.printing?.used || 0;
+
       return {
         paperProductCode: material.code,
         paperProductNo: material.number,
-        allocatedQty: material.allocatedQty,
+        originalAllocatedQty: material.originalAllocatedQty, // Original raw material qty
+        allocatedQty: punchingAllocatedQty, // ✅ This is what punching stage receives (printing's "used")
         materialCategory: material.materialCategory,
         printing: existingData.printing || null, // Already completed in printing stage
         punching: {
@@ -134,6 +138,40 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
     );
   };
 
+  // ✅ VALIDATION FUNCTIONS
+  // Calculate total for a specific paper product in punching stage
+  const calculateTotal = paperItem => {
+    const used = parseFloat(paperItem.punching.used) || 0;
+    const waste = parseFloat(paperItem.punching.waste) || 0;
+    const leftover = parseFloat(paperItem.punching.leftover) || 0;
+    const wip = parseFloat(paperItem.punching.wip) || 0;
+    return used + waste + leftover + wip;
+  };
+
+  // Validate all materials before submission
+  const validateMaterialQuantities = () => {
+    const errors = [];
+
+    materialUsageData.forEach((item, index) => {
+      const total = calculateTotal(item);
+      const allocated = parseFloat(item.allocatedQty) || 0; // This is printing's "used" qty
+
+      if (Math.abs(total - allocated) > 0.01) {
+        // Using 0.01 tolerance for floating point
+        const paperCode = item.paperProductCode?.label || item.paperProductCode;
+        errors.push({
+          paperCode,
+          paperNo: item.paperProductNo,
+          total: total.toFixed(2),
+          allocated: allocated.toFixed(2),
+          difference: (total - allocated).toFixed(2),
+        });
+      }
+    });
+
+    return errors;
+  };
+
   const handlePunchingComplete = async () => {
     try {
       const currentUser = auth().currentUser;
@@ -159,6 +197,27 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
+      // ✅ NEW: Validate quantities match allocated materials (printing's used qty)
+      const validationErrors = validateMaterialQuantities();
+
+      if (validationErrors.length > 0) {
+        const errorMessages = validationErrors
+          .map(
+            err =>
+              `${err.paperCode} (${err.paperNo}):\n` +
+              `Total: ${err.total}m | Allocated from Printing: ${err.allocated}m\n` +
+              `Difference: ${err.difference}m`,
+          )
+          .join('\n\n');
+
+        Alert.alert(
+          'Quantity Mismatch',
+          `The sum of Used, Waste, LO, and WIP must exactly match the allocated quantity from printing stage:\n\n${errorMessages}`,
+          [{text: 'OK'}],
+        );
+        return;
+      }
+
       // Validate paper code for non-printing jobs
       if (order.jobType !== 'Printing') {
         if (!paperCodeValue?.trim() && !order.paperCode) {
@@ -174,7 +233,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
 
       const materialUsageTracking = [];
 
-      // ✅ CREATE LO AND WIP MATERIALS + TRANSACTIONS (same as OperatorCreateOrder)
+      // ✅ CREATE LO AND WIP MATERIALS + TRANSACTIONS
       for (const item of materialUsageData) {
         const codeValue = item.paperProductCode?.label || item.paperProductCode;
         const paperProductNo = item.paperProductNo;
@@ -276,7 +335,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
           paperCode: codeValue,
           paperProductCode: codeValue,
           paperProductNo: paperProductNo,
-          materialCategory: 'WIP', // Assuming WIP from printing was consumed
+          materialCategory: 'WIP', // Consuming WIP from printing
 
           // Quantities
           usedQty: usedQty,
@@ -445,28 +504,34 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
             <Text style={styles.label}>Running Mtrs:</Text>
             <Text style={styles.value}>{order.runningMtr || '-'}</Text>
 
-            {/* ✅ Display Allocated Materials (READ-ONLY) */}
+            {/* ✅ Display Allocated Materials from Printing Stage (READ-ONLY) */}
             <View style={styles.allocatedMaterialsContainer}>
-              <Text style={styles.sectionTitle}>Allocated Materials:</Text>
-              {allocatedMaterials.length === 0 ? (
+              <Text style={styles.sectionTitle}>
+                Materials Received from Printing Stage:
+              </Text>
+              {materialUsageData.length === 0 ? (
                 <Text style={styles.noMaterialText}>
-                  No materials allocated yet. Please contact admin.
+                  No materials received. Please complete printing stage first.
                 </Text>
               ) : (
-                allocatedMaterials.map((material, index) => (
+                materialUsageData.map((material, index) => (
                   <View key={index} style={styles.materialCard}>
                     <Text style={styles.materialLabel}>
                       Paper Product Code:
                     </Text>
                     <Text style={styles.materialValue}>
-                      {getDisplayValue(material.code)}
+                      {getDisplayValue(material.paperProductCode)}
                     </Text>
 
                     <Text style={styles.materialLabel}>Paper Product No:</Text>
-                    <Text style={styles.materialValue}>{material.number}</Text>
-
-                    <Text style={styles.materialLabel}>Allocated Qty:</Text>
                     <Text style={styles.materialValue}>
+                      {material.paperProductNo}
+                    </Text>
+
+                    <Text style={styles.materialLabel}>
+                      Allocated Qty (Printing's F.G.):
+                    </Text>
+                    <Text style={[styles.materialValue, styles.highlightedQty]}>
                       {material.allocatedQty}m
                     </Text>
 
@@ -532,12 +597,12 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
                   {paperItem.paperProductNo}
                 </Text>
                 <Text style={styles.allocatedQtyText}>
-                  Allocated: {paperItem.allocatedQty}m (
+                  Allocated from Printing: {paperItem.allocatedQty}m (
                   {paperItem.materialCategory})
                 </Text>
 
                 <View style={styles.detailsRowContainer}>
-                  <Text style={styles.boldText}>Used</Text>
+                  <Text style={styles.boldText}>F.G.</Text>
                   <TextInput
                     style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
                     value={paperItem.punching.used}
@@ -545,7 +610,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
                       const numericValue = text.replace(/[^0-9.]/g, '');
                       updateMaterialUsage(idx, 'used', numericValue);
                     }}
-                    placeholder="Enter Used"
+                    placeholder="Enter F.G."
                     keyboardType="numeric"
                   />
                 </View>
@@ -591,6 +656,21 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
                     keyboardType="numeric"
                   />
                 </View>
+
+                {/* ✅ Real-time Total Display */}
+                {/* <View style={styles.totalContainer}>
+                  <Text style={styles.totalLabel}>Total:</Text>
+                  <Text
+                    style={[
+                      styles.totalValue,
+                      calculateTotal(paperItem) === paperItem.allocatedQty
+                        ? styles.totalMatch
+                        : styles.totalMismatch,
+                    ]}>
+                    {calculateTotal(paperItem).toFixed(2)}m /{' '}
+                    {paperItem.allocatedQty}m
+                  </Text>
+                </View> */}
 
                 {/* Divider between paper products */}
                 {idx < materialUsageData.length - 1 && (
@@ -747,5 +827,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Lato-Regular',
     color: '#000',
     marginBottom: 5,
+  },
+  highlightedQty: {
+    fontSize: 16,
+    fontFamily: 'Lato-Bold',
+    color: '#2196F3',
   },
 });

@@ -32,7 +32,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
   );
   const [upsLabel, setUpsLabel] = useState('');
 
-  // ✅ Store allocated materials from admin (from punching stage)
+  // ✅ Store allocated materials from punching stage
   const [allocatedMaterials, setAllocatedMaterials] = useState([]);
 
   // Material usage data for each paper product
@@ -41,11 +41,11 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
   // Helper function to safely extract label from object or return string
   const getDisplayValue = value => {
     if (!value) return '-';
-    if (typeof value === 'string' || typeof value === 'number') return String(value);
+    if (typeof value === 'string' || typeof value === 'number')
+      return String(value);
     if (typeof value === 'object') {
       if (value.label) return value.label;
       if (value.value) return value.value;
-      // If object has neither label nor value, return N/A instead of [object Object]
       return '-';
     }
     return '-';
@@ -60,7 +60,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
   useEffect(() => {
     if (!order) return;
 
-    // ✅ Extract allocated materials from order (same as OperatorCreateOrder & PunchingJobDetailsScreen)
+    // ✅ Extract allocated materials from order
     const materials = [];
 
     // Check for main paper product
@@ -68,7 +68,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
       materials.push({
         code: order.paperProductCode,
         number: order.paperProductNo || '',
-        allocatedQty: order.allocatedQty || 0,
+        originalAllocatedQty: order.allocatedQty || 0,
         materialCategory: order.materialCategory || 'RAW',
         index: 0,
       });
@@ -85,7 +85,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
         materials.push({
           code: order[codeKey],
           number: order[numberKey] || '',
-          allocatedQty: order[qtyKey] || 0,
+          originalAllocatedQty: order[qtyKey] || 0,
           materialCategory: order[categoryKey] || 'RAW',
           index: i,
         });
@@ -102,18 +102,23 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
           item => item.paperProductNo === material.number,
         ) || {};
 
+      // ✅ NEW LOGIC: For slitting stage, the allocated qty is the "used" qty from punching stage
+      const slittingAllocatedQty = existingData.punching?.used || 0;
+
       return {
         paperProductCode: material.code,
         paperProductNo: material.number,
-        allocatedQty: material.allocatedQty,
-        materialCategory: material.materialCategory,
+        originalAllocatedQty: material.originalAllocatedQty, // Original raw material qty
+        allocatedQty: slittingAllocatedQty, // ✅ This is what slitting stage receives (punching's "used")
+        materialCategory:material.materialCategory, // Changed from RAW to WIP since it's output from punching
         printing: existingData.printing || null, // Already completed in printing stage
         punching: existingData.punching || null, // Already completed in punching stage
         slitting: {
           used: existingData.slitting?.used?.toString() || '',
           waste: existingData.slitting?.waste?.toString() || '',
-          leftover: existingData.slitting?.leftover?.toString() || '',
-          wip: existingData.slitting?.wip?.toString() || '',
+          // ✅ LO and WIP are always 0 for slitting (final stage)
+          leftover: '0',
+          wip: '0',
         },
       };
     });
@@ -136,6 +141,39 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
           : item,
       ),
     );
+  };
+
+  // ✅ VALIDATION FUNCTIONS
+  // Calculate total for a specific paper product in slitting stage
+  const calculateTotal = paperItem => {
+    const used = parseFloat(paperItem.slitting.used) || 0;
+    const waste = parseFloat(paperItem.slitting.waste) || 0;
+    // LO and WIP are always 0 for slitting
+    return used + waste;
+  };
+
+  // Validate all materials before submission
+  const validateMaterialQuantities = () => {
+    const errors = [];
+
+    materialUsageData.forEach((item, index) => {
+      const total = calculateTotal(item);
+      const allocated = parseFloat(item.allocatedQty) || 0; // This is punching's "used" qty
+
+      if (Math.abs(total - allocated) > 0.01) {
+        // Using 0.01 tolerance for floating point
+        const paperCode = item.paperProductCode?.label || item.paperProductCode;
+        errors.push({
+          paperCode,
+          paperNo: item.paperProductNo,
+          total: total.toFixed(2),
+          allocated: allocated.toFixed(2),
+          difference: (total - allocated).toFixed(2),
+        });
+      }
+    });
+
+    return errors;
   };
 
   useEffect(() => {
@@ -181,19 +219,36 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
         return;
       }
 
-      // Validate that all material usage fields are filled
+      // Validate that all material usage fields are filled (only used and waste)
       const hasEmptyFields = materialUsageData.some(
-        item =>
-          !item.slitting.used ||
-          !item.slitting.waste ||
-          !item.slitting.leftover ||
-          !item.slitting.wip,
+        item => !item.slitting.used || !item.slitting.waste,
       );
 
       if (hasEmptyFields) {
         Alert.alert(
           'Missing Data',
-          'Please fill all material usage fields for each paper product',
+          'Please fill Used and Waste fields for each paper product',
+        );
+        return;
+      }
+
+      // ✅ NEW: Validate quantities match allocated materials (punching's used qty)
+      const validationErrors = validateMaterialQuantities();
+
+      if (validationErrors.length > 0) {
+        const errorMessages = validationErrors
+          .map(
+            err =>
+              `${err.paperCode} (${err.paperNo}):\n` +
+              `Total (Used + Waste): ${err.total}m | Allocated from Punching: ${err.allocated}m\n` +
+              `Difference: ${err.difference}m`,
+          )
+          .join('\n\n');
+
+        Alert.alert(
+          'Quantity Mismatch',
+          `The sum of Used and Waste must exactly match the allocated quantity from punching stage:\n\n${errorMessages}`,
+          [{text: 'OK'}],
         );
         return;
       }
@@ -202,97 +257,18 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
 
       const materialUsageTracking = [];
 
-      // ✅ CREATE LO AND WIP MATERIALS + TRANSACTIONS (same as OperatorCreateOrder & PunchingJobDetailsScreen)
+      // ✅ CREATE LO AND WIP MATERIALS + TRANSACTIONS
+      // Note: For slitting, LO and WIP are always 0, so we won't create those materials
       for (const item of materialUsageData) {
         const codeValue = item.paperProductCode?.label || item.paperProductCode;
         const paperProductNo = item.paperProductNo;
 
         const usedQty = parseFloat(item.slitting.used) || 0;
         const wasteQty = parseFloat(item.slitting.waste) || 0;
-        const loQty = parseFloat(item.slitting.leftover) || 0;
-        const wipQty = parseFloat(item.slitting.wip) || 0;
+        const loQty = 0; // ✅ Always 0 for slitting (final stage)
+        const wipQty = 0; // ✅ Always 0 for slitting (final stage)
 
-        // ✅ STEP 1: Create LO Material (if leftover > 0)
-        let loMaterialId = null;
-        let loPaperCode = null;
-
-        if (loQty > 0) {
-          loPaperCode = `LO-${order.jobCardNo}-SL`;
-
-          const loMaterialData = {
-            paperCode: loPaperCode,
-            paperProductCode: codeValue,
-            jobPaper: order.jobPaper?.value || order.jobPaper,
-            paperSize: order.paperSize || 0,
-            runningMeter: loQty,
-            roll: 1,
-            totalRunningMeter: loQty,
-            availableRunningMeter: loQty,
-            materialCategory: 'LO',
-            isActive: true,
-
-            // Source tracking
-            sourceJobCardNo: order.jobCardNo,
-            sourcePaperCode: codeValue,
-            sourceStage: 'slitting',
-
-            date: new Date(),
-            createdAt: firestore.FieldValue.serverTimestamp(),
-            updatedAt: firestore.FieldValue.serverTimestamp(),
-            createdBy: currentUser.uid,
-          };
-
-          const loRef = await firestore()
-            .collection('materials')
-            .add(loMaterialData);
-          loMaterialId = loRef.id;
-
-          console.log('✅ LO Material Created:', loPaperCode, loMaterialId);
-        }
-
-        // ✅ STEP 2: Create WIP Material (if wip > 0)
-        let wipMaterialId = null;
-        let wipPaperCode = null;
-
-        if (wipQty > 0) {
-          wipPaperCode = `WIP-${order.jobCardNo}-SL`;
-
-          const wipMaterialData = {
-            paperCode: wipPaperCode,
-            paperProductCode: codeValue,
-            jobPaper: order.jobPaper?.value || order.jobPaper,
-            paperSize: order.paperSize || 0,
-            runningMeter: wipQty,
-            roll: 1,
-            totalRunningMeter: wipQty,
-            availableRunningMeter: wipQty,
-            materialCategory: 'WIP',
-            isActive: true,
-
-            // Source tracking
-            sourceJobCardNo: order.jobCardNo,
-            sourcePaperCode: codeValue,
-            sourceStage: 'slitting',
-
-            date: new Date(),
-            createdAt: firestore.FieldValue.serverTimestamp(),
-            updatedAt: firestore.FieldValue.serverTimestamp(),
-            createdBy: currentUser.uid,
-          };
-
-          const wipRef = await firestore()
-            .collection('materials')
-            .add(wipMaterialData);
-          wipMaterialId = wipRef.id;
-
-          console.log('✅ WIP Material Created:', wipPaperCode, wipMaterialId);
-        }
-
-        // ✅ STEP 3: Create Transaction Record
-        const newPaperCodes = [];
-        if (loPaperCode) newPaperCodes.push(loPaperCode);
-        if (wipPaperCode) newPaperCodes.push(wipPaperCode);
-
+        // ✅ CREATE TRANSACTION RECORD (no LO or WIP materials created)
         const transactionData = {
           transactionType: 'consumption',
           transactionDate: firestore.FieldValue.serverTimestamp(),
@@ -304,7 +280,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
           paperCode: codeValue,
           paperProductCode: codeValue,
           paperProductNo: paperProductNo,
-          materialCategory: 'WIP', // Assuming WIP from punching was consumed
+          materialCategory: 'WIP', // Consuming WIP from punching
 
           // Quantities
           usedQty: usedQty,
@@ -312,13 +288,13 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
           loQty: loQty,
           wipQty: wipQty,
 
-          // New materials created
-          newPaperCode: newPaperCodes.join(', ') || null,
-          loMaterialId: loMaterialId,
-          wipMaterialId: wipMaterialId,
+          // No new materials created in slitting (final stage)
+          newPaperCode: null,
+          loMaterialId: null,
+          wipMaterialId: null,
 
           createdBy: currentUser.uid,
-          remarks: `Slitting stage completed for job ${order.jobCardNo}`,
+          remarks: `Slitting stage completed for job ${order.jobCardNo} - Final stage`,
         };
 
         await firestore()
@@ -327,7 +303,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
 
         console.log('✅ Transaction Created for:', codeValue);
 
-        // ✅ STEP 4: Add to materialUsageTracking
+        // ✅ ADD TO MATERIAL USAGE TRACKING
         materialUsageTracking.push({
           paperProductCode: codeValue,
           paperProductNo: paperProductNo,
@@ -336,8 +312,8 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
           slitting: {
             used: usedQty,
             waste: wasteQty,
-            leftover: loQty,
-            wip: wipQty,
+            leftover: loQty, // Always 0
+            wip: wipQty, // Always 0
             completedAt: new Date(),
             completedBy: currentUser.uid,
           },
@@ -362,7 +338,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
         materialUsageTracking: materialUsageTracking,
       });
 
-      Alert.alert('Success', 'Job completed! LO and WIP materials created.');
+      Alert.alert('Success', 'Job completed successfully! (Final stage)');
 
       setTimeout(() => {
         navigation.goBack();
@@ -479,28 +455,34 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
               </View>
             )}
 
-            {/* ✅ Display Allocated Materials (READ-ONLY) */}
+            {/* ✅ Display Allocated Materials from Punching Stage (READ-ONLY) */}
             <View style={styles.allocatedMaterialsContainer}>
-              <Text style={styles.sectionTitle}>Allocated Materials:</Text>
-              {allocatedMaterials.length === 0 ? (
+              <Text style={styles.sectionTitle}>
+                Materials Received from Punching Stage:
+              </Text>
+              {materialUsageData.length === 0 ? (
                 <Text style={styles.noMaterialText}>
-                  No materials allocated yet. Please contact admin.
+                  No materials received. Please complete punching stage first.
                 </Text>
               ) : (
-                allocatedMaterials.map((material, index) => (
+                materialUsageData.map((material, index) => (
                   <View key={index} style={styles.materialCard}>
                     <Text style={styles.materialLabel}>
                       Paper Product Code:
                     </Text>
                     <Text style={styles.materialValue}>
-                      {getDisplayValue(material.code)}
+                      {getDisplayValue(material.paperProductCode)}
                     </Text>
 
                     <Text style={styles.materialLabel}>Paper Product No:</Text>
-                    <Text style={styles.materialValue}>{material.number}</Text>
-
-                    <Text style={styles.materialLabel}>Allocated Qty:</Text>
                     <Text style={styles.materialValue}>
+                      {material.paperProductNo}
+                    </Text>
+
+                    <Text style={styles.materialLabel}>
+                      Allocated Qty (Punching's FG):
+                    </Text>
+                    <Text style={[styles.materialValue, styles.highlightedQty]}>
                       {material.allocatedQty}m
                     </Text>
 
@@ -526,6 +508,9 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
           <View style={styles.homeSubContainer}>
             <Text style={styles.label}>Job Card No:</Text>
             <Text style={styles.value}>{order.jobCardNo}</Text>
+
+            <Text style={styles.label}>Job Qty:</Text>
+            <Text style={styles.value}>{order.jobQty}</Text>
 
             <CustomDropdown
               placeholder={'Label Ups'}
@@ -606,7 +591,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
                   styles.boldText,
                   {marginBottom: 10, fontSize: 16, width: '100%'},
                 ]}>
-                Job Completion Details - Slitting Phase
+                Job Completion Details - Slitting Phase (Final Stage)
               </Text>
 
               {materialUsageData.map((paperItem, idx) => (
@@ -616,12 +601,12 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
                     - {paperItem.paperProductNo}
                   </Text>
                   <Text style={styles.allocatedQtyText}>
-                    Allocated: {paperItem.allocatedQty}m (
+                    Allocated from Punching: {paperItem.allocatedQty}m (
                     {paperItem.materialCategory})
                   </Text>
 
                   <View style={styles.detailsRowContainer}>
-                    <Text style={styles.boldText}>Used</Text>
+                    <Text style={styles.boldText}>F.G.</Text>
                     <TextInput
                       style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
                       value={paperItem.slitting.used}
@@ -629,7 +614,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
                         const numericValue = text.replace(/[^0-9.]/g, '');
                         updateMaterialUsage(idx, 'used', numericValue);
                       }}
-                      placeholder="Enter Used"
+                      placeholder="Enter F.G."
                       keyboardType="numeric"
                     />
                   </View>
@@ -644,34 +629,6 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
                         updateMaterialUsage(idx, 'waste', numericValue);
                       }}
                       placeholder="Enter Waste"
-                      keyboardType="numeric"
-                    />
-                  </View>
-
-                  <View style={styles.detailsRowContainer}>
-                    <Text style={styles.boldText}>Leftover (LO)</Text>
-                    <TextInput
-                      style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
-                      value={paperItem.slitting.leftover}
-                      onChangeText={text => {
-                        const numericValue = text.replace(/[^0-9.]/g, '');
-                        updateMaterialUsage(idx, 'leftover', numericValue);
-                      }}
-                      placeholder="Enter Leftover"
-                      keyboardType="numeric"
-                    />
-                  </View>
-
-                  <View style={styles.detailsRowContainer}>
-                    <Text style={styles.boldText}>WIP</Text>
-                    <TextInput
-                      style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
-                      value={paperItem.slitting.wip}
-                      onChangeText={text => {
-                        const numericValue = text.replace(/[^0-9.]/g, '');
-                        updateMaterialUsage(idx, 'wip', numericValue);
-                      }}
-                      placeholder="Enter WIP"
                       keyboardType="numeric"
                     />
                   </View>
@@ -698,6 +655,7 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
 };
 
 export default SlittingJobDetailsScreen;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -889,5 +847,29 @@ const styles = StyleSheet.create({
     fontFamily: 'Lato-Regular',
     color: '#000',
     marginBottom: 5,
+  },
+  highlightedQty: {
+    fontSize: 16,
+    fontFamily: 'Lato-Bold',
+    color: '#2196F3',
+  },
+  // ✅ NEW: Real-time Total Display Styles
+  totalContainer: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 5,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  totalLabel: {
+    fontSize: 14,
+    fontFamily: 'Lato-Bold',
+    color: '#000',
+  },
+  totalValue: {
+    fontSize: 14,
+    fontFamily: 'Lato-Bold',
   },
 });
