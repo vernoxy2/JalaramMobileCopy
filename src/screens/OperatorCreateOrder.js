@@ -103,6 +103,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
         code: order.paperProductCode,
         number: order.paperProductNo || '',
         allocatedQty: order.allocatedQty || 0,
+        allocatedRolls: order.allocatedRolls || 0,
         materialCategory: order.materialCategory || 'RAW',
         index: 0,
       });
@@ -120,6 +121,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
           code: order[codeKey],
           number: order[numberKey] || '',
           allocatedQty: order[qtyKey] || 0,
+          allocatedRolls: order[`allocatedRolls${i}`] || 0,
           materialCategory: order[categoryKey] || 'RAW',
           index: i,
         });
@@ -140,6 +142,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
         paperProductCode: material.code,
         paperProductNo: material.number,
         allocatedQty: material.allocatedQty,
+        allocatedRolls: material.allocatedRolls || 0,
         materialCategory: material.materialCategory,
         printing: {
           used: existingData.printing?.used?.toString() || '',
@@ -635,7 +638,9 @@ const OperatorCreateOrder = ({navigation, route}) => {
 
                       <Text style={styles.materialLabel}>Allocated Qty:</Text>
                       <Text style={styles.materialValue}>
-                        {material.allocatedQty}m
+                        {material.allocatedRolls > 0
+                          ? `${material.allocatedRolls} Roll of ${material.allocatedQty}m`
+                          : `${material.allocatedQty}m`}
                       </Text>
 
                       <Text style={styles.materialLabel}>Category:</Text>

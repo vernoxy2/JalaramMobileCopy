@@ -60,6 +60,7 @@ const AdminCreateOrder = ({navigation}) => {
   const [jobLength, setJobLength] = useState('');
   const [jobWidth, setJobWidth] = useState('');
   const [totalPaperRequired, setTotalPaperRequired] = useState('');
+  const [calculationSize, setCalculationSize] = useState('');
 
   const route = useRoute();
   const {id, isEdit} = route.params || {};
@@ -84,23 +85,36 @@ const AdminCreateOrder = ({navigation}) => {
     }
   }, [isEdit, id, fetchOrderDetails, generateJobCardNo]);
 
-  useEffect(() => {
-    if (jobLength && jobWidth && jobQty) {
-      const length = parseFloat(jobLength);
-      const width = parseFloat(jobWidth);
-      const qty = parseInt(jobQty, 10);
+  // useEffect(() => {
+  //   if (jobLength && jobWidth && jobQty) {
+  //     const length = parseFloat(jobLength);
+  //     const width = parseFloat(jobWidth);
+  //     const qty = parseInt(jobQty, 10);
 
-      // Check if all values are valid numbers
-      if (!isNaN(length) && !isNaN(width) && !isNaN(qty)) {
-        const total = length * width * qty;
-        setTotalPaperRequired(total.toFixed(2)); // Format to 2 decimal places
-      } else {
-        setTotalPaperRequired('');
-      }
+  //     // Check if all values are valid numbers
+  //     if (!isNaN(length) && !isNaN(width) && !isNaN(qty)) {
+  //       const total = length * width * qty;
+  //       setTotalPaperRequired(total.toFixed(2)); // Format to 2 decimal places
+  //     } else {
+  //       setTotalPaperRequired('');
+  //     }
+  //   } else {
+  //     setTotalPaperRequired('');
+  //   }
+  // }, [jobLength, jobWidth, jobQty]);
+
+  const calculateTotalPaper = (qty, size, ups) => {
+    const totalLabels = parseFloat(qty);
+    const labelSize = parseFloat(size);
+    const across = parseFloat(ups);
+
+    if (!isNaN(totalLabels) && !isNaN(labelSize) && !isNaN(across)) {
+      const total = (totalLabels * labelSize * across) / 1000;
+      setTotalPaperRequired(total.toFixed(2));
     } else {
       setTotalPaperRequired('');
     }
-  }, [jobLength, jobWidth, jobQty]);
+  };
 
   const fetchOrderDetails = useCallback(async () => {
     try {
@@ -121,6 +135,7 @@ const AdminCreateOrder = ({navigation}) => {
         setJobLength(data.jobLength || ''); // ✅ Added
         setJobWidth(data.jobWidth || ''); // ✅ Added
         setTotalPaperRequired(data.totalPaperRequired || ''); // ✅ Added
+        setCalculationSize(data.calculationSize || ''); // ✅ Added
 
         // ✅ Dropdowns
         setJobPaper(data.jobPaper || '');
@@ -179,138 +194,140 @@ const AdminCreateOrder = ({navigation}) => {
     }
   }, []);
 
-const handleSubmit = async () => {
-  try {
-    const normalizedLabelType = selectedLabelType.trim().toLowerCase();
-    let assignedUserUID;
-    let jobStatus;
+  const handleSubmit = async () => {
+    try {
+      const normalizedLabelType = selectedLabelType.trim().toLowerCase();
+      let assignedUserUID;
+      let jobStatus;
 
-    if (normalizedLabelType === 'printing') {
-      assignedUserUID = 'uqTgURHeSvONdbFs154NfPYND1f2';
-      jobStatus = 'Printing';
-    } else if (normalizedLabelType === 'plain') {
-      assignedUserUID = 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2';
-      jobStatus = 'Punching';
-    } else {
-      Alert.alert('Error', 'Please select a valid Label Type');
-      return;
-    }
-
-    const orderData = {
-      poNo,
-      jobDate: firestore.Timestamp.fromDate(jobDate),
-      customerName,
-      jobCardNo,
-      jobName,
-      jobSize,
-      jobQty,
-      jobLength,
-      jobWidth,
-      totalPaperRequired,
-      jobType: selectedLabelType,
-      assignedTo: assignedUserUID,
-      jobPaper,
-      printingPlateSize: plateSize,
-      upsAcross: upsAcrossValue,
-      around: aroundValue,
-      teethSize: teethSizeValue,
-      blocks: blocksValue,
-      windingDirection: windingDirectionValue,
-      accept,
-      acrossGap,
-      aroundGap,
-      materialAllotStatus: 'Pending',
-      materialAllocations: [],
-      updatedAt: firestore.FieldValue.serverTimestamp(),
-    };
-
-    // ✅ Material Request Data
-    const materialRequestData = {
-      jobCardNo,
-      jobName,
-      jobLength,
-      jobWidth,
-      jobPaper,
-      jobQty,
-      totalPaperRequired,
-      requiredMaterial: totalPaperRequired,
-      requestStatus: 'Pending',
-      requestType: 'Initial',
-      createdAt: firestore.FieldValue.serverTimestamp(),
-      createdBy: 'Admin',
-    };
-
-    if (isEdit && id) {
-      // ✅ Update existing order
-      await firestore().collection('ordersTest').doc(id).update(orderData);
-
-      // ✅ Update or create material request
-      const materialRequestSnapshot = await firestore()
-        .collection('materialRequest')
-        .where('jobCardNo', '==', jobCardNo)
-        .where('requestType', '==', 'Initial')
-        .get();
-
-      if (!materialRequestSnapshot.empty) {
-        // Update existing material request
-        const materialDocId = materialRequestSnapshot.docs[0].id;
-        await firestore()
-          .collection('materialRequest')
-          .doc(materialDocId)
-          .update({
-            ...materialRequestData,
-            updatedAt: firestore.FieldValue.serverTimestamp(),
-          });
+      if (normalizedLabelType === 'printing') {
+        assignedUserUID = 'uqTgURHeSvONdbFs154NfPYND1f2';
+        jobStatus = 'Printing';
+      } else if (normalizedLabelType === 'plain') {
+        assignedUserUID = 'Kt1bJQzaUPdAowP7bTpdNQEfXKO2';
+        jobStatus = 'Punching';
       } else {
-        // Create new material request if it doesn't exist
-        await firestore()
-          .collection('materialRequest')
-          .add(materialRequestData);
-      }
-
-      Alert.alert('Success', 'Job updated successfully');
-    } else {
-      // ✅ Create new order
-      const exists = await firestore()
-        .collection('ordersTest')
-        .where('jobCardNo', '==', jobCardNo)
-        .get();
-
-      if (!exists.empty) {
-        Alert.alert(
-          'Duplicate Job Card No',
-          'Please generate another number',
-        );
+        Alert.alert('Error', 'Please select a valid Label Type');
         return;
       }
 
-      // ✅ Add order and get reference
-      const orderRef = await firestore()
-        .collection('ordersTest')
-        .add({
-          ...orderData,
-          jobStatus,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-          createdBy: 'Admin',
-        });
+      const orderData = {
+        poNo,
+        jobDate: firestore.Timestamp.fromDate(jobDate),
+        customerName,
+        jobCardNo,
+        jobName,
+        jobSize,
+        jobQty,
+        jobLength,
+        jobWidth,
+        calculationSize,
+        totalPaperRequired,
+        jobType: selectedLabelType,
+        assignedTo: assignedUserUID,
+        jobPaper,
+        printingPlateSize: plateSize,
+        upsAcross: upsAcrossValue,
+        around: aroundValue,
+        teethSize: teethSizeValue,
+        blocks: blocksValue,
+        windingDirection: windingDirectionValue,
+        accept,
+        acrossGap,
+        aroundGap,
+        materialAllotStatus: 'Pending',
+        materialAllocations: [],
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      };
 
-      // ✅ Add material request with orderId
-      await firestore()
-        .collection('materialRequest')
-        .add({
-          ...materialRequestData,
-          orderId: orderRef.id,
-        });
+      // ✅ Material Request Data
+      const materialRequestData = {
+        jobCardNo,
+        jobName,
+        jobLength,
+        jobWidth,
+        jobPaper,
+        jobQty,
+        calculationSize,
+        totalPaperRequired,
+        requiredMaterial: totalPaperRequired,
+        requestStatus: 'Pending',
+        requestType: 'Initial',
+        createdAt: firestore.FieldValue.serverTimestamp(),
+        createdBy: 'Admin',
+      };
 
-      Alert.alert('Success', 'Job created successfully');
+      if (isEdit && id) {
+        // ✅ Update existing order
+        await firestore().collection('ordersTest').doc(id).update(orderData);
+
+        // ✅ Update or create material request
+        const materialRequestSnapshot = await firestore()
+          .collection('materialRequest')
+          .where('jobCardNo', '==', jobCardNo)
+          .where('requestType', '==', 'Initial')
+          .get();
+
+        if (!materialRequestSnapshot.empty) {
+          // Update existing material request
+          const materialDocId = materialRequestSnapshot.docs[0].id;
+          await firestore()
+            .collection('materialRequest')
+            .doc(materialDocId)
+            .update({
+              ...materialRequestData,
+              updatedAt: firestore.FieldValue.serverTimestamp(),
+            });
+        } else {
+          // Create new material request if it doesn't exist
+          await firestore()
+            .collection('materialRequest')
+            .add(materialRequestData);
+        }
+
+        Alert.alert('Success', 'Job updated successfully');
+      } else {
+        // ✅ Create new order
+        const exists = await firestore()
+          .collection('ordersTest')
+          .where('jobCardNo', '==', jobCardNo)
+          .get();
+
+        if (!exists.empty) {
+          Alert.alert(
+            'Duplicate Job Card No',
+            'Please generate another number',
+          );
+          return;
+        }
+
+        // ✅ Add order and get reference
+        const orderRef = await firestore()
+          .collection('ordersTest')
+          .add({
+            ...orderData,
+            jobStatus,
+            createdAt: firestore.FieldValue.serverTimestamp(),
+            createdBy: 'Admin',
+          });
+
+        // ✅ Add material request with orderId
+        await firestore()
+          .collection('materialRequest')
+          .add({
+            ...materialRequestData,
+            orderId: orderRef.id,
+          });
+
+        Alert.alert('Success', 'Job created successfully');
+      }
+
+      navigation.goBack();
+    } catch (error) {
+      console.error('Submit Error:', error);
+      Alert.alert('Error', 'Something went wrong. Try again.');
     }
-
-    navigation.goBack();
-  } catch (error) {
-    console.error('Submit Error:', error);
-    Alert.alert('Error', 'Something went wrong. Try again.');
-  }
-};
+  };
 
   const searchJobNames = async text => {
     try {
@@ -500,14 +517,15 @@ const handleSubmit = async () => {
           <CustomLabelTextInput
             label="Job Qty :"
             value={jobQty}
-            onChangeText={setJobQty}
-          />
-
-          <CustomLabelTextInput
-            label="Total Paper Required :"
-            value={totalPaperRequired}
-            onChangeText={setTotalPaperRequired}
-            // editable={false}
+            // onChangeText={setJobQty}
+            onChangeText={value => {
+              setJobQty(value);
+              calculateTotalPaper(
+                value,
+                calculationSize,
+                upsAcrossValue?.value || upsAcrossValue,
+              );
+            }}
           />
 
           <CustomDropdown
@@ -528,16 +546,38 @@ const handleSubmit = async () => {
             showIcon={true}
             value={plateSize}
           />
+          <CustomLabelTextInput
+            label="Label Size (Calculation) :"
+            value={calculationSize}
+            keyboardType="numeric"
+            onChangeText={value => {
+              setCalculationSize(value);
+              calculateTotalPaper(
+                jobQty,
+                value,
+                upsAcrossValue?.value || upsAcrossValue,
+              );
+            }}
+          />
+
           <CustomDropdown
-            placeholder={'Across Ups'}
+            placeholder={'Across Ups *'}
             data={upsAcross}
             style={styles.dropdownContainer}
             selectedText={styles.dropdownText}
-            onSelect={item => setUpsAcrossValue(item)}
+            onSelect={item => {
+              setUpsAcrossValue(item);
+              calculateTotalPaper(jobQty, calculationSize, item?.value || item);
+            }}
             showIcon={true}
             value={upsAcrossValue}
           />
-
+          <CustomLabelTextInput
+            label="Total Paper Required :"
+            value={totalPaperRequired}
+            onChangeText={setTotalPaperRequired}
+            // editable={false}
+          />
           <TextInput
             style={styles.enableDropdown}
             placeholder="Across Gap"

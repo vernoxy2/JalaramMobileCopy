@@ -14,59 +14,6 @@ const LoginScreen = ({navigation}) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // const handleLogin = () => {
-  //   if (!email || !password) {
-  //     Alert.alert('Error', 'Please enter both email and password.');
-  //     return;
-  //   }
-
-  //   auth()
-  //     .signInWithEmailAndPassword(email, password)
-  //     .then(async userCredential => {
-  //       const uid = userCredential.user.uid;
-
-  //       try {
-  //         const userDoc = await firestore().collection('users').doc(uid).get();
-
-  //         if (!userDoc.exists) {
-  //           Alert.alert('Login Failed', 'User role not found.');
-  //           return;
-  //         }
-
-  //         const userData = userDoc.data();
-  //         const role = userData.role;
-
-  //         if (
-  //           role === 'Admin' ||
-  //           role === 'Printing' ||
-  //           role === 'Punching' ||
-  //           role === 'Slitting'
-  //         ) {
-  //           navigation.dispatch(
-  //             CommonActions.reset({
-  //               index: 0,
-  //               routes: [
-  //                 {
-  //                   name: 'BottomNavigation',
-  //                   params: {role},
-  //                 },
-  //               ],
-  //             }),
-  //           );
-  //         } else {
-  //           Alert.alert('Access Denied', 'Unknown user role.');
-  //         }
-  //       } catch (err) {
-  //         console.error(err);
-  //         Alert.alert('Error', 'Could not verify user role.');
-  //       }
-  //     })
-  //     .catch(error => {
-  //       console.log(error);
-  //       Alert.alert('Login Failed', 'Please Enter Valid Credentials');
-  //     });
-  // };
-
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please enter both email and password.');
