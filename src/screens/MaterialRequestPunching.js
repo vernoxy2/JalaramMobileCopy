@@ -34,6 +34,7 @@ const MaterialRequestPunching = ({navigation}) => {
   const [jobWidth, setJobWidth] = useState('');
   const [jobQty, setJobQty] = useState('');
   const [paperProductCode, setPaperProductCode] = useState();
+  const [customerName, setCustomerName] = useState('');
 
   const route = useRoute();
   const {id} = route.params || {};
@@ -61,7 +62,7 @@ const MaterialRequestPunching = ({navigation}) => {
         setJobPaper(data.jobPaper || '');
         setPaperProductCode(data.paperProductCode || '');
         // Company name from customerName
-        // setCustomerName(data.customerName || '');
+        setCustomerName(data.customerName || '');
 
         // Required material - user can modify this
         setAdditionalPaperRequired(data.additionalPaperRequired || '');
@@ -105,6 +106,7 @@ const MaterialRequestPunching = ({navigation}) => {
         jobLength,
         jobWidth,
         paperSize,
+        customerName,
         requiredMaterial: parseFloat(additionalPaperRequired),
         jobPaper,
         jobQty,

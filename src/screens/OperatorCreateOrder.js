@@ -68,11 +68,100 @@ const OperatorCreateOrder = ({navigation, route}) => {
   if (checkboxState.box2) printingColors.push('Water');
   if (checkboxState.box3) printingColors.push('Special');
 
+  // useEffect(() => {
+  //   if (!order) return;
+
+  //   setSize(order.jobSize || '');
+
+  //   setJobPaper(order.jobPaper || '');
+  //   setPlateSize(order.printingPlateSize || '');
+  //   setUpsAcrossValue(order.upsAcross || '');
+  //   setAroundValue(order.around || '');
+  //   setTeethSizeValue(order.teethSize || '');
+  //   setBlocksValue(order.blocks || '');
+  //   setWindingDirectionValue(order.windingDirection || '');
+  //   setCheckboxState({
+  //     box1: order.printingColors?.includes('Uv') || false,
+  //     box2: order.printingColors?.includes('Water') || false,
+  //     box3: order.printingColors?.includes('Special') || false,
+  //     box4: order.varnish === 'Uv',
+  //     box5: order.checkedApproved || false,
+  //   });
+  //   setTooling(order.tooling || '');
+  //   setRunningMtrValue(order.runningMtr || '');
+  //   setJobStarted(order.jobStarted || false);
+  //   setJobCardNo(order.jobCardNo || '');
+  //   setJobName(order.jobName || '');
+  //   setJobQty(order.jobQty || '');
+
+  //   // ✅ NEW: Extract allocated materials from order
+  //   const materials = [];
+
+  //   // Check for main paper product
+  //   if (order.paperProductCode) {
+  //     materials.push({
+  //       code: order.paperProductCode,
+  //       number: order.paperProductNo || '',
+  //       allocatedQty: order.allocatedQty || 0,
+  //       allocatedRolls: order.allocatedRolls || 0,
+  //       materialCategory: order.materialCategory || 'RAW',
+  //       index: 0,
+  //     });
+  //   }
+
+  //   // Check for additional paper products (paperProductCode1-10)
+  //   for (let i = 1; i <= 10; i++) {
+  //     const codeKey = `paperProductCode${i}`;
+  //     const numberKey = `paperProductNo${i}`;
+  //     const qtyKey = `allocatedQty${i}`;
+  //     const categoryKey = `materialCategory${i}`;
+
+  //     if (order[codeKey]) {
+  //       materials.push({
+  //         code: order[codeKey],
+  //         number: order[numberKey] || '',
+  //         allocatedQty: order[qtyKey] || 0,
+  //         allocatedRolls: order[`allocatedRolls${i}`] || 0,
+  //         materialCategory: order[categoryKey] || 'RAW',
+  //         index: i,
+  //       });
+  //     }
+  //   }
+
+  //   setAllocatedMaterials(materials);
+
+  //   // Initialize material usage data for each allocated material
+  //   const initialUsageData = materials.map(material => {
+  //     // Find existing tracking data for this paper product
+  //     const existingData =
+  //       order.materialUsageTracking?.find(
+  //         item => item.paperProductNo === material.number,
+  //       ) || {};
+
+  //     return {
+  //       paperProductCode: material.code,
+  //       paperProductNo: material.number,
+  //       allocatedQty: material.allocatedQty,
+  //       allocatedRolls: material.allocatedRolls || 0,
+  //       materialCategory: material.materialCategory,
+  //       printing: {
+  //         used: existingData.printing?.used?.toString() || '',
+  //         waste: existingData.printing?.waste?.toString() || '',
+  //         leftover: existingData.printing?.leftover?.toString() || '',
+  //         wip: existingData.printing?.wip?.toString() || '',
+  //       },
+  //       punching: existingData.punching || null,
+  //       slitting: existingData.slitting || null,
+  //     };
+  //   });
+
+  //   setMaterialUsageData(initialUsageData);
+  // }, [order]);
+
   useEffect(() => {
     if (!order) return;
 
     setSize(order.jobSize || '');
-
     setJobPaper(order.jobPaper || '');
     setPlateSize(order.printingPlateSize || '');
     setUpsAcrossValue(order.upsAcross || '');
@@ -94,17 +183,21 @@ const OperatorCreateOrder = ({navigation, route}) => {
     setJobName(order.jobName || '');
     setJobQty(order.jobQty || '');
 
-    // ✅ NEW: Extract allocated materials from order
+    // ✅ Extract allocated materials with timestamps
     const materials = [];
 
     // Check for main paper product
     if (order.paperProductCode) {
+      const allocatedAt =
+        order.allocatedAt?.toDate?.() || order.allocatedAt || null;
+
       materials.push({
         code: order.paperProductCode,
         number: order.paperProductNo || '',
         allocatedQty: order.allocatedQty || 0,
         allocatedRolls: order.allocatedRolls || 0,
         materialCategory: order.materialCategory || 'RAW',
+        allocatedAt: allocatedAt,
         index: 0,
       });
     }
@@ -115,24 +208,44 @@ const OperatorCreateOrder = ({navigation, route}) => {
       const numberKey = `paperProductNo${i}`;
       const qtyKey = `allocatedQty${i}`;
       const categoryKey = `materialCategory${i}`;
+      const timestampKey = `allocatedAt${i}`;
 
       if (order[codeKey]) {
+        const allocatedAt =
+          order[timestampKey]?.toDate?.() || order[timestampKey] || null;
+
         materials.push({
           code: order[codeKey],
           number: order[numberKey] || '',
           allocatedQty: order[qtyKey] || 0,
           allocatedRolls: order[`allocatedRolls${i}`] || 0,
           materialCategory: order[categoryKey] || 'RAW',
+          allocatedAt: allocatedAt,
           index: i,
         });
       }
+    }
+
+    // ✅ Sort materials: Latest allocated first (descending order)
+    materials.sort((a, b) => {
+      // Handle null/undefined timestamps - put them at the end
+      if (!a.allocatedAt && !b.allocatedAt) return 0;
+      if (!a.allocatedAt) return 1;
+      if (!b.allocatedAt) return -1;
+
+      // Sort by timestamp: newest first
+      return b.allocatedAt - a.allocatedAt;
+    });
+
+    // ✅ Mark the latest material (first one after sorting)
+    if (materials.length > 0 && materials[0].allocatedAt) {
+      materials[0].isLatest = true;
     }
 
     setAllocatedMaterials(materials);
 
     // Initialize material usage data for each allocated material
     const initialUsageData = materials.map(material => {
-      // Find existing tracking data for this paper product
       const existingData =
         order.materialUsageTracking?.find(
           item => item.paperProductNo === material.number,
@@ -157,7 +270,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
 
     setMaterialUsageData(initialUsageData);
   }, [order]);
-
   const [colorAniloxValues, setColorAniloxValues] = useState({
     C: '',
     M: '',
@@ -613,7 +725,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
               </View>
 
               {/* ✅ NEW: Display Allocated Materials (READ-ONLY) */}
-              <View style={styles.allocatedMaterialsContainer}>
+              {/* <View style={styles.allocatedMaterialsContainer}>
                 <Text style={styles.sectionTitle}>Allocated Materials:</Text>
                 {allocatedMaterials.length === 0 ? (
                   <Text style={styles.noMaterialText}>
@@ -650,8 +762,75 @@ const OperatorCreateOrder = ({navigation, route}) => {
                     </View>
                   ))
                 )}
-              </View>
+              </View> */}
 
+              {/* ✅ UPDATED: Display Allocated Materials with latest highlight */}
+              <View style={styles.allocatedMaterialsContainer}>
+                <Text style={styles.sectionTitle}>Allocated Materials:</Text>
+                {allocatedMaterials.length === 0 ? (
+                  <Text style={styles.noMaterialText}>
+                    No materials allocated yet. Please contact admin.
+                  </Text>
+                ) : (
+                  allocatedMaterials.map((material, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.materialCard,
+                        material.isLatest && styles.latestMaterialCard, // ✅ Highlight latest
+                      ]}>
+                      {material.isLatest && (
+                        <View style={styles.newBadge}>
+                          <Text style={styles.newBadgeText}>LATEST</Text>
+                        </View>
+                      )}
+
+                      <Text style={styles.materialLabel}>
+                        Paper Product Code:
+                      </Text>
+                      <Text style={styles.materialValue}>
+                        {material.code?.label || material.code}
+                      </Text>
+
+                      <Text style={styles.materialLabel}>
+                        Paper Product No:
+                      </Text>
+                      <Text style={styles.materialValue}>
+                        {material.number}
+                      </Text>
+
+                      <Text style={styles.materialLabel}>Allocated Qty:</Text>
+                      <Text style={styles.materialValue}>
+                        {material.allocatedRolls > 0
+                          ? `${material.allocatedRolls} Roll of ${material.allocatedQty}m`
+                          : `${material.allocatedQty}m`}
+                      </Text>
+
+                      <Text style={styles.materialLabel}>Category:</Text>
+                      <Text style={styles.materialValue}>
+                        {material.materialCategory}
+                      </Text>
+
+                      {material.allocatedAt && (
+                        <>
+                          <Text style={styles.materialLabel}>
+                            Allocated At:
+                          </Text>
+                          <Text style={styles.materialValue}>
+                            {material.allocatedAt.toLocaleString('en-IN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </Text>
+                        </>
+                      )}
+                    </View>
+                  ))
+                )}
+              </View>
               <View style={styles.btnContainer}>
                 <CustomButton
                   title={'Start Job'}
@@ -773,7 +952,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
                 </View>
               </View>
 
-              <View style={styles.detailsRowContainer}>
+              {/* <View style={styles.detailsRowContainer}>
                 <Text style={styles.boldText}>Running Mtrs</Text>
                 <TextInput
                   style={[styles.enableDropdown, {backgroundColor: '#fff'}]}
@@ -785,7 +964,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
                   placeholder="Enter Running Mtrs"
                   keyboardType="numeric"
                 />
-              </View>
+              </View> */}
               <View style={styles.detailsRowContainer}>
                 <Text style={styles.boldText}>Tooling</Text>
                 <TextInput
@@ -1155,5 +1334,32 @@ const styles = StyleSheet.create({
     fontFamily: 'Lato-Regular',
     color: '#000',
     marginBottom: 5,
+  },
+  latestMaterialCard: {
+    backgroundColor: '#E3F2FD', // Light blue background
+    borderColor: '#2196F3', // Blue border
+    borderWidth: 2,
+    shadowColor: '#2196F3',
+    shadowOffset: {width: 0, height: 3},
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  newBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 1,
+  },
+  newBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontFamily: 'Lato-Bold',
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
 });

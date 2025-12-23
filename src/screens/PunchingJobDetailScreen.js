@@ -53,73 +53,165 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
   };
 
   // Load allocated materials and material usage data from order
-  useEffect(() => {
-    if (!order) return;
+  // useEffect(() => {
+  //   if (!order) return;
 
-    // ✅ Extract allocated materials from order
-    const materials = [];
+  //   // ✅ Extract allocated materials from order
+  //   const materials = [];
 
-    // Check for main paper product
-    if (order.paperProductCode) {
+  //   // Check for main paper product
+  //   if (order.paperProductCode) {
+  //     materials.push({
+  //       code: order.paperProductCode,
+  //       number: order.paperProductNo || '',
+  //       originalAllocatedQty: order.allocatedQty || 0, // Original qty from raw material
+  //       materialCategory: order.materialCategory || 'RAW',
+  //       index: 0,
+  //     });
+  //   }
+
+  //   // Check for additional paper products (paperProductCode1-10)
+  //   for (let i = 1; i <= 10; i++) {
+  //     const codeKey = `paperProductCode${i}`;
+  //     const numberKey = `paperProductNo${i}`;
+  //     const qtyKey = `allocatedQty${i}`;
+  //     const categoryKey = `materialCategory${i}`;
+
+  //     if (order[codeKey]) {
+  //       materials.push({
+  //         code: order[codeKey],
+  //         number: order[numberKey] || '',
+  //         originalAllocatedQty: order[qtyKey] || 0,
+  //         materialCategory: order[categoryKey] || 'RAW',
+  //         index: i,
+  //       });
+  //     }
+  //   }
+
+  //   setAllocatedMaterials(materials);
+
+  //   // Initialize material usage data for each allocated material
+  //   const initialUsageData = materials.map(material => {
+  //     // Find existing tracking data for this paper product
+  //     const existingData =
+  //       order.materialUsageTracking?.find(
+  //         item => item.paperProductNo === material.number,
+  //       ) || {};
+
+  //     // ✅ NEW LOGIC: For punching stage, the allocated qty is the "used" qty from printing stage
+  //     const punchingAllocatedQty = existingData.printing?.used || 0;
+
+  //     return {
+  //       paperProductCode: material.code,
+  //       paperProductNo: material.number,
+  //       originalAllocatedQty: material.originalAllocatedQty, // Original raw material qty
+  //       allocatedQty: punchingAllocatedQty, // ✅ This is what punching stage receives (printing's "used")
+  //       materialCategory: material.materialCategory,
+  //       printing: existingData.printing || null, // Already completed in printing stage
+  //       punching: {
+  //         used: existingData.punching?.used?.toString() || '',
+  //         waste: existingData.punching?.waste?.toString() || '',
+  //         leftover: existingData.punching?.leftover?.toString() || '',
+  //         wip: existingData.punching?.wip?.toString() || '',
+  //       },
+  //       slitting: existingData.slitting || null, // Will be filled in slitting stage
+  //     };
+  //   });
+
+  //   setMaterialUsageData(initialUsageData);
+  // }, [order]);
+
+  // Load allocated materials and material usage data from order
+useEffect(() => {
+  if (!order) return;
+
+  // ✅ Extract allocated materials from order WITH TIMESTAMPS
+  const materials = [];
+
+  // Check for main paper product
+  if (order.paperProductCode) {
+    const allocatedAt = order.allocatedAt?.toDate?.() || order.allocatedAt || null;
+
+    materials.push({
+      code: order.paperProductCode,
+      number: order.paperProductNo || '',
+      originalAllocatedQty: order.allocatedQty || 0,
+      allocatedRolls: order.allocatedRolls || 0, // ✅ Added
+      materialCategory: order.materialCategory || 'RAW',
+      allocatedAt: allocatedAt,
+      index: 0,
+    });
+  }
+
+  // Check for additional paper products (paperProductCode1-10)
+  for (let i = 1; i <= 10; i++) {
+    const codeKey = `paperProductCode${i}`;
+    const numberKey = `paperProductNo${i}`;
+    const qtyKey = `allocatedQty${i}`;
+    const rollsKey = `allocatedRolls${i}`; // ✅ Added
+    const categoryKey = `materialCategory${i}`;
+    const timestampKey = `allocatedAt${i}`;
+
+    if (order[codeKey]) {
+      const allocatedAt = order[timestampKey]?.toDate?.() || order[timestampKey] || null;
+
       materials.push({
-        code: order.paperProductCode,
-        number: order.paperProductNo || '',
-        originalAllocatedQty: order.allocatedQty || 0, // Original qty from raw material
-        materialCategory: order.materialCategory || 'RAW',
-        index: 0,
+        code: order[codeKey],
+        number: order[numberKey] || '',
+        originalAllocatedQty: order[qtyKey] || 0,
+        allocatedRolls: order[rollsKey] || 0, // ✅ Added
+        materialCategory: order[categoryKey] || 'RAW',
+        allocatedAt: allocatedAt,
+        index: i,
       });
     }
+  }
 
-    // Check for additional paper products (paperProductCode1-10)
-    for (let i = 1; i <= 10; i++) {
-      const codeKey = `paperProductCode${i}`;
-      const numberKey = `paperProductNo${i}`;
-      const qtyKey = `allocatedQty${i}`;
-      const categoryKey = `materialCategory${i}`;
+  // ✅ Sort materials: Latest allocated first (descending order)
+  materials.sort((a, b) => {
+    if (!a.allocatedAt && !b.allocatedAt) return 0;
+    if (!a.allocatedAt) return 1;
+    if (!b.allocatedAt) return -1;
+    return b.allocatedAt - a.allocatedAt;
+  });
 
-      if (order[codeKey]) {
-        materials.push({
-          code: order[codeKey],
-          number: order[numberKey] || '',
-          originalAllocatedQty: order[qtyKey] || 0,
-          materialCategory: order[categoryKey] || 'RAW',
-          index: i,
-        });
-      }
-    }
+  // ✅ Mark the latest material (first one after sorting)
+  if (materials.length > 0 && materials[0].allocatedAt) {
+    materials[0].isLatest = true;
+  }
 
-    setAllocatedMaterials(materials);
+  setAllocatedMaterials(materials);
 
-    // Initialize material usage data for each allocated material
-    const initialUsageData = materials.map(material => {
-      // Find existing tracking data for this paper product
-      const existingData =
-        order.materialUsageTracking?.find(
-          item => item.paperProductNo === material.number,
-        ) || {};
+  // Initialize material usage data for each allocated material
+  const initialUsageData = materials.map(material => {
+    const existingData = order.materialUsageTracking?.find(
+      item => item.paperProductNo === material.number,
+    ) || {};
 
-      // ✅ NEW LOGIC: For punching stage, the allocated qty is the "used" qty from printing stage
-      const punchingAllocatedQty = existingData.printing?.used || 0;
+    // ✅ FIX: Use originalAllocatedQty if printing.used doesn't exist yet
+    const punchingAllocatedQty = existingData.printing?.used || material.originalAllocatedQty;
 
-      return {
-        paperProductCode: material.code,
-        paperProductNo: material.number,
-        originalAllocatedQty: material.originalAllocatedQty, // Original raw material qty
-        allocatedQty: punchingAllocatedQty, // ✅ This is what punching stage receives (printing's "used")
-        materialCategory: material.materialCategory,
-        printing: existingData.printing || null, // Already completed in printing stage
-        punching: {
-          used: existingData.punching?.used?.toString() || '',
-          waste: existingData.punching?.waste?.toString() || '',
-          leftover: existingData.punching?.leftover?.toString() || '',
-          wip: existingData.punching?.wip?.toString() || '',
-        },
-        slitting: existingData.slitting || null, // Will be filled in slitting stage
-      };
-    });
+    return {
+      paperProductCode: material.code,
+      paperProductNo: material.number,
+      originalAllocatedQty: material.originalAllocatedQty,
+      allocatedQty: punchingAllocatedQty,
+      allocatedRolls: material.allocatedRolls, // ✅ Added
+      materialCategory: material.materialCategory,
+      isLatest: material.isLatest || false,
+      printing: existingData.printing || null,
+      punching: {
+        used: existingData.punching?.used?.toString() || '',
+        waste: existingData.punching?.waste?.toString() || '',
+        leftover: existingData.punching?.leftover?.toString() || '',
+        wip: existingData.punching?.wip?.toString() || '',
+      },
+      slitting: existingData.slitting || null,
+    };
+  });
 
-    setMaterialUsageData(initialUsageData);
-  }, [order]);
+  setMaterialUsageData(initialUsageData);
+}, [order]);
 
   // Update material usage for specific paper product
   const updateMaterialUsage = (index, field, value) => {
@@ -515,7 +607,17 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
                 </Text>
               ) : (
                 materialUsageData.map((material, index) => (
-                  <View key={index} style={styles.materialCard}>
+                  <View
+                    key={index}
+                    style={[
+                      styles.materialCard,
+                      material.isLatest && styles.latestMaterialCard, // ✅ Highlight latest
+                    ]}>
+                    {material.isLatest && (
+                      <View style={styles.newBadge}>
+                        <Text style={styles.newBadgeText}>LATEST</Text>
+                      </View>
+                    )}
                     <Text style={styles.materialLabel}>
                       Paper Product Code:
                     </Text>
@@ -832,5 +934,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Lato-Bold',
     color: '#2196F3',
+  },
+  latestMaterialCard: {
+    backgroundColor: '#E3F2FD',
+    borderColor: '#2196F3',
+    borderWidth: 2,
+    shadowColor: '#2196F3',
+    shadowOffset: {width: 0, height: 3},
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  newBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 1,
+  },
+  newBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontFamily: 'Lato-Bold',
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
 });

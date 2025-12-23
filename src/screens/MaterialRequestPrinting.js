@@ -102,6 +102,7 @@ const MaterialRequestPrinting = ({navigation}) => {
         jobLength,
         jobWidth,
         paperSize,
+        customerName,
         requiredMaterial: parseFloat(additionalPaperRequired),
         jobPaper,
         jobQty,

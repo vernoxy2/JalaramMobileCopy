@@ -27,7 +27,6 @@ import {
 import moment from 'moment';
 import {useRoute} from '@react-navigation/native';
 import JobOriginalSizeInput from '../components/JobOriginalSizeInput ';
-import {set} from 'date-fns';
 
 const AdminCreateOrder = ({navigation}) => {
   const [poNo, setPoNo] = useState('');
@@ -36,46 +35,30 @@ const AdminCreateOrder = ({navigation}) => {
   const [jobName, setJobName] = useState('');
   const [jobDate, setJobDate] = useState(new Date());
   const [openJobDate, setOpenJobDate] = useState(false);
-  const [jobSize, setJobSize] = useState('');
+  const [jobLength, setJobLength] = useState('');
+  const [jobWidth, setJobWidth] = useState('');
+  const [paperSize, setPaperSize] = useState(''); // ✅ NEW FIELD
   const [jobQty, setJobQty] = useState('');
   const [jobPaper, setJobPaper] = useState('');
   const [plateSize, setPlateSize] = useState('');
+  const [calculationSize, setCalculationSize] = useState('');
   const [upsAcrossValue, setUpsAcrossValue] = useState('');
+  const [acrossGap, setAcrossGap] = useState('');
   const [aroundValue, setAroundValue] = useState('');
+  const [aroundGap, setAroundGap] = useState('');
+  const [totalPaperRequired, setTotalPaperRequired] = useState('');
   const [teethSizeValue, setTeethSizeValue] = useState('');
   const [blocksValue, setBlocksValue] = useState('');
   const [windingDirectionValue, setWindingDirectionValue] = useState('');
-  const [checkboxState, setCheckboxState] = useState({
-    box1: false,
-    box2: false,
-    box3: false,
-  });
   const [selectedLabelType, setSelectedLabelType] = useState('');
   const [accept, setAccept] = useState(false);
-  const [jobType, setJobType] = useState('');
-  const [acrossGap, setAcrossGap] = useState('');
-  const [aroundGap, setAroundGap] = useState('');
+  
+  // Autocomplete states
   const [searchResults, setSearchResults] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
-  const [jobLength, setJobLength] = useState('');
-  const [jobWidth, setJobWidth] = useState('');
-  const [totalPaperRequired, setTotalPaperRequired] = useState('');
-  const [calculationSize, setCalculationSize] = useState('');
 
   const route = useRoute();
   const {id, isEdit} = route.params || {};
-
-  // const printingColors = [];
-  // if (checkboxState.box1) printingColors.push('Uv');
-  // if (checkboxState.box2) printingColors.push('Water');
-  // if (checkboxState.box3) printingColors.push('Special');
-
-  const handleCheckboxChange = box => {
-    setCheckboxState(prevState => ({
-      ...prevState,
-      [box]: !prevState[box],
-    }));
-  };
 
   useEffect(() => {
     if (isEdit && id) {
@@ -85,59 +68,49 @@ const AdminCreateOrder = ({navigation}) => {
     }
   }, [isEdit, id, fetchOrderDetails, generateJobCardNo]);
 
-  // useEffect(() => {
-  //   if (jobLength && jobWidth && jobQty) {
-  //     const length = parseFloat(jobLength);
-  //     const width = parseFloat(jobWidth);
-  //     const qty = parseInt(jobQty, 10);
-
-  //     // Check if all values are valid numbers
-  //     if (!isNaN(length) && !isNaN(width) && !isNaN(qty)) {
-  //       const total = length * width * qty;
-  //       setTotalPaperRequired(total.toFixed(2)); // Format to 2 decimal places
-  //     } else {
-  //       setTotalPaperRequired('');
-  //     }
-  //   } else {
-  //     setTotalPaperRequired('');
-  //   }
-  // }, [jobLength, jobWidth, jobQty]);
-
-  const calculateTotalPaper = (qty, size, ups) => {
+  // ✅ UPDATED FORMULA: totalPaperRequired = ((labelSize + aroundGap)*totalLabels)/(1000*across)
+  const calculateTotalPaper = useCallback((qty, size, ups, gap) => {
     const totalLabels = parseFloat(qty);
     const labelSize = parseFloat(size);
     const across = parseFloat(ups);
+    const aroundGapValue = parseFloat(gap);
 
-    if (!isNaN(totalLabels) && !isNaN(labelSize) && !isNaN(across)) {
-      const total = (totalLabels * labelSize * across) / 1000;
+    if (
+      !isNaN(totalLabels) &&
+      !isNaN(labelSize) &&
+      !isNaN(across) &&
+      !isNaN(aroundGapValue)
+    ) {
+      const total =
+        ((labelSize + aroundGapValue) * totalLabels) / (1000 * across);
       setTotalPaperRequired(total.toFixed(2));
     } else {
       setTotalPaperRequired('');
     }
-  };
+  }, []);
 
   const fetchOrderDetails = useCallback(async () => {
     try {
       const doc = await firestore().collection('ordersTest').doc(id).get();
       if (doc.exists) {
         const data = doc.data();
-        // ✅ Text Inputs
+        
         setPoNo(data.poNo || '');
         setCustomerName(data.customerName || '');
         setJobCardNo(data.jobCardNo || '');
         setJobName(data.jobName || '');
         setJobDate(data.jobDate?.toDate() || new Date());
-        setJobSize(data.jobSize || '');
+        setJobLength(data.jobLength || '');
+        setJobWidth(data.jobWidth || '');
+        setPaperSize(data.paperSize || ''); // ✅ NEW FIELD
         setJobQty(data.jobQty || '');
+        setCalculationSize(data.calculationSize || '');
+        setTotalPaperRequired(data.totalPaperRequired || '');
         setAcrossGap(data.acrossGap || '');
         setAroundGap(data.aroundGap || '');
         setAccept(data.accept || false);
-        setJobLength(data.jobLength || ''); // ✅ Added
-        setJobWidth(data.jobWidth || ''); // ✅ Added
-        setTotalPaperRequired(data.totalPaperRequired || ''); // ✅ Added
-        setCalculationSize(data.calculationSize || ''); // ✅ Added
 
-        // ✅ Dropdowns
+        // Dropdowns - store full objects
         setJobPaper(data.jobPaper || '');
         setPlateSize(data.printingPlateSize || '');
         setUpsAcrossValue(data.upsAcross || '');
@@ -146,29 +119,22 @@ const AdminCreateOrder = ({navigation}) => {
         setBlocksValue(data.blocks || '');
         setWindingDirectionValue(data.windingDirection || '');
         setSelectedLabelType(data.jobType || '');
-
-        // ✅ Checkbox logic for printing colors
-        setCheckboxState({
-          box1: data.printingColors?.includes('Uv') || false,
-          box2: data.printingColors?.includes('Water') || false,
-          box3: data.printingColors?.includes('Special') || false,
-        });
       }
     } catch (error) {
       console.error('Error fetching order details:', error);
     }
-  }, [id]); // depends only on id
+  }, [id]);
 
   const generateJobCardNo = useCallback(async () => {
     try {
-      const monthPrefix = moment().format('MMM'); // e.g. Nov
-      const yearSuffix = moment().format('YY'); // e.g. 25
-      const prefix = `${monthPrefix}.${yearSuffix}`; // e.g. Nov.25
+      const monthPrefix = moment().format('MMM');
+      const yearSuffix = moment().format('YY');
+      const prefix = `${monthPrefix}.${yearSuffix}`;
 
       const snapshot = await firestore()
         .collection('ordersTest')
         .where('jobCardNo', '>=', `${prefix}-`)
-        .where('jobCardNo', '<=', `${prefix}-\uf8ff`) // ensures prefix match
+        .where('jobCardNo', '<=', `${prefix}-\uf8ff`)
         .get();
 
       let maxNumber = 0;
@@ -194,7 +160,141 @@ const AdminCreateOrder = ({navigation}) => {
     }
   }, []);
 
+  // ✅ FIX: Case-insensitive search - fetch all and filter
+  const searchJobNames = async text => {
+    try {
+      const snapshot = await firestore()
+        .collection('ordersTest')
+        .get();
+
+      const results = snapshot.docs
+        .map(doc => ({id: doc.id, ...doc.data()}))
+        .filter(doc => 
+          doc.jobName && 
+          doc.jobName.toLowerCase().includes(text.toLowerCase())
+        )
+        .slice(0, 10);
+
+      setSearchResults(results);
+    } catch (error) {
+      console.error('Error searching job names:', error);
+    }
+  };
+
+  // ✅ FIX: Properly handle job selection
+  const handleSelectJob = useCallback((item) => {
+    setSelectedJob(item);
+    setJobName(item.jobName);
+    setSearchResults([]);
+
+    // Auto-fill other fields (except jobCardNo and jobDate)
+    setPoNo(item.poNo || '');
+    setCustomerName(item.customerName || '');
+    setJobLength(item.jobLength || '');
+    setJobWidth(item.jobWidth || '');
+    setPaperSize(item.paperSize || ''); // ✅ NEW FIELD
+    setJobQty(item.jobQty || '');
+    setCalculationSize(item.calculationSize || '');
+    setTotalPaperRequired(item.totalPaperRequired || '');
+    setAcrossGap(item.acrossGap || '');
+    setAroundGap(item.aroundGap || '');
+    setAccept(item.accept || false);
+
+    // Set dropdown values (full objects)
+    setJobPaper(item.jobPaper || '');
+    setPlateSize(item.printingPlateSize || '');
+    setUpsAcrossValue(item.upsAcross || '');
+    setAroundValue(item.around || '');
+    setTeethSizeValue(item.teethSize || '');
+    setBlocksValue(item.blocks || '');
+    setWindingDirectionValue(item.windingDirection || '');
+    setSelectedLabelType(item.jobType || '');
+  }, []);
+
+  const clearAutoFilledData = useCallback(() => {
+    setPoNo('');
+    setCustomerName('');
+    setJobLength('');
+    setJobWidth('');
+    setPaperSize(''); // ✅ NEW FIELD
+    setJobQty('');
+    setCalculationSize('');
+    setTotalPaperRequired('');
+    setAcrossGap('');
+    setAroundGap('');
+    setJobPaper('');
+    setPlateSize('');
+    setUpsAcrossValue('');
+    setAroundValue('');
+    setTeethSizeValue('');
+    setBlocksValue('');
+    setWindingDirectionValue('');
+    setSelectedLabelType('');
+  }, []);
+
+  // ✅ Validation function
+  const validateForm = () => {
+    if (!poNo.trim()) {
+      Alert.alert('Validation Error', 'PO No is required');
+      return false;
+    }
+    if (!jobName.trim()) {
+      Alert.alert('Validation Error', 'Job Name is required');
+      return false;
+    }
+    if (!jobCardNo.trim()) {
+      Alert.alert('Validation Error', 'Job Card No is required');
+      return false;
+    }
+    if (!customerName.trim()) {
+      Alert.alert('Validation Error', 'Customer Name is required');
+      return false;
+    }
+    if (!jobLength.trim()) {
+      Alert.alert('Validation Error', 'Job Length is required');
+      return false;
+    }
+    if (!jobWidth.trim()) {
+      Alert.alert('Validation Error', 'Job Width is required');
+      return false;
+    }
+    if (!paperSize.trim()) {
+      Alert.alert('Validation Error', 'Paper Size is required');
+      return false;
+    }
+    if (!jobQty.trim()) {
+      Alert.alert('Validation Error', 'Job Quantity is required');
+      return false;
+    }
+    if (!calculationSize.trim()) {
+      Alert.alert('Validation Error', 'Label Size is required');
+      return false;
+    }
+    if (!upsAcrossValue) {
+      Alert.alert('Validation Error', 'Across Ups is required');
+      return false;
+    }
+    if (!aroundGap.trim()) {
+      Alert.alert('Validation Error', 'Around Gap is required');
+      return false;
+    }
+    if (!totalPaperRequired.trim()) {
+      Alert.alert('Validation Error', 'Total Paper Required is required');
+      return false;
+    }
+    if (!selectedLabelType.trim()) {
+      Alert.alert('Validation Error', 'Label Type is required');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async () => {
+    // ✅ Validate form
+    if (!validateForm()) {
+      return;
+    }
+
     try {
       const normalizedLabelType = selectedLabelType.trim().toLowerCase();
       let assignedUserUID;
@@ -217,10 +317,10 @@ const AdminCreateOrder = ({navigation}) => {
         customerName,
         jobCardNo,
         jobName,
-        jobSize,
-        jobQty,
         jobLength,
         jobWidth,
+        paperSize, // ✅ NEW FIELD
+        jobQty,
         calculationSize,
         totalPaperRequired,
         jobType: selectedLabelType,
@@ -240,12 +340,13 @@ const AdminCreateOrder = ({navigation}) => {
         updatedAt: firestore.FieldValue.serverTimestamp(),
       };
 
-      // ✅ Material Request Data
+      // Material Request Data
       const materialRequestData = {
         jobCardNo,
         jobName,
         jobLength,
         jobWidth,
+        paperSize, // ✅ NEW FIELD
         jobPaper,
         jobQty,
         calculationSize,
@@ -255,13 +356,14 @@ const AdminCreateOrder = ({navigation}) => {
         requestType: 'Initial',
         createdAt: firestore.FieldValue.serverTimestamp(),
         createdBy: 'Admin',
+        customerName,
       };
 
       if (isEdit && id) {
-        // ✅ Update existing order
+        // Update existing order
         await firestore().collection('ordersTest').doc(id).update(orderData);
 
-        // ✅ Update or create material request
+        // Update or create material request
         const materialRequestSnapshot = await firestore()
           .collection('materialRequest')
           .where('jobCardNo', '==', jobCardNo)
@@ -269,7 +371,6 @@ const AdminCreateOrder = ({navigation}) => {
           .get();
 
         if (!materialRequestSnapshot.empty) {
-          // Update existing material request
           const materialDocId = materialRequestSnapshot.docs[0].id;
           await firestore()
             .collection('materialRequest')
@@ -279,7 +380,6 @@ const AdminCreateOrder = ({navigation}) => {
               updatedAt: firestore.FieldValue.serverTimestamp(),
             });
         } else {
-          // Create new material request if it doesn't exist
           await firestore()
             .collection('materialRequest')
             .add(materialRequestData);
@@ -287,7 +387,7 @@ const AdminCreateOrder = ({navigation}) => {
 
         Alert.alert('Success', 'Job updated successfully');
       } else {
-        // ✅ Create new order
+        // Create new order
         const exists = await firestore()
           .collection('ordersTest')
           .where('jobCardNo', '==', jobCardNo)
@@ -301,7 +401,6 @@ const AdminCreateOrder = ({navigation}) => {
           return;
         }
 
-        // ✅ Add order and get reference
         const orderRef = await firestore()
           .collection('ordersTest')
           .add({
@@ -311,7 +410,6 @@ const AdminCreateOrder = ({navigation}) => {
             createdBy: 'Admin',
           });
 
-        // ✅ Add material request with orderId
         await firestore()
           .collection('materialRequest')
           .add({
@@ -329,71 +427,6 @@ const AdminCreateOrder = ({navigation}) => {
     }
   };
 
-  const searchJobNames = async text => {
-    try {
-      const snapshot = await firestore()
-        .collection('ordersTest')
-        .where('jobName', '>=', text[0].toUpperCase())
-        .where('jobName', '<=', text[0].toUpperCase() + '\uf8ff')
-        .limit(10)
-        .get();
-
-      const results = snapshot.docs
-        .map(doc => ({id: doc.id, ...doc.data()}))
-        .filter(doc => doc.jobName.toLowerCase().includes(text.toLowerCase()));
-
-      setSearchResults(results);
-    } catch (error) {
-      console.error('Error searching job names:', error);
-    }
-  };
-
-  const handleSelectJob = item => {
-    setSelectedJob(item);
-    setJobName(item.jobName);
-    setSearchResults([]);
-
-    // Auto-fill other fields (except jobCardNo)
-    setPoNo(item.poNo || '');
-    setCustomerName(item.customerName || '');
-    setJobSize(item.jobSize || '');
-    setJobQty(item.jobQty || '');
-    setAcrossGap(item.acrossGap || '');
-    setAroundGap(item.aroundGap || '');
-    setJobPaper(item.jobPaper || '');
-    setPlateSize(item.printingPlateSize || '');
-    setUpsAcrossValue(item.upsAcross || '');
-    setAroundValue(item.around || '');
-    setTeethSizeValue(item.teethSize || '');
-    setBlocksValue(item.blocks || '');
-    setWindingDirectionValue(item.windingDirection || '');
-    setSelectedLabelType(item.jobType || '');
-    setAccept(item.accept || false);
-
-    setCheckboxState({
-      box1: item.printingColors?.includes('Uv') || false,
-      box2: item.printingColors?.includes('Water') || false,
-      box3: item.printingColors?.includes('Special') || false,
-    });
-  };
-  const clearAutoFilledData = () => {
-    setCustomerName('');
-    setJobSize('');
-    setJobQty('');
-    setAcrossGap('');
-    setAroundGap('');
-    setJobPaper('');
-    setPlateSize('');
-    setUpsAcrossValue('');
-    setAroundValue('');
-    setTeethSizeValue('');
-    setBlocksValue('');
-    setWindingDirectionValue('');
-    setSelectedLabelType('');
-    setCheckboxState({box1: false, box2: false, box3: false});
-    setPoNo('');
-  };
-
   return (
     <View style={styles.adminFormMainContainer}>
       <CustomHeader
@@ -406,9 +439,9 @@ const AdminCreateOrder = ({navigation}) => {
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.adminFormSubContainer}>
-          {/* PO No */}
+          {/* PO No * */}
           <View style={styles.inputBackContainer}>
-            <Text style={styles.inputLabel}>PO No :</Text>
+            <Text style={styles.inputLabel}>PO No * :</Text>
             <TextInput
               style={styles.inputContainer}
               value={poNo}
@@ -416,6 +449,7 @@ const AdminCreateOrder = ({navigation}) => {
             />
           </View>
 
+          {/* Job Date */}
           <View style={styles.inputBackContainer}>
             <Text style={styles.inputLabel}>Job Date:</Text>
             <TouchableOpacity
@@ -429,17 +463,18 @@ const AdminCreateOrder = ({navigation}) => {
             mode="date"
             open={openJobDate}
             date={jobDate}
-            minimumDate={new Date()} // No past dates
+            minimumDate={new Date()}
             onConfirm={date => {
               setOpenJobDate(false);
               setJobDate(date);
             }}
             onCancel={() => setOpenJobDate(false)}
           />
-          {/* Job Name */}
+
+          {/* Job Name * with Autocomplete */}
           <View style={{position: 'relative', marginTop: 5}}>
             <View style={[styles.inputBackContainer, {alignItems: 'center'}]}>
-              <Text style={styles.inputLabel}>Job Name :</Text>
+              <Text style={styles.inputLabel}>Job Name * :</Text>
               <View
                 style={{flex: 1, flexDirection: 'row', alignItems: 'center'}}>
                 <TextInput
@@ -447,7 +482,7 @@ const AdminCreateOrder = ({navigation}) => {
                   value={jobName}
                   onChangeText={text => {
                     setJobName(text);
-                    setSelectedJob(null); // clear previous selection
+                    setSelectedJob(null);
                     if (text.length >= 2) {
                       searchJobNames(text);
                     } else {
@@ -471,7 +506,7 @@ const AdminCreateOrder = ({navigation}) => {
               </View>
             </View>
 
-            {/* Dropdown list for matching job names */}
+            {/* Autocomplete Dropdown */}
             {searchResults.length > 0 && !selectedJob && (
               <View style={styles.dropdownSuggestionContainer}>
                 {searchResults.map((item, index) => (
@@ -488,46 +523,54 @@ const AdminCreateOrder = ({navigation}) => {
             )}
           </View>
 
+          {/* Job Card No * (readonly) */}
           <CustomLabelTextInput
-            label="Job Card No :"
+            label="Job Card No * :"
             value={jobCardNo}
-            // onChangeText={setJobCardNo}
-            // keyboardType="number-pad"
             editable={false}
           />
+
+          {/* Customer Name * */}
           <CustomLabelTextInput
-            label="Customer Name :"
+            label="Customer Name * :"
             value={customerName}
             onChangeText={setCustomerName}
           />
 
-          {/* <CustomLabelTextInput
-            label="Job Original Size :"
-            value={jobSize}
-            onChangeText={setJobSize}
-          /> */}
+          {/* Job Original Size (Length x Width) * */}
           <JobOriginalSizeInput
-            label="Job Original Size :"
+            label="Job Original Size * :"
             lengthValue={jobLength}
             widthValue={jobWidth}
             onLengthChange={setJobLength}
             onWidthChange={setJobWidth}
           />
 
+          {/* ✅ Paper Size * - NEW FIELD */}
           <CustomLabelTextInput
-            label="Job Qty :"
+            label="Paper Size * :"
+            value={paperSize}
+            onChangeText={setPaperSize}
+            keyboardType="numeric"
+          />
+
+          {/* Job Qty * */}
+          <CustomLabelTextInput
+            label="Job Qty * :"
             value={jobQty}
-            // onChangeText={setJobQty}
+            keyboardType="numeric"
             onChangeText={value => {
               setJobQty(value);
               calculateTotalPaper(
                 value,
                 calculationSize,
                 upsAcrossValue?.value || upsAcrossValue,
+                aroundGap,
               );
             }}
           />
 
+          {/* Job Paper / Film Material */}
           <CustomDropdown
             placeholder={'Job Paper / Film Material'}
             data={options}
@@ -537,6 +580,8 @@ const AdminCreateOrder = ({navigation}) => {
             showIcon={true}
             value={jobPaper}
           />
+
+          {/* Printing Plate Size */}
           <CustomDropdown
             placeholder={'Printing Plate Size'}
             data={printingPlateSize}
@@ -546,8 +591,10 @@ const AdminCreateOrder = ({navigation}) => {
             showIcon={true}
             value={plateSize}
           />
+
+          {/* Label Size (Calculation) * */}
           <CustomLabelTextInput
-            label="Label Size (Calculation) :"
+            label="Label Size (Calculation) * :"
             value={calculationSize}
             keyboardType="numeric"
             onChangeText={value => {
@@ -556,10 +603,12 @@ const AdminCreateOrder = ({navigation}) => {
                 jobQty,
                 value,
                 upsAcrossValue?.value || upsAcrossValue,
+                aroundGap,
               );
             }}
           />
 
+          {/* Across Ups * */}
           <CustomDropdown
             placeholder={'Across Ups *'}
             data={upsAcross}
@@ -567,17 +616,18 @@ const AdminCreateOrder = ({navigation}) => {
             selectedText={styles.dropdownText}
             onSelect={item => {
               setUpsAcrossValue(item);
-              calculateTotalPaper(jobQty, calculationSize, item?.value || item);
+              calculateTotalPaper(
+                jobQty,
+                calculationSize,
+                item?.value || item,
+                aroundGap,
+              );
             }}
             showIcon={true}
             value={upsAcrossValue}
           />
-          <CustomLabelTextInput
-            label="Total Paper Required :"
-            value={totalPaperRequired}
-            onChangeText={setTotalPaperRequired}
-            // editable={false}
-          />
+
+          {/* Across Gap */}
           <TextInput
             style={styles.enableDropdown}
             placeholder="Across Gap"
@@ -586,6 +636,8 @@ const AdminCreateOrder = ({navigation}) => {
             onChangeText={setAcrossGap}
             value={acrossGap}
           />
+
+          {/* Around */}
           <CustomDropdown
             placeholder={'Around'}
             data={around}
@@ -595,14 +647,35 @@ const AdminCreateOrder = ({navigation}) => {
             showIcon={true}
             value={aroundValue}
           />
+
+          {/* Around Gap * */}
           <TextInput
             style={styles.enableDropdown}
-            placeholder="Around Gap"
+            placeholder="Around Gap *"
             placeholderTextColor="#000"
             keyboardType="numeric"
-            onChangeText={setAroundGap}
+            onChangeText={value => {
+              setAroundGap(value);
+              calculateTotalPaper(
+                jobQty,
+                calculationSize,
+                upsAcrossValue?.value || upsAcrossValue,
+                value,
+              );
+            }}
             value={aroundGap}
           />
+
+          {/* Total Paper Required * (readonly) */}
+          <CustomLabelTextInput
+            label="Total Paper Required * :"
+            value={totalPaperRequired}
+            onChangeText={setTotalPaperRequired}
+            editable={false}
+            keyboardType="numeric"
+          />
+
+          {/* Teeth Size */}
           <CustomDropdown
             placeholder={'Teeth Size'}
             data={teethSize}
@@ -612,6 +685,8 @@ const AdminCreateOrder = ({navigation}) => {
             showIcon={true}
             value={teethSizeValue}
           />
+
+          {/* Blocks */}
           <CustomDropdown
             placeholder={'Blocks'}
             data={blocks}
@@ -621,6 +696,8 @@ const AdminCreateOrder = ({navigation}) => {
             showIcon={true}
             value={blocksValue}
           />
+
+          {/* Winding Direction */}
           <CustomDropdown
             placeholder={'Winding Direction'}
             data={windingDirection}
@@ -631,8 +708,9 @@ const AdminCreateOrder = ({navigation}) => {
             value={windingDirectionValue}
           />
 
+          {/* Label Type * */}
           <CustomDropdown
-            placeholder={'Label Type'}
+            placeholder={'Label Type *'}
             data={labelType}
             style={styles.dropdownContainer}
             selectedText={styles.dropdownText}
@@ -703,48 +781,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginTop: 20,
   },
-  container: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 20,
-    width: '100%',
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    justifyContent: 'flex-start',
-    width: 70,
-  },
   dropdownText: {
     fontSize: 14,
     fontFamily: 'Lato-Black',
     color: '#000',
     marginVertical: 10,
-  },
-  checkbox: {
-    width: 15,
-    height: 15,
-    borderWidth: 2,
-    borderColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 5,
-  },
-  checked: {
-    backgroundColor: '#000',
-  },
-  checkmarkImage: {
-    height: 10,
-    width: 10,
-    tintColor: '#fff',
-  },
-  checkboxText: {
-    fontSize: 14,
-    fontFamily: 'Lato-Regular',
-    color: '#000',
-    marginLeft: 10,
   },
   enableDropdown: {
     borderWidth: 1,
@@ -781,41 +822,5 @@ const styles = StyleSheet.create({
   dropdownSuggestionText: {
     fontSize: 14,
     color: '#000',
-  },
-  customLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-  },
-
-  sizeInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'space-between',
-  },
-
-  sizeInput: {
-    flex: 1,
-    borderBottomWidth: 1,
-    borderBottomColor: '#000',
-    paddingVertical: 5,
-    fontSize: 14,
-    color: '#000',
-    marginHorizontal: 90,
-  },
-
-  multiplySign: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginHorizontal: 5,
-    color: '#000',
-  },
-  completionFieldsContainer: {
-    marginTop: 15,
-    marginBottom: 15,
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
   },
 });
