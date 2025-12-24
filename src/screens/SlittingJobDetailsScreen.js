@@ -57,73 +57,137 @@ const SlittingJobDetailsScreen = ({route, navigation}) => {
   };
 
   // Load allocated materials and material usage data from order
+  // useEffect(() => {
+  //   if (!order) return;
+
+  //   // ✅ Extract allocated materials from order
+  //   const materials = [];
+
+  //   // Check for main paper product
+  //   if (order.paperProductCode) {
+  //     materials.push({
+  //       code: order.paperProductCode,
+  //       number: order.paperProductNo || '',
+  //       originalAllocatedQty: order.allocatedQty || 0,
+  //       materialCategory: order.materialCategory || 'RAW',
+  //       index: 0,
+  //     });
+  //   }
+
+  //   // Check for additional paper products (paperProductCode1-10)
+  //   for (let i = 1; i <= 10; i++) {
+  //     const codeKey = `paperProductCode${i}`;
+  //     const numberKey = `paperProductNo${i}`;
+  //     const qtyKey = `allocatedQty${i}`;
+  //     const categoryKey = `materialCategory${i}`;
+
+  //     if (order[codeKey]) {
+  //       materials.push({
+  //         code: order[codeKey],
+  //         number: order[numberKey] || '',
+  //         originalAllocatedQty: order[qtyKey] || 0,
+  //         materialCategory: order[categoryKey] || 'RAW',
+  //         index: i,
+  //       });
+  //     }
+  //   }
+
+  //   setAllocatedMaterials(materials);
+
+  //   // Initialize material usage data for each allocated material
+  //   const initialUsageData = materials.map(material => {
+  //     // Find existing tracking data for this paper product
+  //     const existingData =
+  //       order.materialUsageTracking?.find(
+  //         item => item.paperProductNo === material.number,
+  //       ) || {};
+
+  //     // ✅ NEW LOGIC: For slitting stage, the allocated qty is the "used" qty from punching stage
+  //     const slittingAllocatedQty = existingData.punching?.used || 0;
+
+  //     return {
+  //       paperProductCode: material.code,
+  //       paperProductNo: material.number,
+  //       originalAllocatedQty: material.originalAllocatedQty, // Original raw material qty
+  //       allocatedQty: slittingAllocatedQty, // ✅ This is what slitting stage receives (punching's "used")
+  //       materialCategory:material.materialCategory, // Changed from RAW to WIP since it's output from punching
+  //       printing: existingData.printing || null, // Already completed in printing stage
+  //       punching: existingData.punching || null, // Already completed in punching stage
+  //       slitting: {
+  //         used: existingData.slitting?.used?.toString() || '',
+  //         waste: existingData.slitting?.waste?.toString() || '',
+  //         // ✅ LO and WIP are always 0 for slitting (final stage)
+  //         leftover: '0',
+  //         wip: '0',
+  //       },
+  //     };
+  //   });
+
+  //   setMaterialUsageData(initialUsageData);
+  // }, [order]);
+
+  // Replace the existing useEffect that loads materials with this fixed version:
+
   useEffect(() => {
     if (!order) return;
 
-    // ✅ Extract allocated materials from order
-    const materials = [];
+    // ✅ FIXED: Load materials directly from materialUsageTracking
+    // This is where punching stage stores its output
+    if (order.materialUsageTracking && order.materialUsageTracking.length > 0) {
+      console.log(
+        '📦 Loading materials from materialUsageTracking:',
+        order.materialUsageTracking,
+      );
 
-    // Check for main paper product
-    if (order.paperProductCode) {
-      materials.push({
-        code: order.paperProductCode,
-        number: order.paperProductNo || '',
-        originalAllocatedQty: order.allocatedQty || 0,
-        materialCategory: order.materialCategory || 'RAW',
-        index: 0,
-      });
-    }
+      const initialUsageData = order.materialUsageTracking.map(
+        (trackingItem, index) => {
+          // ✅ The allocated qty for slitting is the "used" qty from punching stage
+          const slittingAllocatedQty = trackingItem.punching?.used || 0;
 
-    // Check for additional paper products (paperProductCode1-10)
-    for (let i = 1; i <= 10; i++) {
-      const codeKey = `paperProductCode${i}`;
-      const numberKey = `paperProductNo${i}`;
-      const qtyKey = `allocatedQty${i}`;
-      const categoryKey = `materialCategory${i}`;
+          console.log(`Material ${index}:`, {
+            code: trackingItem.paperProductCode,
+            no: trackingItem.paperProductNo,
+            punchingUsed: trackingItem.punching?.used,
+            slittingAllocatedQty,
+          });
 
-      if (order[codeKey]) {
-        materials.push({
-          code: order[codeKey],
-          number: order[numberKey] || '',
-          originalAllocatedQty: order[qtyKey] || 0,
-          materialCategory: order[categoryKey] || 'RAW',
-          index: i,
-        });
-      }
-    }
-
-    setAllocatedMaterials(materials);
-
-    // Initialize material usage data for each allocated material
-    const initialUsageData = materials.map(material => {
-      // Find existing tracking data for this paper product
-      const existingData =
-        order.materialUsageTracking?.find(
-          item => item.paperProductNo === material.number,
-        ) || {};
-
-      // ✅ NEW LOGIC: For slitting stage, the allocated qty is the "used" qty from punching stage
-      const slittingAllocatedQty = existingData.punching?.used || 0;
-
-      return {
-        paperProductCode: material.code,
-        paperProductNo: material.number,
-        originalAllocatedQty: material.originalAllocatedQty, // Original raw material qty
-        allocatedQty: slittingAllocatedQty, // ✅ This is what slitting stage receives (punching's "used")
-        materialCategory:material.materialCategory, // Changed from RAW to WIP since it's output from punching
-        printing: existingData.printing || null, // Already completed in printing stage
-        punching: existingData.punching || null, // Already completed in punching stage
-        slitting: {
-          used: existingData.slitting?.used?.toString() || '',
-          waste: existingData.slitting?.waste?.toString() || '',
-          // ✅ LO and WIP are always 0 for slitting (final stage)
-          leftover: '0',
-          wip: '0',
+          return {
+            paperProductCode: trackingItem.paperProductCode,
+            paperProductNo: trackingItem.paperProductNo,
+            originalAllocatedQty: 0, // Not needed for slitting
+            allocatedQty: slittingAllocatedQty, // ✅ This is what slitting receives
+            materialCategory: 'WIP', // Changed from RAW to WIP (output from punching)
+            printing: trackingItem.printing || null,
+            punching: trackingItem.punching || null,
+            slitting: {
+              used: trackingItem.slitting?.used?.toString() || '',
+              waste: trackingItem.slitting?.waste?.toString() || '',
+              leftover: '0',
+              wip: '0',
+            },
+          };
         },
-      };
-    });
+      );
 
-    setMaterialUsageData(initialUsageData);
+      setMaterialUsageData(initialUsageData);
+
+      // Also update allocatedMaterials for display
+      const materials = order.materialUsageTracking.map((item, index) => ({
+        code: item.paperProductCode,
+        number: item.paperProductNo,
+        originalAllocatedQty: item.punching?.used || 0,
+        materialCategory: 'WIP',
+        index: index,
+      }));
+
+      setAllocatedMaterials(materials);
+    } else {
+      console.warn(
+        '⚠️ No materialUsageTracking found in order. Punching stage may not be completed.',
+      );
+      setMaterialUsageData([]);
+      setAllocatedMaterials([]);
+    }
   }, [order]);
 
   // Update material usage for specific paper product

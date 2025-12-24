@@ -56,6 +56,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
   const [jobQty, setJobQty] = useState(order.jobQty || '');
   const [acrossGap, setAcrossGap] = useState(order.acrossGap || '');
   const [aroundGap, setAroundGap] = useState(order.aroundGap || '');
+  const [showLatestHighlight, setShowLatestHighlight] = useState(true);
 
   // ✅ NEW: Store allocated materials from admin
   const [allocatedMaterials, setAllocatedMaterials] = useState([]);
@@ -157,6 +158,21 @@ const OperatorCreateOrder = ({navigation, route}) => {
 
   //   setMaterialUsageData(initialUsageData);
   // }, [order]);
+
+  useEffect(() => {
+    // Only set timer if there are materials with latest flag
+    const hasLatestMaterial = allocatedMaterials.some(m => m.isLatest);
+
+    if (hasLatestMaterial) {
+      // Set timer to remove highlight after 1 minute (60000ms)
+      const timer = setTimeout(() => {
+        setShowLatestHighlight(false);
+      }, 10000);
+
+      // Cleanup timer on unmount
+      return () => clearTimeout(timer);
+    }
+  }, [allocatedMaterials]);
 
   useEffect(() => {
     if (!order) return;
@@ -775,11 +791,17 @@ const OperatorCreateOrder = ({navigation, route}) => {
                   allocatedMaterials.map((material, index) => (
                     <View
                       key={index}
+                      // style={[
+                      //   styles.materialCard,
+                      //   material.isLatest && styles.latestMaterialCard, // ✅ Highlight latest
+                      // ]}
                       style={[
                         styles.materialCard,
-                        material.isLatest && styles.latestMaterialCard, // ✅ Highlight latest
+                        material.isLatest &&
+                          showLatestHighlight &&
+                          styles.latestMaterialCard, // NEW
                       ]}>
-                      {material.isLatest && (
+                      {material.isLatest && showLatestHighlight && (
                         <View style={styles.newBadge}>
                           <Text style={styles.newBadgeText}>LATEST</Text>
                         </View>

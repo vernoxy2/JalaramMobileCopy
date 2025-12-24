@@ -52,7 +52,7 @@ const AdminCreateOrder = ({navigation}) => {
   const [windingDirectionValue, setWindingDirectionValue] = useState('');
   const [selectedLabelType, setSelectedLabelType] = useState('');
   const [accept, setAccept] = useState(false);
-  
+
   // Autocomplete states
   const [searchResults, setSearchResults] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
@@ -94,30 +94,32 @@ const AdminCreateOrder = ({navigation}) => {
       const doc = await firestore().collection('ordersTest').doc(id).get();
       if (doc.exists) {
         const data = doc.data();
-        
+
         setPoNo(data.poNo || '');
         setCustomerName(data.customerName || '');
         setJobCardNo(data.jobCardNo || '');
         setJobName(data.jobName || '');
-        setJobDate(data.jobDate?.toDate() || new Date());
+        setJobDate(data.jobDate ? data.jobDate.toDate() : new Date());
         setJobLength(data.jobLength || '');
         setJobWidth(data.jobWidth || '');
-        setPaperSize(data.paperSize || ''); // ✅ NEW FIELD
-        setJobQty(data.jobQty || '');
-        setCalculationSize(data.calculationSize || '');
+        setPaperSize(data.paperSize || '');
         setTotalPaperRequired(data.totalPaperRequired || '');
+        setJobQty(data.jobQty || '');
         setAcrossGap(data.acrossGap || '');
         setAroundGap(data.aroundGap || '');
         setAccept(data.accept || false);
+        setCalculationSize(data.calculationSize || '');
 
-        // Dropdowns - store full objects
-        setJobPaper(data.jobPaper || '');
-        setPlateSize(data.printingPlateSize || '');
-        setUpsAcrossValue(data.upsAcross || '');
-        setAroundValue(data.around || '');
-        setTeethSizeValue(data.teethSize || '');
-        setBlocksValue(data.blocks || '');
-        setWindingDirectionValue(data.windingDirection || '');
+        // ✅ Extract ONLY the .value from objects
+        setJobPaper(data.jobPaper?.value || '');
+        setPlateSize(data.printingPlateSize?.value || '');
+        setUpsAcrossValue(data.upsAcross?.value || '');
+        setAroundValue(data.around?.value || '');
+        setTeethSizeValue(data.teethSize?.value || '');
+        setBlocksValue(data.blocks?.value || '');
+        setWindingDirectionValue(data.windingDirection?.value || '');
+
+        // Label Type is a simple string
         setSelectedLabelType(data.jobType || '');
       }
     } catch (error) {
@@ -125,6 +127,10 @@ const AdminCreateOrder = ({navigation}) => {
     }
   }, [id]);
 
+  // Add this function in your AdminCreateOrder component
+  const findOption = (list, value) => {
+    return list.find(i => i.value === value) || {label: '', value: ''};
+  };
   const generateJobCardNo = useCallback(async () => {
     try {
       const monthPrefix = moment().format('MMM');
@@ -163,15 +169,14 @@ const AdminCreateOrder = ({navigation}) => {
   // ✅ FIX: Case-insensitive search - fetch all and filter
   const searchJobNames = async text => {
     try {
-      const snapshot = await firestore()
-        .collection('ordersTest')
-        .get();
+      const snapshot = await firestore().collection('ordersTest').get();
 
       const results = snapshot.docs
         .map(doc => ({id: doc.id, ...doc.data()}))
-        .filter(doc => 
-          doc.jobName && 
-          doc.jobName.toLowerCase().includes(text.toLowerCase())
+        .filter(
+          doc =>
+            doc.jobName &&
+            doc.jobName.toLowerCase().includes(text.toLowerCase()),
         )
         .slice(0, 10);
 
@@ -182,7 +187,7 @@ const AdminCreateOrder = ({navigation}) => {
   };
 
   // ✅ FIX: Properly handle job selection
-  const handleSelectJob = useCallback((item) => {
+  const handleSelectJob = useCallback(item => {
     setSelectedJob(item);
     setJobName(item.jobName);
     setSearchResults([]);
@@ -192,7 +197,7 @@ const AdminCreateOrder = ({navigation}) => {
     setCustomerName(item.customerName || '');
     setJobLength(item.jobLength || '');
     setJobWidth(item.jobWidth || '');
-    setPaperSize(item.paperSize || ''); // ✅ NEW FIELD
+    setPaperSize(item.paperSize || '');
     setJobQty(item.jobQty || '');
     setCalculationSize(item.calculationSize || '');
     setTotalPaperRequired(item.totalPaperRequired || '');
@@ -200,14 +205,14 @@ const AdminCreateOrder = ({navigation}) => {
     setAroundGap(item.aroundGap || '');
     setAccept(item.accept || false);
 
-    // Set dropdown values (full objects)
-    setJobPaper(item.jobPaper || '');
-    setPlateSize(item.printingPlateSize || '');
-    setUpsAcrossValue(item.upsAcross || '');
-    setAroundValue(item.around || '');
-    setTeethSizeValue(item.teethSize || '');
-    setBlocksValue(item.blocks || '');
-    setWindingDirectionValue(item.windingDirection || '');
+    // ✅ Extract ONLY the .value from objects (same as fetchOrderDetails)
+    setJobPaper(item.jobPaper?.value || '');
+    setPlateSize(item.printingPlateSize?.value || '');
+    setUpsAcrossValue(item.upsAcross?.value || '');
+    setAroundValue(item.around?.value || '');
+    setTeethSizeValue(item.teethSize?.value || '');
+    setBlocksValue(item.blocks?.value || '');
+    setWindingDirectionValue(item.windingDirection?.value || '');
     setSelectedLabelType(item.jobType || '');
   }, []);
 
@@ -325,13 +330,23 @@ const AdminCreateOrder = ({navigation}) => {
         totalPaperRequired,
         jobType: selectedLabelType,
         assignedTo: assignedUserUID,
-        jobPaper,
-        printingPlateSize: plateSize,
-        upsAcross: upsAcrossValue,
-        around: aroundValue,
-        teethSize: teethSizeValue,
-        blocks: blocksValue,
-        windingDirection: windingDirectionValue,
+
+        // jobPaper,
+        // printingPlateSize: plateSize,
+        // upsAcross: upsAcrossValue,
+        // around: aroundValue,
+        // teethSize: teethSizeValue,
+        // blocks: blocksValue,
+        // windingDirection: windingDirectionValue,
+          // ✅ FIX: Check if already object or needs conversion
+        jobPaper: typeof jobPaper === 'object' ? jobPaper : findOption(options, jobPaper),
+        printingPlateSize: typeof plateSize === 'object' ? plateSize : findOption(printingPlateSize, plateSize),
+        upsAcross: typeof upsAcrossValue === 'object' ? upsAcrossValue : findOption(upsAcross, upsAcrossValue),
+        around: typeof aroundValue === 'object' ? aroundValue : findOption(around, aroundValue),
+        teethSize: typeof teethSizeValue === 'object' ? teethSizeValue : findOption(teethSize, teethSizeValue),
+        blocks: typeof blocksValue === 'object' ? blocksValue : findOption(blocks, blocksValue),
+        windingDirection: typeof windingDirectionValue === 'object' ? windingDirectionValue : findOption(windingDirection, windingDirectionValue),
+
         accept,
         acrossGap,
         aroundGap,
@@ -347,7 +362,8 @@ const AdminCreateOrder = ({navigation}) => {
         jobLength,
         jobWidth,
         paperSize, // ✅ NEW FIELD
-        jobPaper,
+        // jobPaper,
+        jobPaper: typeof jobPaper === 'object' ? jobPaper : findOption(options, jobPaper),
         jobQty,
         calculationSize,
         totalPaperRequired,
