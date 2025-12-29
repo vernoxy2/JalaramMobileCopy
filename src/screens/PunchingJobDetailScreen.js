@@ -498,7 +498,8 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         punchingStatus: 'completed',
         paperCode: paperCodeValue || order.paperCode || '',
         updatedByPunchingAt: firestore.FieldValue.serverTimestamp(),
-        assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33',
+        // assignedTo: 'sDdHMFBdkrhF90pwSk0g1ALcct33',
+        assignedTo: 'Q3FzGJTOczexja9Z6nlFZMwJMhZ2',
         completedByPunching: currentUser.uid,
         materialUsageTracking: materialUsageTracking,
       });

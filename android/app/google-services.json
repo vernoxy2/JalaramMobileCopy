@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "308176661731",
-    "project_id": "jalaram-33f56",
-    "storage_bucket": "jalaram-33f56.firebasestorage.app"
+    "project_number": "428903801642",
+    "project_id": "jalaramnewcopy",
+    "storage_bucket": "jalaramnewcopy.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:308176661731:android:9c5c8896c01ce01b07a9d6",
+        "mobilesdk_app_id": "1:428903801642:android:c23b80fe70fea77074f453",
         "android_client_info": {
           "package_name": "com.jalaram"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCDozQkjA5zPWjZFaFqZ3OLMGq1U3SnPOc"
+          "current_key": "AIzaSyAxaoTgRsFljmqVYwsKoN6o-cq-VjtLb_Y"
         }
       ],
       "services": {
