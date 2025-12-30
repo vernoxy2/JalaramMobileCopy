@@ -35,14 +35,14 @@ const SplashScreen = ({navigation}) => {
           styles.SplashImg,
           {transform: [{scale: scaleAnim}], opacity: opacityAnim},
         ]}
-        source={require('../assets/images/splashImg.png')}
+        source={require('../assets/images/vernoxy.png')}
       />
       <Animated.Text
         style={[
           styles.SplashText,
           {opacity: opacityAnim, transform: [{scale: scaleAnim}]},
         ]}>
-        SHRI JALARAM LABELS
+        {/* Vernoxy */}
       </Animated.Text>
     </View>
   );
@@ -53,7 +53,7 @@ export default SplashScreen;
 const styles = StyleSheet.create({
   SplashMainContainer: {
     flex: 1,
-    backgroundColor: '#3668B1',
+    backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   },
   SplashText: {
     fontSize: 30,
-    color: '#FFF',
+    color: '#125D9F',
     fontWeight: 'bold',
     marginTop: 60,
     letterSpacing: 1.5,
