@@ -52,78 +52,6 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
     }
     return '-';
   };
-
-  // Load allocated materials and material usage data from order
-  // useEffect(() => {
-  //   if (!order) return;
-
-  //   // ✅ Extract allocated materials from order
-  //   const materials = [];
-
-  //   // Check for main paper product
-  //   if (order.paperProductCode) {
-  //     materials.push({
-  //       code: order.paperProductCode,
-  //       number: order.paperProductNo || '',
-  //       originalAllocatedQty: order.allocatedQty || 0, // Original qty from raw material
-  //       materialCategory: order.materialCategory || 'RAW',
-  //       index: 0,
-  //     });
-  //   }
-
-  //   // Check for additional paper products (paperProductCode1-10)
-  //   for (let i = 1; i <= 10; i++) {
-  //     const codeKey = `paperProductCode${i}`;
-  //     const numberKey = `paperProductNo${i}`;
-  //     const qtyKey = `allocatedQty${i}`;
-  //     const categoryKey = `materialCategory${i}`;
-
-  //     if (order[codeKey]) {
-  //       materials.push({
-  //         code: order[codeKey],
-  //         number: order[numberKey] || '',
-  //         originalAllocatedQty: order[qtyKey] || 0,
-  //         materialCategory: order[categoryKey] || 'RAW',
-  //         index: i,
-  //       });
-  //     }
-  //   }
-
-  //   setAllocatedMaterials(materials);
-
-  //   // Initialize material usage data for each allocated material
-  //   const initialUsageData = materials.map(material => {
-  //     // Find existing tracking data for this paper product
-  //     const existingData =
-  //       order.materialUsageTracking?.find(
-  //         item => item.paperProductNo === material.number,
-  //       ) || {};
-
-  //     // ✅ NEW LOGIC: For punching stage, the allocated qty is the "used" qty from printing stage
-  //     const punchingAllocatedQty = existingData.printing?.used || 0;
-
-  //     return {
-  //       paperProductCode: material.code,
-  //       paperProductNo: material.number,
-  //       originalAllocatedQty: material.originalAllocatedQty, // Original raw material qty
-  //       allocatedQty: punchingAllocatedQty, // ✅ This is what punching stage receives (printing's "used")
-  //       materialCategory: material.materialCategory,
-  //       printing: existingData.printing || null, // Already completed in printing stage
-  //       punching: {
-  //         used: existingData.punching?.used?.toString() || '',
-  //         waste: existingData.punching?.waste?.toString() || '',
-  //         leftover: existingData.punching?.leftover?.toString() || '',
-  //         wip: existingData.punching?.wip?.toString() || '',
-  //       },
-  //       slitting: existingData.slitting || null, // Will be filled in slitting stage
-  //     };
-  //   });
-
-  //   setMaterialUsageData(initialUsageData);
-  // }, [order]);
-
-  // Load allocated materials and material usage data from order
-
   useEffect(() => {
     // Only set timer if there are materials with latest flag
     const hasLatestMaterial = materialUsageData.some(m => m.isLatest);
@@ -140,9 +68,86 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
   }, [materialUsageData]);
 
   useEffect(() => {
-    if (!order) return;
+  if (!order) return;
 
-    // ✅ Extract allocated materials from order WITH TIMESTAMPS
+  // ✅ SCENARIO 1: Load from materialUsageTracking (for jobs that went through printing)
+  if (order.materialUsageTracking && order.materialUsageTracking.length > 0) {
+    console.log(
+      '📦 Loading materials from materialUsageTracking (Printing job):',
+      order.materialUsageTracking,
+    );
+
+    // Sort by timestamp if available (latest first)
+    const sortedTracking = [...order.materialUsageTracking].sort((a, b) => {
+      const timeA = a.printing?.completedAt || 0;
+      const timeB = b.printing?.completedAt || 0;
+      if (!timeA && !timeB) return 0;
+      if (!timeA) return 1;
+      if (!timeB) return -1;
+      return timeB - timeA;
+    });
+
+    // Mark the latest material (first one after sorting)
+    if (
+      sortedTracking.length > 0 &&
+      sortedTracking[0].printing?.completedAt
+    ) {
+      sortedTracking[0].isLatest = true;
+    }
+
+    const initialUsageData = sortedTracking.map((trackingItem, index) => {
+      // ✅ The allocated qty for punching is the "used" qty from printing stage
+      const punchingAllocatedQty = trackingItem.printing?.used || 0;
+      const allocatedRolls = 0;
+
+      console.log(`Material ${index}:`, {
+        code: trackingItem.paperProductCode,
+        no: trackingItem.paperProductNo,
+        printingUsed: trackingItem.printing?.used,
+        punchingAllocatedQty,
+      });
+
+      return {
+        paperProductCode: trackingItem.paperProductCode,
+        paperProductNo: trackingItem.paperProductNo,
+        originalAllocatedQty: 0,
+        allocatedQty: punchingAllocatedQty,
+        allocatedRolls: allocatedRolls,
+        materialCategory: 'WIP', // Output from printing
+        isLatest: trackingItem.isLatest || false,
+        printing: trackingItem.printing || null,
+        punching: {
+          used: trackingItem.punching?.used?.toString() || '',
+          waste: trackingItem.punching?.waste?.toString() || '',
+          leftover: trackingItem.punching?.leftover?.toString() || '',
+          wip: trackingItem.punching?.wip?.toString() || '',
+        },
+        slitting: trackingItem.slitting || null,
+      };
+    });
+
+    setMaterialUsageData(initialUsageData);
+
+    // Also update allocatedMaterials for display
+    const materials = sortedTracking.map((item, index) => ({
+      code: item.paperProductCode,
+      number: item.paperProductNo,
+      originalAllocatedQty: item.printing?.used || 0,
+      allocatedRolls: 0,
+      materialCategory: 'WIP',
+      allocatedAt: item.printing?.completedAt || null,
+      index: index,
+      isLatest: item.isLatest || false,
+    }));
+
+    setAllocatedMaterials(materials);
+  } 
+  // ✅ SCENARIO 2: Load from order document directly (for Plain jobs that skip printing)
+  else {
+    console.log(
+      '📦 Loading materials from order document (Plain job - no printing):',
+    );
+
     const materials = [];
 
     // Check for main paper product
@@ -153,8 +158,8 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
       materials.push({
         code: order.paperProductCode,
         number: order.paperProductNo || '',
-        originalAllocatedQty: order.allocatedQty || 0,
-        allocatedRolls: order.allocatedRolls || 0, // ✅ Added
+        allocatedQty: order.allocatedQty || 0,
+        allocatedRolls: order.allocatedRolls || 0,
         materialCategory: order.materialCategory || 'RAW',
         allocatedAt: allocatedAt,
         index: 0,
@@ -166,7 +171,6 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
       const codeKey = `paperProductCode${i}`;
       const numberKey = `paperProductNo${i}`;
       const qtyKey = `allocatedQty${i}`;
-      const rollsKey = `allocatedRolls${i}`; // ✅ Added
       const categoryKey = `materialCategory${i}`;
       const timestampKey = `allocatedAt${i}`;
 
@@ -177,8 +181,8 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
         materials.push({
           code: order[codeKey],
           number: order[numberKey] || '',
-          originalAllocatedQty: order[qtyKey] || 0,
-          allocatedRolls: order[rollsKey] || 0, // ✅ Added
+          allocatedQty: order[qtyKey] || 0,
+          allocatedRolls: order[`allocatedRolls${i}`] || 0,
           materialCategory: order[categoryKey] || 'RAW',
           allocatedAt: allocatedAt,
           index: i,
@@ -194,7 +198,7 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
       return b.allocatedAt - a.allocatedAt;
     });
 
-    // ✅ Mark the latest material (first one after sorting)
+    // ✅ Mark the latest material
     if (materials.length > 0 && materials[0].allocatedAt) {
       materials[0].isLatest = true;
     }
@@ -202,39 +206,26 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
     setAllocatedMaterials(materials);
 
     // Initialize material usage data for each allocated material
-    const initialUsageData = materials.map(material => {
-      const existingData =
-        order.materialUsageTracking?.find(
-          item => item.paperProductNo === material.number,
-        ) || {};
-
-      // ✅ FIX: Use originalAllocatedQty if printing.used doesn't exist yet
-      const punchingAllocatedQty =
-        existingData.printing?.used || material.originalAllocatedQty;
-
-      return {
-        paperProductCode: material.code,
-        paperProductNo: material.number,
-        originalAllocatedQty: material.originalAllocatedQty,
-        allocatedQty: punchingAllocatedQty,
-        allocatedRolls: material.allocatedRolls, // ✅ Added
-        materialCategory: material.materialCategory,
-        isLatest: material.isLatest || false,
-        printing: existingData.printing || null,
-        punching: {
-          used: existingData.punching?.used?.toString() || '',
-          waste: existingData.punching?.waste?.toString() || '',
-          leftover: existingData.punching?.leftover?.toString() || '',
-          wip: existingData.punching?.wip?.toString() || '',
-        },
-        slitting: existingData.slitting || null,
-      };
-    });
+    const initialUsageData = materials.map(material => ({
+      paperProductCode: material.code,
+      paperProductNo: material.number,
+      allocatedQty: material.allocatedQty, // ✅ Use allocated qty from order
+      allocatedRolls: material.allocatedRolls,
+      materialCategory: material.materialCategory, // ✅ RAW for Plain jobs
+      isLatest: material.isLatest || false,
+      printing: null, // No printing stage for Plain jobs
+      punching: {
+        used: '',
+        waste: '',
+        leftover: '',
+        wip: '',
+      },
+      slitting: null,
+    }));
 
     setMaterialUsageData(initialUsageData);
-  }, [order]);
-
-  // Update material usage for specific paper product
+  }
+}, [order]);
   const updateMaterialUsage = (index, field, value) => {
     setMaterialUsageData(prev =>
       prev.map((item, idx) =>
@@ -621,52 +612,65 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
             {/* ✅ Display Allocated Materials from Printing Stage (READ-ONLY) */}
             <View style={styles.allocatedMaterialsContainer}>
               <Text style={styles.sectionTitle}>
-                Materials Received {order.jobType === 'Printing' ? 'from Printing Stage' : ''}:
+                Materials Received{' '}
+                {order.jobType === 'Printing' ? 'from Printing Stage' : ''}:
               </Text>
-              {materialUsageData.length === 0 ? (
+              {allocatedMaterials.length === 0 ? (
                 <Text style={styles.noMaterialText}>
-                  No materials received.  {order.jobType === 'Printing' ? 'Please complete printing stage first.' : ''}
+                  No materials received.{' '}
+                  {order.jobType === 'Printing'
+                    ? 'Please complete printing stage first.'
+                    : ''}
                 </Text>
               ) : (
-                materialUsageData.map((material, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.materialCard,
-                      material.isLatest &&
-                        showLatestHighlight &&
-                        styles.latestMaterialCard,
-                    ]}>
-                    {material.isLatest && showLatestHighlight && (
-                      <View style={styles.newBadge}>
-                        <Text style={styles.newBadgeText}>LATEST</Text>
-                      </View>
-                    )}
-                    <Text style={styles.materialLabel}>
-                      Paper Product Code:
-                    </Text>
-                    <Text style={styles.materialValue}>
-                      {getDisplayValue(material.paperProductCode)}
-                    </Text>
+                allocatedMaterials.map((material, index) => {
+                  // ✅ FIXED: Use index directly instead of .find()
+                  // Both arrays are created from same sorted source, so index matches perfectly
+                  const usageData = materialUsageData[index];
 
-                    <Text style={styles.materialLabel}>Paper Product No:</Text>
-                    <Text style={styles.materialValue}>
-                      {material.paperProductNo}
-                    </Text>
+                  return (
+                    <View
+                      key={index}
+                      style={[
+                        styles.materialCard,
+                        material.isLatest &&
+                          showLatestHighlight &&
+                          styles.latestMaterialCard,
+                      ]}>
+                      {material.isLatest && showLatestHighlight && (
+                        <View style={styles.newBadge}>
+                          <Text style={styles.newBadgeText}>LATEST</Text>
+                        </View>
+                      )}
+                      <Text style={styles.materialLabel}>
+                        Paper Product Code:
+                      </Text>
+                      <Text style={styles.materialValue}>
+                        {getDisplayValue(material.code)}
+                      </Text>
 
-                    <Text style={styles.materialLabel}>
-                      Allocated Qty:
-                    </Text>
-                    <Text style={[styles.materialValue, styles.highlightedQty]}>
-                      {material.allocatedQty}m
-                    </Text>
+                      <Text style={styles.materialLabel}>
+                        Paper Product No:
+                      </Text>
+                      <Text style={styles.materialValue}>
+                        {material.number}
+                      </Text>
 
-                    <Text style={styles.materialLabel}>Category:</Text>
-                    <Text style={styles.materialValue}>
-                      {material.materialCategory}
-                    </Text>
-                  </View>
-                ))
+                      <Text style={styles.materialLabel}>Allocated Qty:</Text>
+                      <Text
+                        style={[styles.materialValue, styles.highlightedQty]}>
+                        {usageData?.allocatedQty ||
+                          material.originalAllocatedQty}
+                        m
+                      </Text>
+
+                      <Text style={styles.materialLabel}>Category:</Text>
+                      <Text style={styles.materialValue}>
+                        {material.materialCategory}
+                      </Text>
+                    </View>
+                  );
+                })
               )}
             </View>
           </ScrollView>
@@ -723,8 +727,9 @@ const PunchingJobDetailsScreen = ({route, navigation}) => {
                   {paperItem.paperProductNo}
                 </Text>
                 <Text style={styles.allocatedQtyText}>
-                  Allocated {order.jobType === 'Printing' ? 'from Printing' : 'Material'}: {paperItem.allocatedQty}m (
-                  {paperItem.materialCategory})
+                  Allocated{' '}
+                  {order.jobType === 'Printing' ? 'from Printing' : 'Material'}:{' '}
+                  {paperItem.allocatedQty}m ({paperItem.materialCategory})
                 </Text>
 
                 <View style={styles.detailsRowContainer}>

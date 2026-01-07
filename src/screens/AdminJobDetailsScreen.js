@@ -103,6 +103,74 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
     return '-';
   };
 
+  // NEW: Generate material usage table for each stage
+  const generateStageUsageTable = stageName => {
+    if (
+      !order.materialUsageTracking ||
+      order.materialUsageTracking.length === 0
+    ) {
+      return '';
+    }
+
+    const stageKey = stageName.toLowerCase();
+    const isPrintingStage = stageKey === 'printing';
+
+    const rows = order.materialUsageTracking
+      .map(material => {
+        const stageData = material[stageKey];
+        if (!stageData) return '';
+
+        const paperCode = material.paperProductCode || 'N/A';
+        const paperNo = material.paperProductNo || 'N/A';
+
+        // Only get allocated and category for printing stage
+        const allocated = isPrintingStage
+          ? material.printing?.allocated || 0
+          : null;
+        const materialCategory = isPrintingStage
+          ? material.printing?.materialCategory || 'N/A'
+          : null;
+
+        return `
+        <tr>
+          <td>${paperCode} (${paperNo})</td>
+          ${isPrintingStage ? `<td>${allocated}m</td>` : ''}
+          ${isPrintingStage ? `<td>${materialCategory}</td>` : ''}
+          <td>${stageData.used || 0}</td>
+          <td>${stageData.waste || 0}</td>
+          <td>${stageData.leftover || 0}</td>
+          <td>${stageData.wip || 0}</td>
+        </tr>
+      `;
+      })
+      .filter(Boolean)
+      .join('');
+
+    if (!rows) return '';
+
+    return `
+    <div>
+      <div class="usage-title">Material Usage:</div>
+      <table class="usage-table">
+        <thead>
+          <tr>
+            <th>Material</th>
+            ${isPrintingStage ? '<th>Allocated (m)</th>' : ''}
+            ${isPrintingStage ? '<th>Category</th>' : ''}
+            <th>Used (m)</th>
+            <th>Waste (m)</th>
+            <th>Leftover (m)</th>
+            <th>WIP (m)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
+  };
+
   const requestStoragePermission = async () => {
     if (Platform.OS === 'android') {
       const sdkVersion = Platform.constants?.Release || 0;
@@ -181,6 +249,15 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         ? formatTimestamp(order.updatedBySlittingAt)
         : '';
 
+      // Calculate slitting grand total
+      const slittingGrandTotal =
+        order.slittingData && order.slittingData.length > 0
+          ? order.slittingData.reduce(
+              (sum, item) => sum + (parseFloat(item.C) || 0),
+              0,
+            )
+          : 0;
+
       const slittingRows =
         order.slittingData && order.slittingData.length > 0
           ? order.slittingData
@@ -192,73 +269,244 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
                 <td>${item.C || ''}</td>
               </tr>`,
               )
-              .join('')
+              .join('') +
+            `
+            <tr style="font-weight: bold; background-color: #f0f0f0;">
+              <td colspan="2" style="text-align: right;">Grand Total:</td>
+              <td>${slittingGrandTotal}</td>
+            </tr>`
           : `<tr><td colspan="3">No data available</td></tr>`;
-
-      const allocatedMaterialsHTML = allocatedMaterials
-        .map(
-          (material, i) => `
-        <div class="row">
-          <div class="col">
-            <span class="label">Paper Product Code ${i + 1}:</span>
-            <span class="input">${safeRender(material.code)}</span>
-          </div>
-          <div class="col">
-            <span class="label">Paper Product No ${i + 1}:</span>
-            <span class="input">${material.number || ''}</span>
-          </div>
-        </div>
-        <div class="row">
-          <div class="col">
-            <span class="label">Allocated Qty ${i + 1}:</span>
-            <span class="input">${material.allocatedQty}m</span>
-          </div>
-          <div class="col">
-            <span class="label">Material Category ${i + 1}:</span>
-            <span class="input">${material.materialCategory}</span>
-          </div>
-        </div>
-      `,
-        )
-        .join('');
 
       const htmlContent = `
       <html>
       <head>
           <style>
-          body { font-family: Arial, sans-serif; }
-          h1 { text-align: center; color: #3668B1; }
-          .section { border: 2px solid #3668B1; border-radius: 8px; margin-bottom: 18px; padding: 10px 15px; }
-          .section-title { background: #3668B1; color: #fff; font-weight: bold; padding: 3px 10px; border-radius: 5px; display: inline-block; margin-bottom: 10px; }
-          .row { display: flex; flex-wrap: wrap; margin-bottom: 8px; }
-          .col { flex: 1; min-width: 180px; margin-right: 10px; }
-          .label { font-weight: bold; }
-          .input { display: inline-block; min-width: 120px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          th, td { border: 1px solid #3668B1; padding: 4px 8px; text-align: center; }
-          .small-table td { min-width: 40px; }
-          .color-seq-table { margin-bottom: 15px; }
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body { 
+            font-family: Arial, sans-serif;
+            padding: 10px;
+          }
+          
+          h1 { 
+            text-align: center; 
+            color: #3668B1;
+            margin-bottom: 20px;
+            font-size: 24px;
+            page-break-after: avoid;
+          }
+          
+          .section { 
+            border: 2px solid #3668B1; 
+            border-radius: 8px; 
+            margin-bottom: 15px; 
+            padding: 12px 15px 15px 15px;
+            page-break-inside: avoid;
+          }
+          
+          .section.punching-section {
+            margin-top: 20px;
+          }
+          
+          .section.slitting-section {
+            margin-top: 20px;
+          }
+          
+          .section-title { 
+            background: #3668B1; 
+            color: #fff; 
+            font-weight: bold; 
+            padding: 6px 14px; 
+            border-radius: 5px; 
+            display: inline-block; 
+            margin-bottom: 12px;
+            font-size: 14px;
+          }
+          
+          .row { 
+            display: flex; 
+            flex-wrap: wrap; 
+            margin-bottom: 8px; 
+          }
+          
+          .col { 
+            flex: 1; 
+            min-width: 180px; 
+            margin-right: 10px; 
+          }
+          
+          .label { 
+            font-weight: bold;
+            font-size: 12px;
+          }
+          
+          .input { 
+            display: inline-block; 
+            min-width: 120px;
+            font-size: 12px;
+          }
+          
+          table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 8px; 
+          }
+          
+          th, td { 
+            border: 1px solid #3668B1; 
+            padding: 5px 8px; 
+            text-align: center;
+            font-size: 11px;
+          }
+          
+          .small-table td { 
+            min-width: 40px; 
+          }
+          
+          .color-seq-table { 
+            margin-bottom: 12px; 
+          }
+          
           .time-row {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              gap: 20px;
-              flex-wrap: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: nowrap;
+          }
+          
+          .time-row .col {
+            flex: 0 0 auto;
+            white-space: nowrap;
+          }
+          
+          .time-row .col:last-child {
+            margin-left: auto;
+          }
+        
+          /* Material Usage Styles */
+          .usage-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 2px solid #3668B1;
+            page-break-inside: avoid;
+          }
+          
+          .usage-title {
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #3668B1;
+            font-size: 13px;
+            page-break-after: avoid;
+          }
+          
+          .usage-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 6px;
+            page-break-inside: auto;
+          }
+          
+          .usage-table th {
+            background: #3668B1;
+            color: white;
+            padding: 6px 4px;
+            font-size: 10px;
+            font-weight: bold;
+          }
+          
+          .usage-table td {
+            padding: 5px 4px;
+            font-size: 9px;
+            text-align: center;
+            border: 1px solid #3668B1;
+          }
+          
+          .usage-table tbody tr:nth-child(even) {
+            background: #f5f8fc;
+          }
+          
+          .usage-table tbody tr:nth-child(odd) {
+            background: #ffffff;
+          }
+
+          .usage-table thead {
+            display: table-header-group;
+            page-break-after: avoid;
+          }
+          
+          .usage-table tr {
+            page-break-inside: avoid;
+          }
+
+          /* Print-specific rules */
+          @media print {
+            body {
+              padding: 5px;
             }
-            .time-row .col {
-              flex: 0 0 auto;
-              white-space: nowrap;
+            
+            h1 {
+              page-break-after: avoid;
             }
-            .time-row .col:last-child {
-              margin-left: auto;
+            
+            .section {
+              page-break-inside: avoid;
+              margin-bottom: 10px;
             }
+            
+            .section.punching-section {
+              page-break-before: always !important;
+            }
+            
+            .section.allow-break {
+              page-break-inside: auto;
+            }
+            
+            .usage-section {
+              page-break-before: auto;
+              page-break-inside: avoid;
+            }
+            
+            .usage-table thead {
+              display: table-header-group;
+            }
+            
+            .usage-table tbody tr {
+              page-break-inside: avoid;
+            }
+            
+            .usage-table thead tr,
+            .usage-table tbody tr:first-child {
+              page-break-after: avoid;
+            }
+          }
+
+          @page {
+            margin: 15mm;
+          }
+          
+          .page-break {
+            display: block;
+            page-break-before: always;
+            page-break-after: always;
+            break-before: page;
+            break-after: page;
+            height: 0;
+            margin: 0;
+            padding: 0;
+            border: none;
+          }
         </style>
 
       </head>
       <body>    
+        <h1>Job Card Report</h1>
 
         <div class="section">
-
           <div class="section-title">Admin</div>
           <div class="row">
                 <div class="col"><span class="label">PO No.:</span> <span class="input">${
@@ -284,9 +532,7 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
                 }</span></div>
           </div>
           <div class="row">
-              <div class="col"><span class="label">Job Original Size:</span> <span class="input">${
-                order.jobSize || ''
-              }</span></div>
+              <div class="col"><span class="label">Job Original Size:</span> <span class="input">${`${order.jobLength} * ${order.jobWidth}`}</span></div>
               <div class="col"><span class="label">Job Qty:</span> <span class="input">${
                 order.jobQty || ''
               }</span></div>
@@ -302,14 +548,13 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
             <div class="col"><span class="label">End time:</span> <span class="input">${endTimeFormatted}</span></div>
             <div class="col"><span class="label">Total time:</span> <span class="input">${totalTimeFormatted}</span></div>
           </div>
-
         </div>
 
-        <div class="section">
+        <div id="printing-section" class="section allow-break">
           <div class="section-title">Printing</div>
           <div class="row">
             <div class="col"><span class="label">Printing Start Time:</span> <span class="input">${
-              printingStartTimeFormatted || ''
+              order.jobType === 'Plain' ? '' : printingStartTimeFormatted || ''
             }</span></div>
             <div class="col"><span class="label">Printing End Time:</span> <span class="input">${
               printingEndTimeFormatted || ''
@@ -341,8 +586,6 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
                 }</span></div>
           </div>
 
-          ${allocatedMaterialsHTML}
-
            <div class="row">
               <div class="col">
                 <span class="label">Printing Colors:</span>
@@ -354,10 +597,15 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
                   }
                 </span>
               </div>
+               <div class="col"><span class="label">Actual Required Material:</span> <span class="input">${
+                 order.totalPaperRequired || ''
+               }</span></div>
          </div>
+
+         ${generateStageUsageTable('printing')}
         </div>
 
-        <div class="section">
+        <div id="punching-section" class="section allow-break punching-section">
           <div class="section-title">Punching</div>
           <div class="row">
             <div class="col"><span class="label">Punching Start Time:</span> <span class="input">${
@@ -367,17 +615,16 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
               punchingEndTimeFormatted || ''
             }</span></div>
           </div>
-          <div class="row">
-            <div class="col"><span class="label">Paper Code:</span> <span class="input">${
-              order.paperCode || ''
-            }</span></div>
-            <div class="col"><span class="label">Running Mtrs:</span> <span class="input">${
-              order.runningMtr || ''
-            }</span></div>
+          <div class="row">       
+            <div class="col"><span class="label">Running Mtrs:</span> <span class="input">
+            ${order.runningMtr || ''}
+            </span></div>
           </div>
+
+          ${generateStageUsageTable('punching')}
         </div>
 
-        <div class="section">
+        <div id="slitting-section" class="section allow-break slitting-section">
           <div class="section-title">Slitting</div>
           <div class="row">
             <div class="col"><span class="label">Slitting Start Time:</span> <span class="input">${
@@ -400,8 +647,9 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
                 ${slittingRows}
               </tbody>
             </table>
-
           </div>
+
+          ${generateStageUsageTable('slitting')}
         </div>
       </body>
       </html>
@@ -489,6 +737,15 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
         ? formatTimestamp(order.updatedBySlittingAt)
         : '';
 
+      // Calculate slitting grand total
+      const slittingGrandTotal =
+        order.slittingData && order.slittingData.length > 0
+          ? order.slittingData.reduce(
+              (sum, item) => sum + (parseFloat(item.C) || 0),
+              0,
+            )
+          : 0;
+
       const slittingRows =
         order.slittingData && order.slittingData.length > 0
           ? order.slittingData
@@ -500,73 +757,244 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
                 <td>${item.C || ''}</td>
               </tr>`,
               )
-              .join('')
+              .join('') +
+            `
+            <tr style="font-weight: bold; background-color: #f0f0f0;">
+              <td colspan="2" style="text-align: right;">Grand Total:</td>
+              <td>${slittingGrandTotal}</td>
+            </tr>`
           : `<tr><td colspan="3">No data available</td></tr>`;
-
-      const allocatedMaterialsHTML = allocatedMaterials
-        .map(
-          (material, i) => `
-        <div class="row">
-          <div class="col">
-            <span class="label">Paper Product Code ${i + 1}:</span>
-            <span class="input">${safeRender(material.code)}</span>
-          </div>
-          <div class="col">
-            <span class="label">Paper Product No ${i + 1}:</span>
-            <span class="input">${material.number || ''}</span>
-          </div>
-        </div>
-        <div class="row">
-          <div class="col">
-            <span class="label">Allocated Qty ${i + 1}:</span>
-            <span class="input">${material.allocatedQty}m</span>
-          </div>
-          <div class="col">
-            <span class="label">Material Category ${i + 1}:</span>
-            <span class="input">${material.materialCategory}</span>
-          </div>
-        </div>
-      `,
-        )
-        .join('');
 
       const htmlContent = `
       <html>
       <head>
           <style>
-          body { font-family: Arial, sans-serif; }
-          h1 { text-align: center; color: #3668B1; }
-          .section { border: 2px solid #3668B1; border-radius: 8px; margin-bottom: 18px; padding: 10px 15px; }
-          .section-title { background: #3668B1; color: #fff; font-weight: bold; padding: 3px 10px; border-radius: 5px; display: inline-block; margin-bottom: 10px; }
-          .row { display: flex; flex-wrap: wrap; margin-bottom: 8px; }
-          .col { flex: 1; min-width: 180px; margin-right: 10px; }
-          .label { font-weight: bold; }
-          .input { display: inline-block; min-width: 120px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          th, td { border: 1px solid #3668B1; padding: 4px 8px; text-align: center; }
-          .small-table td { min-width: 40px; }
-          .color-seq-table { margin-bottom: 15px; }
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body { 
+            font-family: Arial, sans-serif;
+            padding: 10px;
+          }
+          
+          h1 { 
+            text-align: center; 
+            color: #3668B1;
+            margin-bottom: 20px;
+            font-size: 24px;
+            page-break-after: avoid;
+          }
+          
+          .section { 
+            border: 2px solid #3668B1; 
+            border-radius: 8px; 
+            margin-bottom: 15px; 
+            padding: 12px 15px 15px 15px;
+            page-break-inside: avoid;
+          }
+          
+          .section.punching-section {
+            margin-top: 20px;
+          }
+          
+          .section.slitting-section {
+            margin-top: 20px;
+          }
+          
+          .section-title { 
+            background: #3668B1; 
+            color: #fff; 
+            font-weight: bold; 
+            padding: 6px 14px; 
+            border-radius: 5px; 
+            display: inline-block; 
+            margin-bottom: 12px;
+            font-size: 14px;
+          }
+          
+          .row { 
+            display: flex; 
+            flex-wrap: wrap; 
+            margin-bottom: 8px; 
+          }
+          
+          .col { 
+            flex: 1; 
+            min-width: 180px; 
+            margin-right: 10px; 
+          }
+          
+          .label { 
+            font-weight: bold;
+            font-size: 12px;
+          }
+          
+          .input { 
+            display: inline-block; 
+            min-width: 120px;
+            font-size: 12px;
+          }
+          
+          table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 8px; 
+          }
+          
+          th, td { 
+            border: 1px solid #3668B1; 
+            padding: 5px 8px; 
+            text-align: center;
+            font-size: 11px;
+          }
+          
+          .small-table td { 
+            min-width: 40px; 
+          }
+          
+          .color-seq-table { 
+            margin-bottom: 12px; 
+          }
+          
           .time-row {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              gap: 20px;
-              flex-wrap: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: nowrap;
+          }
+          
+          .time-row .col {
+            flex: 0 0 auto;
+            white-space: nowrap;
+          }
+          
+          .time-row .col:last-child {
+            margin-left: auto;
+          }
+        
+          /* Material Usage Styles */
+          .usage-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 2px solid #3668B1;
+            page-break-inside: avoid;
+          }
+          
+          .usage-title {
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #3668B1;
+            font-size: 13px;
+            page-break-after: avoid;
+          }
+          
+          .usage-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 6px;
+            page-break-inside: auto;
+          }
+          
+          .usage-table th {
+            background: #3668B1;
+            color: white;
+            padding: 6px 4px;
+            font-size: 10px;
+            font-weight: bold;
+          }
+          
+          .usage-table td {
+            padding: 5px 4px;
+            font-size: 9px;
+            text-align: center;
+            border: 1px solid #3668B1;
+          }
+          
+          .usage-table tbody tr:nth-child(even) {
+            background: #f5f8fc;
+          }
+          
+          .usage-table tbody tr:nth-child(odd) {
+            background: #ffffff;
+          }
+
+          .usage-table thead {
+            display: table-header-group;
+            page-break-after: avoid;
+          }
+          
+          .usage-table tr {
+            page-break-inside: avoid;
+          }
+
+          /* Print-specific rules */
+          @media print {
+            body {
+              padding: 5px;
             }
-            .time-row .col {
-              flex: 0 0 auto;
-              white-space: nowrap;
+            
+            h1 {
+              page-break-after: avoid;
             }
-            .time-row .col:last-child {
-              margin-left: auto;
+            
+            .section {
+              page-break-inside: avoid;
+              margin-bottom: 10px;
             }
+            
+            .section.punching-section {
+              page-break-before: always !important;
+            }
+            
+            .section.allow-break {
+              page-break-inside: auto;
+            }
+            
+            .usage-section {
+              page-break-before: auto;
+              page-break-inside: avoid;
+            }
+            
+            .usage-table thead {
+              display: table-header-group;
+            }
+            
+            .usage-table tbody tr {
+              page-break-inside: avoid;
+            }
+            
+            .usage-table thead tr,
+            .usage-table tbody tr:first-child {
+              page-break-after: avoid;
+            }
+          }
+
+          @page {
+            margin: 15mm;
+          }
+          
+          .page-break {
+            display: block;
+            page-break-before: always;
+            page-break-after: always;
+            break-before: page;
+            break-after: page;
+            height: 0;
+            margin: 0;
+            padding: 0;
+            border: none;
+          }
         </style>
 
       </head>
       <body>    
+        <h1>Job Card Report</h1>
 
         <div class="section">
-
           <div class="section-title">Admin</div>
           <div class="row">
                 <div class="col"><span class="label">PO No.:</span> <span class="input">${
@@ -592,9 +1020,7 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
                 }</span></div>
           </div>
           <div class="row">
-              <div class="col"><span class="label">Job Original Size:</span> <span class="input">${
-                order.jobSize || ''
-              }</span></div>
+              <div class="col"><span class="label">Job Original Size:</span> <span class="input">${`${order.jobLength} * ${order.jobWidth}`}</span></div>
               <div class="col"><span class="label">Job Qty:</span> <span class="input">${
                 order.jobQty || ''
               }</span></div>
@@ -610,14 +1036,13 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
             <div class="col"><span class="label">End time:</span> <span class="input">${endTimeFormatted}</span></div>
             <div class="col"><span class="label">Total time:</span> <span class="input">${totalTimeFormatted}</span></div>
           </div>
-
         </div>
 
-        <div class="section">
+        <div id="printing-section" class="section allow-break">
           <div class="section-title">Printing</div>
           <div class="row">
             <div class="col"><span class="label">Printing Start Time:</span> <span class="input">${
-              printingStartTimeFormatted || ''
+              order.jobType === 'Plain' ? '' : printingStartTimeFormatted || ''
             }</span></div>
             <div class="col"><span class="label">Printing End Time:</span> <span class="input">${
               printingEndTimeFormatted || ''
@@ -649,8 +1074,6 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
                 }</span></div>
           </div>
 
-          ${allocatedMaterialsHTML}
-
            <div class="row">
               <div class="col">
                 <span class="label">Printing Colors:</span>
@@ -662,10 +1085,15 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
                   }
                 </span>
               </div>
+               <div class="col"><span class="label">Actual Required Material:</span> <span class="input">${
+                 order.totalPaperRequired || ''
+               } m</span></div>
          </div>
+
+         ${generateStageUsageTable('printing')}
         </div>
 
-        <div class="section">
+        <div id="punching-section" class="section allow-break punching-section">
           <div class="section-title">Punching</div>
           <div class="row">
             <div class="col"><span class="label">Punching Start Time:</span> <span class="input">${
@@ -675,17 +1103,17 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
               punchingEndTimeFormatted || ''
             }</span></div>
           </div>
-          <div class="row">
-            <div class="col"><span class="label">Paper Code:</span> <span class="input">${
-              order.paperCode || ''
-            }</span></div>
+          <div class="row">       
             <div class="col"><span class="label">Running Mtrs:</span> <span class="input">${
               order.runningMtr || ''
-            }</span></div>
+            }
+            </span></div>
           </div>
+
+          ${generateStageUsageTable('punching')}
         </div>
 
-        <div class="section">
+        <div id="slitting-section" class="section allow-break slitting-section">
           <div class="section-title">Slitting</div>
           <div class="row">
             <div class="col"><span class="label">Slitting Start Time:</span> <span class="input">${
@@ -708,8 +1136,9 @@ const AdminJobDetailsScreen = ({route, navigation}) => {
                 ${slittingRows}
               </tbody>
             </table>
-
           </div>
+
+          ${generateStageUsageTable('slitting')}
         </div>
       </body>
       </html>

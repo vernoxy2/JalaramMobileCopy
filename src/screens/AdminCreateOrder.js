@@ -68,21 +68,22 @@ const AdminCreateOrder = ({navigation}) => {
     }
   }, [isEdit, id, fetchOrderDetails, generateJobCardNo]);
 
-  // ✅ UPDATED FORMULA: totalPaperRequired = ((labelSize + aroundGap)*totalLabels)/(1000*across)
-  const calculateTotalPaper = useCallback((qty, size, ups, gap) => {
+  const calculateTotalPaper = useCallback((qty, size, ups, around) => {
     const totalLabels = parseFloat(qty);
     const labelSize = parseFloat(size);
     const across = parseFloat(ups);
-    const aroundGapValue = parseFloat(gap);
+    const aroundValueNum = parseFloat(around);
 
     if (
       !isNaN(totalLabels) &&
       !isNaN(labelSize) &&
       !isNaN(across) &&
-      !isNaN(aroundGapValue)
+      !isNaN(aroundValueNum) &&
+      aroundValueNum !== 0 // Prevent division by zero
     ) {
       const total =
-        ((labelSize + aroundGapValue) * totalLabels) / (1000 * across);
+        ((labelSize + parseFloat(aroundValueNum || 0)) * totalLabels) /
+        (1000 * across);
       setTotalPaperRequired(total.toFixed(2));
     } else {
       setTotalPaperRequired('');
@@ -279,8 +280,8 @@ const AdminCreateOrder = ({navigation}) => {
       Alert.alert('Validation Error', 'Across Ups is required');
       return false;
     }
-    if (!aroundGap.trim()) {
-      Alert.alert('Validation Error', 'Around Gap is required');
+    if (!aroundValue.trim()) {
+      Alert.alert('Validation Error', 'Around is required');
       return false;
     }
     if (!totalPaperRequired.trim()) {
@@ -334,22 +335,35 @@ const AdminCreateOrder = ({navigation}) => {
         totalPaperRequired,
         jobType: selectedLabelType,
         assignedTo: assignedUserUID,
-
-        // jobPaper,
-        // printingPlateSize: plateSize,
-        // upsAcross: upsAcrossValue,
-        // around: aroundValue,
-        // teethSize: teethSizeValue,
-        // blocks: blocksValue,
-        // windingDirection: windingDirectionValue,
-          // ✅ FIX: Check if already object or needs conversion
-        jobPaper: typeof jobPaper === 'object' ? jobPaper : findOption(options, jobPaper),
-        printingPlateSize: typeof plateSize === 'object' ? plateSize : findOption(printingPlateSize, plateSize),
-        upsAcross: typeof upsAcrossValue === 'object' ? upsAcrossValue : findOption(upsAcross, upsAcrossValue),
-        around: typeof aroundValue === 'object' ? aroundValue : findOption(around, aroundValue),
-        teethSize: typeof teethSizeValue === 'object' ? teethSizeValue : findOption(teethSize, teethSizeValue),
-        blocks: typeof blocksValue === 'object' ? blocksValue : findOption(blocks, blocksValue),
-        windingDirection: typeof windingDirectionValue === 'object' ? windingDirectionValue : findOption(windingDirection, windingDirectionValue),
+        // ✅ FIX: Check if already object or needs conversion
+        jobPaper:
+          typeof jobPaper === 'object'
+            ? jobPaper
+            : findOption(options, jobPaper),
+        printingPlateSize:
+          typeof plateSize === 'object'
+            ? plateSize
+            : findOption(printingPlateSize, plateSize),
+        upsAcross:
+          typeof upsAcrossValue === 'object'
+            ? upsAcrossValue
+            : findOption(upsAcross, upsAcrossValue),
+        around:
+          typeof aroundValue === 'object'
+            ? aroundValue
+            : findOption(around, aroundValue),
+        teethSize:
+          typeof teethSizeValue === 'object'
+            ? teethSizeValue
+            : findOption(teethSize, teethSizeValue),
+        blocks:
+          typeof blocksValue === 'object'
+            ? blocksValue
+            : findOption(blocks, blocksValue),
+        windingDirection:
+          typeof windingDirectionValue === 'object'
+            ? windingDirectionValue
+            : findOption(windingDirection, windingDirectionValue),
 
         accept,
         acrossGap,
@@ -366,8 +380,10 @@ const AdminCreateOrder = ({navigation}) => {
         jobLength,
         jobWidth,
         paperSize, // ✅ NEW FIELD
-        // jobPaper,
-        jobPaper: typeof jobPaper === 'object' ? jobPaper : findOption(options, jobPaper),
+        jobPaper:
+          typeof jobPaper === 'object'
+            ? jobPaper
+            : findOption(options, jobPaper),
         jobQty,
         calculationSize,
         totalPaperRequired,
@@ -585,7 +601,7 @@ const AdminCreateOrder = ({navigation}) => {
                 value,
                 calculationSize,
                 upsAcrossValue?.value || upsAcrossValue,
-                aroundGap,
+                aroundValue?.value || aroundValue,
               );
             }}
           />
@@ -623,7 +639,7 @@ const AdminCreateOrder = ({navigation}) => {
                 jobQty,
                 value,
                 upsAcrossValue?.value || upsAcrossValue,
-                aroundGap,
+                aroundValue?.value || aroundValue,
               );
             }}
           />
@@ -640,7 +656,7 @@ const AdminCreateOrder = ({navigation}) => {
                 jobQty,
                 calculationSize,
                 item?.value || item,
-                aroundGap,
+                aroundValue?.value || aroundValue,
               );
             }}
             showIcon={true}
@@ -659,11 +675,20 @@ const AdminCreateOrder = ({navigation}) => {
 
           {/* Around */}
           <CustomDropdown
-            placeholder={'Around'}
+            placeholder={'Around *'}
             data={around}
             style={styles.dropdownContainer}
             selectedText={styles.dropdownText}
-            onSelect={item => setAroundValue(item)}
+            // onSelect={item => setAroundValue(item)}
+            onSelect={item => {
+              setAroundValue(item);
+              calculateTotalPaper(
+                jobQty,
+                calculationSize,
+                upsAcrossValue?.value || upsAcrossValue,
+                item?.value || item,
+              );
+            }}
             showIcon={true}
             value={aroundValue}
           />
@@ -671,18 +696,19 @@ const AdminCreateOrder = ({navigation}) => {
           {/* Around Gap * */}
           <TextInput
             style={styles.enableDropdown}
-            placeholder="Around Gap *"
+            placeholder="Around Gap"
             placeholderTextColor="#000"
             keyboardType="numeric"
-            onChangeText={value => {
-              setAroundGap(value);
-              calculateTotalPaper(
-                jobQty,
-                calculationSize,
-                upsAcrossValue?.value || upsAcrossValue,
-                value,
-              );
-            }}
+            onChangeText={setAroundGap}
+            // onChangeText={value => {
+            //   setAroundGap(value);
+            //   calculateTotalPaper(
+            //     jobQty,
+            //     calculationSize,
+            //     upsAcrossValue?.value || upsAcrossValue,
+            //     value,
+            //   );
+            // }}
             value={aroundGap}
           />
 

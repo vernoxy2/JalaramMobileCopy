@@ -60,6 +60,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
 
   // ✅ NEW: Store allocated materials from admin
   const [allocatedMaterials, setAllocatedMaterials] = useState([]);
+  const [actualRequiredMaterial, setActualRequiredMaterial] = useState('');
 
   // NEW STRUCTURED DATA: Material usage organized by paper product
   const [materialUsageData, setMaterialUsageData] = useState([]);
@@ -68,96 +69,6 @@ const OperatorCreateOrder = ({navigation, route}) => {
   if (checkboxState.box1) printingColors.push('Uv');
   if (checkboxState.box2) printingColors.push('Water');
   if (checkboxState.box3) printingColors.push('Special');
-
-  // useEffect(() => {
-  //   if (!order) return;
-
-  //   setSize(order.jobSize || '');
-
-  //   setJobPaper(order.jobPaper || '');
-  //   setPlateSize(order.printingPlateSize || '');
-  //   setUpsAcrossValue(order.upsAcross || '');
-  //   setAroundValue(order.around || '');
-  //   setTeethSizeValue(order.teethSize || '');
-  //   setBlocksValue(order.blocks || '');
-  //   setWindingDirectionValue(order.windingDirection || '');
-  //   setCheckboxState({
-  //     box1: order.printingColors?.includes('Uv') || false,
-  //     box2: order.printingColors?.includes('Water') || false,
-  //     box3: order.printingColors?.includes('Special') || false,
-  //     box4: order.varnish === 'Uv',
-  //     box5: order.checkedApproved || false,
-  //   });
-  //   setTooling(order.tooling || '');
-  //   setRunningMtrValue(order.runningMtr || '');
-  //   setJobStarted(order.jobStarted || false);
-  //   setJobCardNo(order.jobCardNo || '');
-  //   setJobName(order.jobName || '');
-  //   setJobQty(order.jobQty || '');
-
-  //   // ✅ NEW: Extract allocated materials from order
-  //   const materials = [];
-
-  //   // Check for main paper product
-  //   if (order.paperProductCode) {
-  //     materials.push({
-  //       code: order.paperProductCode,
-  //       number: order.paperProductNo || '',
-  //       allocatedQty: order.allocatedQty || 0,
-  //       allocatedRolls: order.allocatedRolls || 0,
-  //       materialCategory: order.materialCategory || 'RAW',
-  //       index: 0,
-  //     });
-  //   }
-
-  //   // Check for additional paper products (paperProductCode1-10)
-  //   for (let i = 1; i <= 10; i++) {
-  //     const codeKey = `paperProductCode${i}`;
-  //     const numberKey = `paperProductNo${i}`;
-  //     const qtyKey = `allocatedQty${i}`;
-  //     const categoryKey = `materialCategory${i}`;
-
-  //     if (order[codeKey]) {
-  //       materials.push({
-  //         code: order[codeKey],
-  //         number: order[numberKey] || '',
-  //         allocatedQty: order[qtyKey] || 0,
-  //         allocatedRolls: order[`allocatedRolls${i}`] || 0,
-  //         materialCategory: order[categoryKey] || 'RAW',
-  //         index: i,
-  //       });
-  //     }
-  //   }
-
-  //   setAllocatedMaterials(materials);
-
-  //   // Initialize material usage data for each allocated material
-  //   const initialUsageData = materials.map(material => {
-  //     // Find existing tracking data for this paper product
-  //     const existingData =
-  //       order.materialUsageTracking?.find(
-  //         item => item.paperProductNo === material.number,
-  //       ) || {};
-
-  //     return {
-  //       paperProductCode: material.code,
-  //       paperProductNo: material.number,
-  //       allocatedQty: material.allocatedQty,
-  //       allocatedRolls: material.allocatedRolls || 0,
-  //       materialCategory: material.materialCategory,
-  //       printing: {
-  //         used: existingData.printing?.used?.toString() || '',
-  //         waste: existingData.printing?.waste?.toString() || '',
-  //         leftover: existingData.printing?.leftover?.toString() || '',
-  //         wip: existingData.printing?.wip?.toString() || '',
-  //       },
-  //       punching: existingData.punching || null,
-  //       slitting: existingData.slitting || null,
-  //     };
-  //   });
-
-  //   setMaterialUsageData(initialUsageData);
-  // }, [order]);
 
   useEffect(() => {
     // Only set timer if there are materials with latest flag
@@ -198,6 +109,7 @@ const OperatorCreateOrder = ({navigation, route}) => {
     setJobCardNo(order.jobCardNo || '');
     setJobName(order.jobName || '');
     setJobQty(order.jobQty || '');
+    setActualRequiredMaterial(order.totalPaperRequired || '');
 
     // ✅ Extract allocated materials with timestamps
     const materials = [];
@@ -575,6 +487,9 @@ const OperatorCreateOrder = ({navigation, route}) => {
           paperProductCode: codeValue,
           paperProductNo: paperProductNo,
           printing: {
+            allocated: item.allocatedQty,
+            materialCategory: item.materialCategory,
+            allocatedRolls: item.allocatedRolls,
             used: usedQty,
             waste: wasteQty,
             leftover: loQty,
@@ -741,45 +656,14 @@ const OperatorCreateOrder = ({navigation, route}) => {
                 </View>
               </View>
 
-              {/* ✅ NEW: Display Allocated Materials (READ-ONLY) */}
-              {/* <View style={styles.allocatedMaterialsContainer}>
-                <Text style={styles.sectionTitle}>Allocated Materials:</Text>
-                {allocatedMaterials.length === 0 ? (
-                  <Text style={styles.noMaterialText}>
-                    No materials allocated yet. Please contact admin.
+              <View style={styles.detailsRowContainer}>
+                <Text style={styles.boldText}>Actual Required Material</Text>
+                <View style={styles.disabledDropdown}>
+                  <Text style={styles.value}>
+                    {actualRequiredMaterial} {actualRequiredMaterial ? 'm' : ''}
                   </Text>
-                ) : (
-                  allocatedMaterials.map((material, index) => (
-                    <View key={index} style={styles.materialCard}>
-                      <Text style={styles.materialLabel}>
-                        Paper Product Code:
-                      </Text>
-                      <Text style={styles.materialValue}>
-                        {material.code?.label || material.code}
-                      </Text>
-
-                      <Text style={styles.materialLabel}>
-                        Paper Product No:
-                      </Text>
-                      <Text style={styles.materialValue}>
-                        {material.number}
-                      </Text>
-
-                      <Text style={styles.materialLabel}>Allocated Qty:</Text>
-                      <Text style={styles.materialValue}>
-                        {material.allocatedRolls > 0
-                          ? `${material.allocatedRolls} Roll of ${material.allocatedQty}m`
-                          : `${material.allocatedQty}m`}
-                      </Text>
-
-                      <Text style={styles.materialLabel}>Category:</Text>
-                      <Text style={styles.materialValue}>
-                        {material.materialCategory}
-                      </Text>
-                    </View>
-                  ))
-                )}
-              </View> */}
+                </View>
+              </View>
 
               {/* ✅ UPDATED: Display Allocated Materials with latest highlight */}
               <View style={styles.allocatedMaterialsContainer}>
