@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -25,10 +25,10 @@ import {
   windingDirection,
 } from '../constant/constant';
 import moment from 'moment';
-import {useRoute} from '@react-navigation/native';
+import { useRoute } from '@react-navigation/native';
 import JobOriginalSizeInput from '../components/JobOriginalSizeInput ';
 
-const AdminCreateOrder = ({navigation}) => {
+const AdminCreateOrder = ({ navigation }) => {
   const [poNo, setPoNo] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [jobCardNo, setJobCardNo] = useState('');
@@ -58,7 +58,7 @@ const AdminCreateOrder = ({navigation}) => {
   const [selectedJob, setSelectedJob] = useState(null);
 
   const route = useRoute();
-  const {id, isEdit} = route.params || {};
+  const { id, isEdit } = route.params || {};
 
   useEffect(() => {
     if (isEdit && id) {
@@ -130,7 +130,7 @@ const AdminCreateOrder = ({navigation}) => {
 
   // Add this function in your AdminCreateOrder component
   const findOption = (list, value) => {
-    return list.find(i => i.value === value) || {label: '', value: ''};
+    return list.find(i => i.value === value) || { label: '', value: '' };
   };
   const generateJobCardNo = useCallback(async () => {
     try {
@@ -173,7 +173,7 @@ const AdminCreateOrder = ({navigation}) => {
       const snapshot = await firestore().collection('ordersTest').get();
 
       const results = snapshot.docs
-        .map(doc => ({id: doc.id, ...doc.data()}))
+        .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(
           doc =>
             doc.jobName &&
@@ -276,11 +276,13 @@ const AdminCreateOrder = ({navigation}) => {
       Alert.alert('Validation Error', 'Label Size is required');
       return false;
     }
-    if (!upsAcrossValue) {
+    // ✅ FIX: Check if upsAcrossValue is object or string
+    if (!upsAcrossValue || (typeof upsAcrossValue === 'object' && !upsAcrossValue.value) || (typeof upsAcrossValue === 'string' && !upsAcrossValue.trim())) {
       Alert.alert('Validation Error', 'Across Ups is required');
       return false;
     }
-    if (!aroundValue.trim()) {
+    // ✅ FIX: Check if aroundValue is object or string
+    if (!aroundValue || (typeof aroundValue === 'object' && !aroundValue.value) || (typeof aroundValue === 'string' && !aroundValue.trim())) {
       Alert.alert('Validation Error', 'Around is required');
       return false;
     }
@@ -508,13 +510,13 @@ const AdminCreateOrder = ({navigation}) => {
           />
 
           {/* Job Name * with Autocomplete */}
-          <View style={{position: 'relative', marginTop: 5}}>
-            <View style={[styles.inputBackContainer, {alignItems: 'center'}]}>
+          <View style={{ position: 'relative', marginTop: 5 }}>
+            <View style={[styles.inputBackContainer, { alignItems: 'center' }]}>
               <Text style={styles.inputLabel}>Job Name * :</Text>
               <View
-                style={{flex: 1, flexDirection: 'row', alignItems: 'center'}}>
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
                 <TextInput
-                  style={[styles.inputContainer, {flex: 1}]}
+                  style={[styles.inputContainer, { flex: 1 }]}
                   value={jobName}
                   onChangeText={text => {
                     setJobName(text);
@@ -535,8 +537,8 @@ const AdminCreateOrder = ({navigation}) => {
                       setSearchResults([]);
                       clearAutoFilledData();
                     }}
-                    style={{marginLeft: 5}}>
-                    <Text style={{fontSize: 18, color: 'red'}}>✕</Text>
+                    style={{ marginLeft: 5 }}>
+                    <Text style={{ fontSize: 18, color: 'red' }}>✕</Text>
                   </TouchableOpacity>
                 )}
               </View>
